@@ -1,23 +1,16 @@
 import { useState } from "react";
 import type { InterviewQ } from "../data/interview";
+import { courses } from "../data/index";
 
 interface Props {
   questions: InterviewQ[];
+  courseId: string;
 }
 
 const levelConfig: Record<string, { color: string; bg: string }> = {
-  Beginner: {
-    color: "text-emerald-700 dark:text-emerald-300",
-    bg: "bg-emerald-100 dark:bg-emerald-900/40",
-  },
-  Intermediate: {
-    color: "text-blue-700 dark:text-blue-300",
-    bg: "bg-blue-100 dark:bg-blue-900/40",
-  },
-  Advanced: {
-    color: "text-purple-700 dark:text-purple-300",
-    bg: "bg-purple-100 dark:bg-purple-900/40",
-  },
+  Beginner: { color: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100 dark:bg-emerald-900/40" },
+  Intermediate: { color: "text-blue-700 dark:text-blue-300", bg: "bg-blue-100 dark:bg-blue-900/40" },
+  Advanced: { color: "text-purple-700 dark:text-purple-300", bg: "bg-purple-100 dark:bg-purple-900/40" },
 };
 
 function renderAnswer(text: string) {
@@ -61,30 +54,17 @@ function QuestionCard({ q, num }: { q: InterviewQ; num: number }) {
   const [copied, setCopied] = useState(false);
   const cfg = levelConfig[q.level];
 
-  const handleCopy = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 ${open ? "border-primary/50 shadow-md" : "border-border hover:border-primary/30 hover:shadow-sm"}`}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-start gap-4 p-5 text-left"
-      >
+      <button onClick={() => setOpen(!open)} className="w-full flex items-start gap-4 p-5 text-left">
         <span className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${cfg.bg} ${cfg.color}`}>
           {num}
         </span>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>
-              {q.level}
-            </span>
+            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${cfg.bg} ${cfg.color}`}>{q.level}</span>
             {q.tags?.map((tag) => (
-              <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                #{tag}
-              </span>
+              <span key={tag} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">#{tag}</span>
             ))}
           </div>
           <p className="font-semibold text-foreground text-sm sm:text-base leading-snug">{q.question}</p>
@@ -98,23 +78,17 @@ function QuestionCard({ q, num }: { q: InterviewQ; num: number }) {
 
       {open && (
         <div className="px-5 pb-5 border-t border-border/50">
-          <div className="pt-4 space-y-1.5 text-muted-foreground">
-            {renderAnswer(q.answer)}
-          </div>
+          <div className="pt-4 space-y-1.5 text-muted-foreground">{renderAnswer(q.answer)}</div>
           {q.code && (
             <div className="mt-4 rounded-xl overflow-hidden border border-border shadow-sm">
               <div className="flex items-center justify-between bg-[#1e2030] px-4 py-2.5 border-b border-white/10">
                 <span className="text-xs text-slate-400 font-mono">typescript</span>
-                <button
-                  onClick={() => handleCopy(q.code!)}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
-                >
+                <button onClick={() => { navigator.clipboard.writeText(q.code!); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
+                  className="text-xs text-slate-400 hover:text-white transition-colors">
                   {copied ? <span className="text-emerald-400">✓ Copied!</span> : "Copy"}
                 </button>
               </div>
-              <pre className="bg-[#0d1117] text-[#c9d1d9] text-xs sm:text-sm p-4 overflow-x-auto font-mono leading-relaxed">
-                <code>{q.code}</code>
-              </pre>
+              <pre className="bg-[#0d1117] text-[#c9d1d9] text-xs sm:text-sm p-4 overflow-x-auto font-mono leading-relaxed"><code>{q.code}</code></pre>
             </div>
           )}
         </div>
@@ -123,9 +97,10 @@ function QuestionCard({ q, num }: { q: InterviewQ; num: number }) {
   );
 }
 
-export default function InterviewView({ questions }: Props) {
+export default function InterviewView({ questions, courseId }: Props) {
   const [filter, setFilter] = useState<"All" | "Beginner" | "Intermediate" | "Advanced">("All");
-  const [tagFilter, setTagFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState("all");
+  const courseInfo = courses.find((c) => c.id === courseId);
 
   const allTags = Array.from(new Set(questions.flatMap((q) => q.tags || [])));
 
@@ -146,78 +121,78 @@ export default function InterviewView({ questions }: Props) {
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-3 mb-2">
+          {courseInfo && (
+            <button
+              onClick={() => {}}
+              className={`text-sm font-medium ${courseInfo.color} hover:underline`}
+            >
+              {courseInfo.emoji} {courseInfo.title}
+            </button>
+          )}
+          <span className="text-border">/</span>
+          <span className="text-sm text-muted-foreground">Interview Q&A</span>
+        </div>
+        <div className="flex items-center gap-3">
           <span className="text-4xl">🎯</span>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground">Interview Q&A</h1>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground">
+              Interview Q&A
+              {courseInfo && <span className={` ${courseInfo.color}`}> — {courseInfo.title}</span>}
+            </h1>
             <p className="text-muted-foreground text-sm mt-0.5">Hinglish mein — Code examples ke saath</p>
           </div>
         </div>
 
-        {/* Stats */}
         <div className="flex flex-wrap gap-3 mt-4">
-          {(["Beginner", "Intermediate", "Advanced"] as const).map((level) => {
-            const cfg = levelConfig[level];
-            return (
-              <div key={level} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.color}`}>
-                <span>{counts[level]} questions</span>
-                <span>•</span>
-                <span>{level}</span>
-              </div>
-            );
-          })}
+          {(["Beginner", "Intermediate", "Advanced"] as const).map((level) => (
+            <div key={level} className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold ${levelConfig[level].bg} ${levelConfig[level].color}`}>
+              <span>{counts[level]} questions • {level}</span>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Tip */}
-      <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 flex gap-3">
+      <div className={`border ${courseInfo?.borderColor || "border-primary/20"} bg-gradient-to-r ${courseInfo?.bgGradient || "from-primary/5 to-accent/5"} rounded-xl p-4 mb-6 flex gap-3`}>
         <span className="text-xl shrink-0">🎓</span>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Pro tip:</strong> Sirf answer yaad mat karo — concept samjho. Interviewer follow-up pooch sakta hai: "aur explain karo", "kab use karein?", "alternative kya hai?"
+          <strong className="text-foreground">Pro tip:</strong> Sirf answer yaad mat karo — concept samjho. Interviewer follow-up pooch sakta hai. Code examples khud likho practice ke liye.
         </p>
       </div>
 
       {/* Level filter */}
       <div className="flex flex-wrap gap-2 mb-4">
         {(["All", "Beginner", "Intermediate", "Advanced"] as const).map((level) => (
-          <button
-            key={level}
-            onClick={() => setFilter(level)}
+          <button key={level} onClick={() => setFilter(level)}
             className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all border
-              ${filter === level ? "bg-primary text-primary-foreground border-primary shadow-md" : "bg-card text-foreground border-border hover:border-primary/50"}`}
-          >
+              ${filter === level ? "bg-primary text-primary-foreground border-primary shadow-md" : "bg-card text-foreground border-border hover:border-primary/50"}`}>
             {level} <span className="opacity-70 text-xs">({counts[level]})</span>
           </button>
         ))}
       </div>
 
       {/* Tag filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => setTagFilter("all")}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${tagFilter === "all" ? "bg-muted text-foreground border-border" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-        >
-          #all
-        </button>
-        {allTags.map((tag) => (
-          <button
-            key={tag}
-            onClick={() => setTagFilter(tagFilter === tag ? "all" : tag)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${tagFilter === tag ? "bg-primary/10 text-primary border-primary/30" : "border-transparent text-muted-foreground hover:text-foreground"}`}
-          >
-            #{tag}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button onClick={() => setTagFilter("all")}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${tagFilter === "all" ? "bg-muted text-foreground border-border" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+            #all
           </button>
-        ))}
-      </div>
+          {allTags.map((tag) => (
+            <button key={tag} onClick={() => setTagFilter(tagFilter === tag ? "all" : tag)}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${tagFilter === tag ? "bg-primary/10 text-primary border-primary/30" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Results count */}
       <p className="text-xs text-muted-foreground mb-4">{filtered.length} questions dikh rahe hain</p>
 
       {/* Questions */}
       <div className="space-y-3">
-        {filtered.map((q, i) => (
-          <QuestionCard key={q.id} q={q} num={i + 1} />
-        ))}
+        {filtered.map((q, i) => <QuestionCard key={q.id} q={q} num={i + 1} />)}
       </div>
 
       {filtered.length === 0 && (
@@ -230,17 +205,11 @@ export default function InterviewView({ questions }: Props) {
         </div>
       )}
 
-      {/* Bottom CTA */}
-      <div className="mt-10 p-6 bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20 rounded-2xl text-center">
-        <div className="text-3xl mb-3">🚀</div>
+      {/* CTA */}
+      <div className={`mt-10 p-6 bg-gradient-to-br ${courseInfo?.bgGradient || "from-primary/10 to-accent/10"} border ${courseInfo?.borderColor || "border-primary/20"} rounded-2xl text-center`}>
+        <div className="text-3xl mb-2">🚀</div>
         <p className="font-bold text-foreground text-lg mb-1">Ready for Interview?</p>
-        <p className="text-sm text-muted-foreground mb-4">
-          Sabse acchi practice hai khud ek Users CRUD API banana — Module, Controller, Service, TypeORM, JWT Auth sab ke saath!
-        </p>
-        <div className="inline-flex items-center gap-2 text-xs text-muted-foreground bg-background px-4 py-2 rounded-full border border-border">
-          <span>💪</span>
-          <span>Practice makes perfect — code karo, sirf padho mat!</span>
-        </div>
+        <p className="text-sm text-muted-foreground">Practice makes perfect — code karo, sirf padho mat!</p>
       </div>
     </div>
   );

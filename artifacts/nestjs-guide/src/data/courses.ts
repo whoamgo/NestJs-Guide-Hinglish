@@ -1,0 +1,133 @@
+export interface CourseInfo {
+  id: string;
+  title: string;
+  emoji: string;
+  color: string;
+  bgGradient: string;
+  borderColor: string;
+  badgeColor: string;
+  description: string;
+  level: string;
+  topics: string[];
+  totalChapters: number;
+  totalInterviews: number;
+}
+
+export const courses: CourseInfo[] = [
+  {
+    id: "nestjs",
+    title: "NestJS",
+    emoji: "🦅",
+    color: "text-red-600 dark:text-red-400",
+    bgGradient: "from-red-500/10 to-pink-500/10",
+    borderColor: "border-red-200 dark:border-red-800",
+    badgeColor: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    description: "Node.js ka enterprise framework — TypeScript ke saath scalable APIs",
+    level: "Intermediate",
+    topics: ["Modules", "Controllers", "TypeORM", "JWT Auth", "Guards", "Testing"],
+    totalChapters: 15,
+    totalInterviews: 30,
+  },
+  {
+    id: "php",
+    title: "PHP",
+    emoji: "🐘",
+    color: "text-indigo-600 dark:text-indigo-400",
+    bgGradient: "from-indigo-500/10 to-blue-500/10",
+    borderColor: "border-indigo-200 dark:border-indigo-800",
+    badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+    description: "Web development ki backbone — beginner se advanced PHP",
+    level: "Beginner",
+    topics: ["Syntax", "Functions", "Arrays", "Forms", "OOP", "Sessions", "MySQL"],
+    totalChapters: 10,
+    totalInterviews: 20,
+  },
+  {
+    id: "oop",
+    title: "OOP Concepts",
+    emoji: "🏗️",
+    color: "text-amber-600 dark:text-amber-400",
+    bgGradient: "from-amber-500/10 to-yellow-500/10",
+    borderColor: "border-amber-200 dark:border-amber-800",
+    badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    description: "Object-Oriented Programming ke core concepts deeply",
+    level: "Beginner",
+    topics: ["Classes", "Inheritance", "Polymorphism", "SOLID", "Design Patterns"],
+    totalChapters: 8,
+    totalInterviews: 20,
+  },
+  {
+    id: "laravel",
+    title: "Laravel",
+    emoji: "🚀",
+    color: "text-orange-600 dark:text-orange-400",
+    bgGradient: "from-orange-500/10 to-red-500/10",
+    borderColor: "border-orange-200 dark:border-orange-800",
+    badgeColor: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+    description: "PHP ka most popular framework — elegant APIs aur web apps",
+    level: "Intermediate",
+    topics: ["Routing", "Eloquent ORM", "Migrations", "Auth", "API", "Testing"],
+    totalChapters: 10,
+    totalInterviews: 20,
+  },
+  {
+    id: "nodejs",
+    title: "Node.js",
+    emoji: "🟢",
+    color: "text-green-600 dark:text-green-400",
+    bgGradient: "from-green-500/10 to-emerald-500/10",
+    borderColor: "border-green-200 dark:border-green-800",
+    badgeColor: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+    description: "Server-side JavaScript — fast, non-blocking I/O",
+    level: "Beginner",
+    topics: ["Modules", "Express.js", "Async/Await", "Streams", "Auth", "Database"],
+    totalChapters: 10,
+    totalInterviews: 20,
+  },
+  {
+    id: "reactjs",
+    title: "React.js",
+    emoji: "⚛️",
+    color: "text-cyan-600 dark:text-cyan-400",
+    bgGradient: "from-cyan-500/10 to-blue-500/10",
+    borderColor: "border-cyan-200 dark:border-cyan-800",
+    badgeColor: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300",
+    description: "Facebook ka UI library — modern web apps banana",
+    level: "Intermediate",
+    topics: ["JSX", "Hooks", "State", "Context", "Router", "API Integration"],
+    totalChapters: 10,
+    totalInterviews: 20,
+  },
+  {
+    id: "api",
+    title: "API Design",
+    emoji: "🔌",
+    color: "text-violet-600 dark:text-violet-400",
+    bgGradient: "from-violet-500/10 to-purple-500/10",
+    borderColor: "border-violet-200 dark:border-violet-800",
+    badgeColor: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300",
+    description: "REST API design, HTTP, authentication aur best practices",
+    level: "Beginner",
+    topics: ["REST", "HTTP Methods", "Status Codes", "JWT", "OAuth", "GraphQL"],
+    totalChapters: 8,
+    totalInterviews: 15,
+  },
+  {
+    id: "mysql",
+    title: "MySQL",
+    emoji: "🗃️",
+    color: "text-blue-600 dark:text-blue-400",
+    bgGradient: "from-blue-500/10 to-sky-500/10",
+    borderColor: "border-blue-200 dark:border-blue-800",
+    badgeColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    description: "Database fundamentals — queries, joins, indexing, aur optimization",
+    level: "Beginner",
+    topics: ["SQL Basics", "JOINs", "Indexes", "Transactions", "Normalization", "Performance"],
+    totalChapters: 9,
+    totalInterviews: 20,
+  },
+];
+
+export function getCourse(id: string) {
+  return courses.find((c) => c.id === id);
+}

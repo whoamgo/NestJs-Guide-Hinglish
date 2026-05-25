@@ -2,10 +2,12 @@ import { useState } from "react";
 import type { Chapter } from "../data/chapters";
 import type { ActiveView } from "../App";
 import { useApp } from "../App";
+import { courses } from "../data/index";
 
 interface Props {
   chapter: Chapter;
   allChapters: Chapter[];
+  courseId: string;
   onNavigate: (view: ActiveView) => void;
 }
 
@@ -13,37 +15,21 @@ type Tab = "content" | "mcq" | "cheatsheet" | "revision";
 
 function CodeBlock({ code, language }: { code: string; language?: string }) {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
   return (
-    <div className="relative rounded-xl overflow-hidden border border-border my-4 group shadow-sm">
+    <div className="relative rounded-xl overflow-hidden border border-border my-4 shadow-sm">
       <div className="flex items-center justify-between bg-[#1e2030] px-4 py-2.5 border-b border-white/10">
         <span className="text-xs text-slate-400 font-mono uppercase tracking-wider">{language || "code"}</span>
         <button
-          onClick={handleCopy}
+          onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
           className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"
         >
-          {copied ? (
-            <><span className="text-emerald-400">✓ Copied!</span></>
-          ) : (
-            <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>Copy</>
-          )}
+          {copied ? <span className="text-emerald-400">✓ Copied!</span> : <>
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>Copy</>}
         </button>
       </div>
-      <pre className="bg-[#0d1117] text-[#c9d1d9] text-sm p-4 overflow-x-auto font-mono leading-relaxed">
-        <code>{code}</code>
-      </pre>
-    </div>
-  );
-}
-
-function DiagramBlock({ diagram }: { diagram: string }) {
-  return (
-    <div className="my-4 rounded-xl border border-primary/20 bg-primary/5 overflow-x-auto">
-      <pre className="text-xs sm:text-sm text-foreground p-4 font-mono leading-relaxed whitespace-pre">{diagram}</pre>
+      <pre className="bg-[#0d1117] text-[#c9d1d9] text-sm p-4 overflow-x-auto font-mono leading-relaxed"><code>{code}</code></pre>
     </div>
   );
 }
@@ -84,16 +70,10 @@ function renderContent(text: string) {
   return elements;
 }
 
-function MCQSection({ mcqs }: { mcqs: NonNullable<Chapter["mcqs"]> }) {
+function MCQSection({ mcqs, courseId }: { mcqs: NonNullable<Chapter["mcqs"]>; courseId: string }) {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [score, setScore] = useState<number | null>(null);
-
-  const submit = () => {
-    const correct = mcqs.filter((q, i) => answers[i] === q.correct).length;
-    setScore(correct);
-  };
-
-  const reset = () => { setAnswers({}); setScore(null); };
+  const courseInfo = courses.find(c => c.id === courseId);
 
   return (
     <div className="space-y-6">
@@ -101,18 +81,17 @@ function MCQSection({ mcqs }: { mcqs: NonNullable<Chapter["mcqs"]> }) {
         <h3 className="text-lg font-bold text-foreground">🧠 Practice MCQs</h3>
         {score !== null && (
           <div className={`text-sm font-bold px-3 py-1.5 rounded-full ${score === mcqs.length ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"}`}>
-            {score}/{mcqs.length} Correct
+            {score}/{mcqs.length} Correct {score === mcqs.length ? "🎉" : ""}
           </div>
         )}
       </div>
-
       {mcqs.map((mcq, qi) => {
         const answered = answers[qi] !== undefined;
         const isCorrect = answers[qi] === mcq.correct;
         return (
           <div key={qi} className={`border rounded-xl p-5 space-y-3 transition-colors ${answered ? (isCorrect ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/20" : "border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/20") : "border-border bg-card"}`}>
             <p className="font-semibold text-foreground text-sm">
-              <span className="text-primary font-bold mr-2">Q{qi + 1}.</span>{mcq.q}
+              <span className={`font-bold mr-2 ${courseInfo?.color || "text-primary"}`}>Q{qi + 1}.</span>{mcq.q}
             </p>
             <div className="grid gap-2">
               {mcq.options.map((opt, oi) => {
@@ -123,12 +102,9 @@ function MCQSection({ mcqs }: { mcqs: NonNullable<Chapter["mcqs"]> }) {
                   else style = "border-border bg-background text-muted-foreground opacity-60";
                 }
                 return (
-                  <button
-                    key={oi}
-                    disabled={answered || score !== null}
+                  <button key={oi} disabled={answered || score !== null}
                     onClick={() => setAnswers((a) => ({ ...a, [qi]: oi }))}
-                    className={`w-full text-left text-sm px-4 py-2.5 rounded-lg border transition-all ${style}`}
-                  >
+                    className={`w-full text-left text-sm px-4 py-2.5 rounded-lg border transition-all ${style}`}>
                     <span className="font-bold mr-2 text-muted-foreground">{["A", "B", "C", "D"][oi]}.</span>{opt}
                   </button>
                 );
@@ -143,15 +119,16 @@ function MCQSection({ mcqs }: { mcqs: NonNullable<Chapter["mcqs"]> }) {
           </div>
         );
       })}
-
       <div className="flex gap-3">
         {score === null && Object.keys(answers).length === mcqs.length && (
-          <button onClick={submit} className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity">
+          <button onClick={() => setScore(mcqs.filter((q, i) => answers[i] === q.correct).length)}
+            className="bg-primary text-primary-foreground px-5 py-2.5 rounded-lg font-semibold text-sm hover:opacity-90">
             Check Answers
           </button>
         )}
         {score !== null && (
-          <button onClick={reset} className="bg-muted text-foreground px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-muted/80 transition-colors">
+          <button onClick={() => { setAnswers({}); setScore(null); }}
+            className="bg-muted text-foreground px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-muted/80">
             Dobara Try Karo
           </button>
         )}
@@ -160,13 +137,16 @@ function MCQSection({ mcqs }: { mcqs: NonNullable<Chapter["mcqs"]> }) {
   );
 }
 
-export default function ChapterView({ chapter, allChapters, onNavigate }: Props) {
+export default function ChapterView({ chapter, allChapters, courseId, onNavigate }: Props) {
   const { completed, toggleComplete } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>("content");
+
+  const courseCompleted = completed[courseId] || new Set<string>();
+  const isDone = courseCompleted.has(chapter.id);
   const currentIdx = allChapters.findIndex((c) => c.id === chapter.id);
   const prevChapter = currentIdx > 0 ? allChapters[currentIdx - 1] : null;
   const nextChapter = currentIdx < allChapters.length - 1 ? allChapters[currentIdx + 1] : null;
-  const isDone = completed.has(chapter.id);
+  const courseInfo = courses.find((c) => c.id === courseId);
 
   const tabs: { id: Tab; label: string; emoji: string; disabled?: boolean }[] = [
     { id: "content", label: "Content", emoji: "📖" },
@@ -175,38 +155,34 @@ export default function ChapterView({ chapter, allChapters, onNavigate }: Props)
     { id: "revision", label: "Revision", emoji: "🔁", disabled: !chapter.revision?.length },
   ];
 
-  const categoryColor = {
+  const categoryColor: Record<string, string> = {
     Basics: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
     Intermediate: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
     Advanced: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  }[chapter.category] || "bg-muted text-muted-foreground";
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      {/* Chapter header */}
+      {/* Header */}
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mb-3">
+          <button onClick={() => onNavigate({ type: "course", courseId })} className={`flex items-center gap-1 font-medium hover:underline ${courseInfo?.color}`}>
+            {courseInfo?.emoji} {courseInfo?.title}
+          </button>
+          <span>/</span>
           <span>Chapter {currentIdx + 1} of {allChapters.length}</span>
-          <span>·</span>
-          <span className={`px-2 py-0.5 rounded-full font-semibold ${categoryColor}`}>{chapter.category}</span>
-          <span>·</span>
-          <span>{chapter.sections.length} sections</span>
-          {chapter.mcqs && <><span>·</span><span>{chapter.mcqs.length} MCQs</span></>}
+          <span className={`px-2 py-0.5 rounded-full font-semibold ${categoryColor[chapter.category] || ""}`}>{chapter.category}</span>
         </div>
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground flex items-center gap-3 leading-tight">
-            <span className="text-4xl">{chapter.emoji}</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground flex items-center gap-3 leading-tight">
+            <span className="text-3xl sm:text-4xl">{chapter.emoji}</span>
             {chapter.title}
           </h1>
           <button
-            onClick={() => toggleComplete(chapter.id)}
+            onClick={() => toggleComplete(courseId, chapter.id)}
             className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${isDone ? "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}
           >
-            {isDone ? (
-              <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>Done</>
-            ) : (
-              <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Mark Done</>
-            )}
+            {isDone ? <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>Done</> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Mark Done</>}
           </button>
         </div>
         <p className="text-muted-foreground text-sm mt-2">{chapter.description}</p>
@@ -215,48 +191,39 @@ export default function ChapterView({ chapter, allChapters, onNavigate }: Props)
       {/* Tabs */}
       <div className="flex gap-1 bg-muted/50 p-1 rounded-xl mb-6 overflow-x-auto">
         {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => !tab.disabled && setActiveTab(tab.id)}
-            disabled={tab.disabled}
+          <button key={tab.id} onClick={() => !tab.disabled && setActiveTab(tab.id)} disabled={tab.disabled}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap
-              ${activeTab === tab.id ? "bg-card shadow text-foreground" : tab.disabled ? "text-muted-foreground/40 cursor-not-allowed" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            <span>{tab.emoji}</span>
-            <span>{tab.label}</span>
+              ${activeTab === tab.id ? "bg-card shadow text-foreground" : tab.disabled ? "text-muted-foreground/40 cursor-not-allowed" : "text-muted-foreground hover:text-foreground"}`}>
+            <span>{tab.emoji}</span><span>{tab.label}</span>
           </button>
         ))}
       </div>
 
-      {/* Content tab */}
+      {/* Content */}
       {activeTab === "content" && (
         <div className="space-y-10">
           {chapter.sections.map((section, idx) => (
             <div key={idx} className="space-y-3">
-              <h2 className="text-lg sm:text-xl font-bold text-foreground border-l-4 border-primary pl-3 leading-snug">
+              <h2 className={`text-lg sm:text-xl font-bold text-foreground border-l-4 pl-3 leading-snug ${courseInfo ? "border-primary" : "border-primary"}`}>
                 {section.heading}
               </h2>
-              {section.content && (
-                <div className="space-y-2 text-muted-foreground pl-1">
-                  {renderContent(section.content)}
+              {section.content && <div className="space-y-2 text-muted-foreground pl-1">{renderContent(section.content)}</div>}
+              {section.diagram && (
+                <div className="my-4 rounded-xl border border-primary/20 bg-primary/5 overflow-x-auto">
+                  <pre className="text-xs sm:text-sm text-foreground p-4 font-mono leading-relaxed whitespace-pre">{section.diagram}</pre>
                 </div>
               )}
-              {section.diagram && <DiagramBlock diagram={section.diagram} />}
               {section.code && <CodeBlock code={section.code} language={section.language} />}
               {section.tip && (
                 <div className="flex gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 rounded-xl p-4">
                   <span className="text-xl shrink-0">💡</span>
-                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">
-                    <strong>Tip:</strong> {section.tip}
-                  </p>
+                  <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed"><strong>Tip:</strong> {section.tip}</p>
                 </div>
               )}
               {section.warning && (
                 <div className="flex gap-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 rounded-xl p-4">
                   <span className="text-xl shrink-0">⚠️</span>
-                  <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
-                    <strong>Warning:</strong> {section.warning}
-                  </p>
+                  <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed"><strong>Warning:</strong> {section.warning}</p>
                 </div>
               )}
             </div>
@@ -264,24 +231,18 @@ export default function ChapterView({ chapter, allChapters, onNavigate }: Props)
         </div>
       )}
 
-      {/* MCQ tab */}
-      {activeTab === "mcq" && chapter.mcqs && (
-        <MCQSection mcqs={chapter.mcqs} />
-      )}
+      {activeTab === "mcq" && chapter.mcqs && <MCQSection mcqs={chapter.mcqs} courseId={courseId} />}
 
-      {/* Cheat Sheet tab */}
       {activeTab === "cheatsheet" && chapter.cheatsheet && (
         <div className="space-y-3">
           <h3 className="text-lg font-bold text-foreground">📌 Quick Reference</h3>
-          <div className="bg-[#0d1117] rounded-xl p-5 space-y-2">
+          <div className="bg-[#0d1117] rounded-xl p-5 space-y-2.5">
             {chapter.cheatsheet.map((item, i) => {
               const [cmd, ...desc] = item.split(" — ");
               return (
                 <div key={i} className="flex items-start gap-3 text-sm font-mono">
                   <span className="text-emerald-400 font-bold shrink-0">{cmd}</span>
-                  {desc.length > 0 && (
-                    <span className="text-slate-400 font-sans normal-case">— {desc.join(" — ")}</span>
-                  )}
+                  {desc.length > 0 && <span className="text-slate-400 font-sans normal-case">— {desc.join(" — ")}</span>}
                 </div>
               );
             })}
@@ -289,7 +250,6 @@ export default function ChapterView({ chapter, allChapters, onNavigate }: Props)
         </div>
       )}
 
-      {/* Revision tab */}
       {activeTab === "revision" && chapter.revision && (
         <div className="space-y-3">
           <h3 className="text-lg font-bold text-foreground">🔁 Key Takeaways</h3>
@@ -298,7 +258,7 @@ export default function ChapterView({ chapter, allChapters, onNavigate }: Props)
               const [bold, ...rest] = point.split(" — ");
               return (
                 <div key={i} className="flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3">
-                  <span className="w-6 h-6 bg-primary/10 text-primary rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5">
+                  <span className={`w-6 h-6 ${courseInfo?.badgeColor || "bg-primary/10 text-primary"} rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5`}>
                     {i + 1}
                   </span>
                   <p className="text-sm text-foreground">
@@ -315,34 +275,28 @@ export default function ChapterView({ chapter, allChapters, onNavigate }: Props)
       {/* Navigation */}
       <div className="mt-12 pt-6 border-t border-border flex items-center justify-between gap-4">
         {prevChapter ? (
-          <button
-            onClick={() => onNavigate({ type: "chapter", id: prevChapter.id })}
-            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span>←</span>
-            <span className="truncate max-w-[140px]">{prevChapter.emoji} {prevChapter.title}</span>
+          <button onClick={() => onNavigate({ type: "chapter", courseId, chapterId: prevChapter.id })}
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <span>←</span><span className="truncate max-w-[140px]">{prevChapter.emoji} {prevChapter.title}</span>
           </button>
         ) : (
-          <button onClick={() => onNavigate({ type: "home" })} className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <span>←</span><span>Home</span>
+          <button onClick={() => onNavigate({ type: "course", courseId })}
+            className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <span>←</span><span>Course Home</span>
           </button>
         )}
 
         {nextChapter ? (
           <button
-            onClick={() => { toggleComplete(chapter.id); onNavigate({ type: "chapter", id: nextChapter.id }); }}
-            className="flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity shadow-md"
-          >
-            <span className="truncate max-w-[140px]">{nextChapter.emoji} {nextChapter.title}</span>
-            <span>→</span>
+            onClick={() => { toggleComplete(courseId, chapter.id); onNavigate({ type: "chapter", courseId, chapterId: nextChapter.id }); }}
+            className="flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity shadow-md">
+            <span className="truncate max-w-[140px]">{nextChapter.emoji} {nextChapter.title}</span><span>→</span>
           </button>
         ) : (
           <button
-            onClick={() => { toggleComplete(chapter.id); onNavigate({ type: "interview" }); }}
-            className="flex items-center gap-2 text-sm font-semibold bg-accent text-accent-foreground px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity"
-          >
-            <span>🎯 Interview Q&A</span>
-            <span>→</span>
+            onClick={() => { toggleComplete(courseId, chapter.id); onNavigate({ type: "interview", courseId }); }}
+            className="flex items-center gap-2 text-sm font-semibold bg-accent text-accent-foreground px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity">
+            <span>🎯 Interview Q&A</span><span>→</span>
           </button>
         )}
       </div>
