@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "NestJS Beginner Guide - Hinglish"
+version = "1.0.0"
+id = "artifacts/nestjs-guide"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25464
+
+[services.development]
+run = "pnpm --filter @workspace/nestjs-guide run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/nestjs-guide", "run", "build" ]
+publicDir = "artifacts/nestjs-guide/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25464"
+BASE_PATH = "/"
