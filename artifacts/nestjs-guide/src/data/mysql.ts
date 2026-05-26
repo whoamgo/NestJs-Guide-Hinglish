@@ -812,6 +812,388 @@ DROP TRIGGER after_order_item_insert;`,
       "NEW = new values, OLD = old values in trigger",
     ],
   },
+  {
+    id: "mysql-transactions",
+    title: "Transactions & ACID",
+    emoji: "🔒",
+    category: "Intermediate",
+    description: "ACID properties, COMMIT/ROLLBACK, aur concurrent transaction problems",
+    sections: [
+      {
+        heading: "ACID kya hai?",
+        content: `ACID = database transactions ki 4 properties:
+- **A — Atomicity:** Ya sab hoga ya kuch nahi (all or nothing)
+- **C — Consistency:** Transaction ke baad data hamesha valid state mein
+- **I — Isolation:** Concurrent transactions ek doosre ko affect nahi karenge
+- **D — Durability:** Committed data crash ke baad bhi survive karega`,
+        code: `-- Basic Transaction
+START TRANSACTION;
+
+UPDATE accounts SET balance = balance - 5000 WHERE id = 1;
+UPDATE accounts SET balance = balance + 5000 WHERE id = 2;
+
+-- Check karo sab theek hai?
+COMMIT;   -- dono updates save ho jaayenge
+
+-- Koi error aaya toh
+ROLLBACK; -- dono changes undo ho jaayenge
+
+-- SAVEPOINT — partial rollback
+START TRANSACTION;
+INSERT INTO orders (user_id, amount) VALUES (1, 500);
+SAVEPOINT order_placed;
+INSERT INTO order_items (order_id, product) VALUES (LAST_INSERT_ID(), 'Phone');
+-- Koi problem aai item mein
+ROLLBACK TO SAVEPOINT order_placed;  -- sirf items rollback
+COMMIT;  -- order remains`,
+        language: "sql",
+      },
+      {
+        heading: "Isolation Levels",
+        content: `**4 isolation levels** — performance vs data consistency tradeoff:
+- **READ UNCOMMITTED** — dirty reads possible (avoid)
+- **READ COMMITTED** — committed data hi dikhega
+- **REPEATABLE READ** — transaction ke dauran same data (MySQL default)
+- **SERIALIZABLE** — strictest, sabse slow`,
+        code: `-- Isolation level set karo
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+START TRANSACTION;
+  SELECT balance FROM accounts WHERE id = 1;
+  -- ... other operations ...
+  SELECT balance FROM accounts WHERE id = 1; -- same result!
+COMMIT;
+
+-- MySQL default check karo
+SELECT @@transaction_isolation;
+
+-- Deadlock handling (application level)
+-- Retry logic implement karo
+-- Consistent order mein tables access karo`,
+        language: "sql",
+        tip: "MySQL ka default isolation level REPEATABLE READ hai. Production mein mostly ye theek rehta hai. Sirf special cases mein change karo.",
+      },
+    ],
+    mcqs: [
+      { q: "Atomicity kya guarantee karti hai?", options: ["Fast transactions", "Ya sab operations succeed ya sab fail", "Data valid rahe", "Concurrent access safe ho"], correct: 1, explain: "Atomicity = all or nothing. Money transfer mein agar debit ho gaya aur credit fail, rollback hoga — partial state nahi rahega." },
+      { q: "MySQL ka default isolation level kya hai?", options: ["READ COMMITTED", "SERIALIZABLE", "READ UNCOMMITTED", "REPEATABLE READ"], correct: 3, explain: "MySQL InnoDB ka default isolation level REPEATABLE READ hai — transaction ke dauran consistent reads guarantee karta hai." },
+    ],
+    cheatsheet: [
+      "START TRANSACTION — shuru karo",
+      "COMMIT — changes save karo",
+      "ROLLBACK — changes undo karo",
+      "SAVEPOINT name — checkpoint banao",
+      "ROLLBACK TO SAVEPOINT name — partial rollback",
+      "SET TRANSACTION ISOLATION LEVEL level",
+    ],
+    revision: [
+      "ACID = Atomicity, Consistency, Isolation, Durability",
+      "START TRANSACTION → operations → COMMIT/ROLLBACK",
+      "SAVEPOINT = partial rollback ke liye checkpoint",
+      "REPEATABLE READ = MySQL ka default isolation level",
+      "Deadlock se bachao: consistent order mein tables access karo",
+    ],
+  },
+  {
+    id: "mysql-views",
+    title: "Views, Triggers & Events",
+    emoji: "👁️",
+    category: "Intermediate",
+    description: "Virtual views banana, triggers se automatic actions, aur scheduled events",
+    sections: [
+      {
+        heading: "Views — Virtual Tables",
+        content: `View = ek saved SELECT query jo table ki tarah behave karta hai.
+- Complex queries simplify karo
+- Sensitive columns hide karo
+- Frequently used queries reuse karo`,
+        code: `-- View banao
+CREATE VIEW user_order_summary AS
+SELECT 
+    u.id,
+    u.name,
+    u.email,
+    COUNT(o.id) AS total_orders,
+    COALESCE(SUM(o.amount), 0) AS total_spent
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.id, u.name, u.email;
+
+-- View use karo (table ki tarah!)
+SELECT * FROM user_order_summary WHERE total_orders > 5;
+SELECT name, total_spent FROM user_order_summary ORDER BY total_spent DESC;
+
+-- View update/drop
+CREATE OR REPLACE VIEW user_order_summary AS ...;
+DROP VIEW user_order_summary;`,
+        language: "sql",
+      },
+      {
+        heading: "Triggers — Automatic Actions",
+        content: `Trigger = database event pe automatically chalne wali code.
+- **BEFORE/AFTER** — event se pehle ya baad
+- **INSERT/UPDATE/DELETE** — kon sa event
+
+Use cases: audit logs, data validation, auto-calculations`,
+        code: `-- Audit log trigger
+CREATE TABLE audit_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    table_name VARCHAR(50),
+    action VARCHAR(10),
+    old_value JSON,
+    new_value JSON,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- UPDATE trigger
+DELIMITER //
+CREATE TRIGGER after_user_update
+AFTER UPDATE ON users
+FOR EACH ROW
+BEGIN
+    IF OLD.email != NEW.email THEN
+        INSERT INTO audit_log (table_name, action, old_value, new_value)
+        VALUES ('users', 'UPDATE', 
+                JSON_OBJECT('email', OLD.email),
+                JSON_OBJECT('email', NEW.email));
+    END IF;
+END //
+DELIMITER ;
+
+-- Trigger dekho
+SHOW TRIGGERS FROM mydb;
+DROP TRIGGER after_user_update;`,
+        language: "sql",
+        tip: "Triggers powerful hain lekin debugging mushkil ho jaati hai. Business logic application layer mein rakhna prefer karo — triggers sirf database-level integrity ke liye.",
+      },
+    ],
+    mcqs: [
+      { q: "View kya hai?", options: ["Temporary table", "Saved SELECT query jo table ki tarah behave kare", "Index type", "Stored procedure"], correct: 1, explain: "View ek virtual table hai — underlying data store nahi karta, sirf query stored hoti hai. Use karne pe query execute hoti hai." },
+      { q: "BEFORE vs AFTER trigger mein fark?", options: ["Performance fark hai", "BEFORE = data change se pehle (validation), AFTER = baad (logging)", "AFTER zyada common hai", "Koi fark nahi"], correct: 1, explain: "BEFORE trigger validation ke liye use karo (data change roko agar invalid). AFTER trigger side effects ke liye (logging, notifications)." },
+    ],
+    cheatsheet: [
+      "CREATE VIEW name AS SELECT ...",
+      "SELECT * FROM view_name — use view",
+      "DROP VIEW name",
+      "CREATE TRIGGER name BEFORE/AFTER INSERT/UPDATE/DELETE ON table FOR EACH ROW BEGIN ... END",
+      "NEW.col — new value in trigger",
+      "OLD.col — old value in trigger",
+    ],
+    revision: [
+      "View = saved query, virtual table, no data storage",
+      "View use: complex queries simplify, data hide",
+      "Trigger = database event pe automatic action",
+      "BEFORE = validation, AFTER = logging/side effects",
+      "NEW = naya value, OLD = purana value in triggers",
+    ],
+  },
+  {
+    id: "mysql-subqueries",
+    title: "Subqueries & CTEs",
+    emoji: "🔍",
+    category: "Advanced",
+    description: "Nested queries, correlated subqueries, aur WITH clause (CTEs)",
+    sections: [
+      {
+        heading: "Subqueries — Queries inside Queries",
+        content: `Subquery = ek query ke andar doosri query.
+- **WHERE mein:** filter ke liye
+- **FROM mein:** derived table
+- **SELECT mein:** calculated column
+- **Correlated:** outer query ke values use kare`,
+        code: `-- WHERE subquery (IN)
+SELECT name FROM users
+WHERE id IN (
+    SELECT DISTINCT user_id FROM orders
+    WHERE amount > 1000
+);
+
+-- Scalar subquery (single value)
+SELECT name,
+    (SELECT COUNT(*) FROM orders WHERE orders.user_id = users.id) AS order_count
+FROM users;
+
+-- EXISTS — row exist karta hai?
+SELECT name FROM users u
+WHERE EXISTS (
+    SELECT 1 FROM orders o WHERE o.user_id = u.id
+);
+
+-- NOT EXISTS
+SELECT name FROM users u
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o WHERE o.user_id = u.id
+);  -- koi order nahi wale users
+
+-- Derived table (FROM mein subquery)
+SELECT dept, avg_salary FROM (
+    SELECT department AS dept, AVG(salary) AS avg_salary
+    FROM employees GROUP BY department
+) AS dept_averages
+WHERE avg_salary > 50000;`,
+        language: "sql",
+      },
+      {
+        heading: "CTEs — WITH Clause",
+        content: `CTE (Common Table Expression) = named temporary result set.
+- Readable, reusable
+- Recursive queries bhi possible
+- Subqueries se cleaner`,
+        code: `-- Basic CTE
+WITH high_value_users AS (
+    SELECT user_id, SUM(amount) AS total
+    FROM orders
+    GROUP BY user_id
+    HAVING total > 10000
+)
+SELECT u.name, h.total
+FROM users u
+JOIN high_value_users h ON u.id = h.user_id
+ORDER BY h.total DESC;
+
+-- Multiple CTEs
+WITH 
+monthly_sales AS (
+    SELECT MONTH(created_at) AS month, SUM(amount) AS revenue
+    FROM orders
+    WHERE YEAR(created_at) = 2024
+    GROUP BY MONTH(created_at)
+),
+avg_monthly AS (
+    SELECT AVG(revenue) AS avg_rev FROM monthly_sales
+)
+SELECT ms.month, ms.revenue,
+       ROUND(ms.revenue - am.avg_rev, 2) AS diff_from_avg
+FROM monthly_sales ms, avg_monthly am;
+
+-- Recursive CTE — hierarchy traverse
+WITH RECURSIVE employee_hierarchy AS (
+    SELECT id, name, manager_id, 0 AS level
+    FROM employees WHERE manager_id IS NULL  -- root
+    UNION ALL
+    SELECT e.id, e.name, e.manager_id, h.level + 1
+    FROM employees e
+    JOIN employee_hierarchy h ON e.manager_id = h.id
+)
+SELECT * FROM employee_hierarchy ORDER BY level;`,
+        language: "sql",
+        tip: "Complex queries mein CTEs use karo — EXPLAIN se check karo performance difference. Sometimes JOIN zyada fast hota hai subquery se.",
+      },
+    ],
+    mcqs: [
+      { q: "EXISTS vs IN subquery mein kya fark hai?", options: ["Koi fark nahi", "EXISTS boolean check karta hai (faster for large datasets), IN values match karta hai", "IN faster hota hai hamesha", "EXISTS sirf single values ke liye"], correct: 1, explain: "EXISTS large datasets pe fast hota hai — sirf row existence check karta hai, puri values load nahi karta. Small datasets pe IN theek hai." },
+      { q: "CTE (WITH clause) ka main faida?", options: ["Performance improvement", "Named temporary result — readable, reusable, recursive bhi", "Permanent data store", "Index creation"], correct: 1, explain: "CTE complex queries ko readable banata hai aur ek hi query mein multiple baar reuse kar sakte ho. Recursive CTEs hierarchy/tree data ke liye powerful hain." },
+    ],
+    cheatsheet: [
+      "SELECT ... WHERE id IN (SELECT id FROM ...)",
+      "WHERE EXISTS (SELECT 1 FROM ... WHERE ...)",
+      "WITH cte_name AS (SELECT ...) SELECT ... FROM cte_name",
+      "WITH RECURSIVE cte AS (base UNION ALL recursive)",
+      "Derived table: FROM (SELECT ...) AS alias",
+    ],
+    revision: [
+      "Subquery = query ke andar query",
+      "IN = set match, EXISTS = row existence check",
+      "CTE (WITH) = named temp result, more readable",
+      "Recursive CTE = hierarchy/tree data traverse",
+      "Performance: EXPLAIN se check karo, JOIN vs subquery",
+    ],
+  },
+  {
+    id: "mysql-performance",
+    title: "MySQL Performance Tuning",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "EXPLAIN analyze karna, query optimization, index strategies, aur slow query log",
+    sections: [
+      {
+        heading: "EXPLAIN — Query Plan Analyze Karna",
+        content: `EXPLAIN bolta hai MySQL query kaise execute kar raha hai — kahan optimization chahiye.
+
+**Key columns:**
+- **type** — join type (best: const/ref, worst: ALL)
+- **key** — index used (NULL = no index!)
+- **rows** — estimated rows scanned
+- **Extra** — additional info`,
+        code: `-- EXPLAIN use karo
+EXPLAIN SELECT u.name, COUNT(o.id) as orders
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+WHERE u.created_at > '2024-01-01'
+GROUP BY u.id;
+
+-- type values (best to worst):
+-- const   = primary key exact match
+-- eq_ref  = JOIN with unique index
+-- ref     = index match (multiple rows)
+-- range   = index range scan
+-- index   = full index scan
+-- ALL     = full table scan (AVOID!)
+
+-- EXPLAIN ANALYZE (MySQL 8.0+) — actual timing
+EXPLAIN ANALYZE SELECT * FROM orders WHERE user_id = 1;
+
+-- Slow Query Log enable karo
+SET GLOBAL slow_query_log = 'ON';
+SET GLOBAL long_query_time = 1;  -- 1 second se slow
+SHOW VARIABLES LIKE 'slow_query_log_file';`,
+        language: "sql",
+      },
+      {
+        heading: "Index Strategies & Query Optimization",
+        content: `Indexes fast karte hain reads ko lekin slow karte hain writes. Strategy se use karo.`,
+        code: `-- Composite index (column order matters!)
+CREATE INDEX idx_user_date ON orders(user_id, created_at);
+-- This index helps:
+-- WHERE user_id = 1
+-- WHERE user_id = 1 AND created_at > '2024-01-01'
+-- But NOT: WHERE created_at > '2024-01-01' (no user_id)
+
+-- Covering index — query ke sab columns index mein
+CREATE INDEX idx_covering ON orders(user_id, amount, status);
+-- SELECT amount, status FROM orders WHERE user_id = 1
+-- Ye query sirf index se answer ho sakti hai — table access nahi!
+
+-- Index hints (force karo)
+SELECT * FROM users USE INDEX (idx_email) WHERE email = 'x@test.com';
+
+-- Common optimization tips
+-- ❌ Avoid functions on indexed columns
+SELECT * FROM users WHERE YEAR(created_at) = 2024;
+-- ✅ Better: range use karo
+SELECT * FROM users WHERE created_at BETWEEN '2024-01-01' AND '2024-12-31';
+
+-- ❌ LIKE '%text%' — index use nahi hoga
+-- ✅ LIKE 'text%' — prefix match, index use hoga
+
+-- Query cache (manual ke liye — Redis better)
+-- SELECT SQL_CACHE * FROM products WHERE active = 1;
+
+-- Table statistics update karo
+ANALYZE TABLE users;`,
+        language: "sql",
+        tip: "Composite index mein column order matter karta hai — WHERE clause ke most selective column pehle rakho!",
+      },
+    ],
+    mcqs: [
+      { q: "EXPLAIN mein type='ALL' kya indicate karta hai?", options: ["Best performance", "Full table scan — optimize karo!", "Index use ho raha hai", "Query correct hai"], correct: 1, explain: "type=ALL = full table scan — har row check ho raha hai. Large tables ke liye bahut slow. Index add karo ya query rewrite karo." },
+      { q: "Composite index (a, b) kab use hoga?", options: ["WHERE b = val sirf", "WHERE a = val ya WHERE a = val AND b = val", "WHERE b = val AND a = val sirf", "Kisi bhi condition pe"], correct: 1, explain: "Composite index leftmost prefix rule follow karta hai. (a,b) index WHERE a=val aur WHERE a=val AND b=val ke liye kaam karega, lekin WHERE b=val ke liye nahi." },
+    ],
+    cheatsheet: [
+      "EXPLAIN SELECT ... — query plan dekho",
+      "type=ALL = full scan (bad), const/ref = good",
+      "CREATE INDEX idx ON table(col1, col2) — composite",
+      "ANALYZE TABLE tbl — statistics update",
+      "SHOW INDEX FROM table — indexes dekho",
+      "slow_query_log = ON — slow queries log karo",
+    ],
+    revision: [
+      "EXPLAIN = query execution plan analyze karo",
+      "type=ALL = full scan = bad performance",
+      "Composite index: leftmost prefix rule",
+      "Covering index = table access bhi nahi hota",
+      "LIKE '%text' = no index, 'text%' = index works",
+    ],
+  },
 ];
 
 export const mysqlInterviews = [

@@ -892,6 +892,403 @@ switch ($method) {
       "switch($method) se routing karo",
     ],
   },
+  {
+    id: "php-arrays",
+    title: "Arrays Deep Dive",
+    emoji: "🗂️",
+    category: "Basics",
+    description: "Indexed, associative, multidimensional arrays aur powerful array functions",
+    sections: [
+      {
+        heading: "Array Types aur Creation",
+        content: `PHP mein 3 types ki arrays hain:
+- **Indexed** — numeric keys (0, 1, 2...)
+- **Associative** — string keys (key => value)
+- **Multidimensional** — arrays inside arrays`,
+        code: `<?php
+// Indexed array
+$fruits = ["apple", "banana", "mango"];
+$fruits[] = "orange";  // append
+echo $fruits[0];       // "apple"
+
+// Associative array
+$user = [
+    "name"  => "Ali",
+    "age"   => 25,
+    "email" => "ali@test.com",
+];
+echo $user["name"];  // "Ali"
+
+// Multidimensional
+$students = [
+    ["name" => "Ali",  "grade" => "A"],
+    ["name" => "Sara", "grade" => "B"],
+];
+echo $students[0]["name"];  // "Ali"
+
+// Array functions
+count($fruits);          // 4
+in_array("mango", $fruits);  // true
+array_key_exists("name", $user);  // true
+array_keys($user);       // ["name", "age", "email"]
+array_values($user);     // ["Ali", 25, "ali@test.com"]`,
+        language: "php",
+      },
+      {
+        heading: "Array Manipulation Functions",
+        content: `PHP mein powerful built-in array functions:`,
+        code: `<?php
+$nums = [3, 1, 4, 1, 5, 9, 2, 6];
+
+// Sort karo (modifies original)
+sort($nums);          // indexed: [1, 1, 2, 3, 4, 5, 6, 9]
+rsort($nums);         // reverse sort
+asort($assoc);        // associative (values), preserve keys
+ksort($assoc);        // associative (keys)
+
+// Filter
+$evens = array_filter($nums, fn($n) => $n % 2 === 0);
+
+// Map — transform
+$doubled = array_map(fn($n) => $n * 2, $nums);
+
+// Reduce — single value
+$sum = array_reduce($nums, fn($carry, $n) => $carry + $n, 0);
+
+// Slice aur Splice
+$slice = array_slice($nums, 1, 3);  // from index 1, length 3
+array_splice($nums, 1, 2, [99, 88]); // replace 2 elements at index 1
+
+// Merge aur Unique
+$merged = array_merge($arr1, $arr2);
+$unique = array_unique($nums);  // duplicates remove
+
+// Search
+$key = array_search("mango", $fruits);  // index/key return
+$pos = array_column($students, "name");  // column extract
+usort($students, fn($a, $b) => strcmp($a['name'], $b['name']));`,
+        language: "php",
+        tip: "array_map, array_filter, array_reduce — PHP mein ye JavaScript jaise functional operations hain. Loop ki jagah prefer karo!",
+      },
+    ],
+    mcqs: [
+      { q: "array_filter() kya return karta hai?", options: ["Filtered values ka new indexed array", "Filtered values, original keys preserve", "Boolean", "Count of filtered items"], correct: 1, explain: "array_filter() original keys preserve karta hai — agar re-indexed chahiye toh array_values(array_filter(...)) use karo." },
+      { q: "PHP mein array append kaise karein?", options: ["$arr.push(val)", "$arr[] = val", "append($arr, val)", "$arr->add(val)"], correct: 1, explain: "$arr[] = val PHP mein array mein element append karta hai — yahi idiomatic PHP way hai." },
+    ],
+    cheatsheet: [
+      "count($arr) — length",
+      "in_array(val, $arr) — exists check",
+      "array_push($arr, val) ya $arr[] = val",
+      "array_map(fn, $arr) — transform",
+      "array_filter($arr, fn) — filter",
+      "array_reduce($arr, fn, init) — single value",
+      "array_merge($a, $b) — merge",
+      "array_unique($arr) — duplicates remove",
+      "sort/rsort/asort/ksort — sorting",
+    ],
+    revision: [
+      "3 types: indexed, associative, multidimensional",
+      "$arr[] = val — append shorthand",
+      "array_map = transform, array_filter = select",
+      "array_reduce = accumulate to single value",
+      "usort() = custom sort with comparator",
+    ],
+  },
+  {
+    id: "php-sessions",
+    title: "Sessions, Cookies & File Handling",
+    emoji: "🍪",
+    category: "Intermediate",
+    description: "User sessions manage karna, cookies set karna, aur file upload/handling",
+    sections: [
+      {
+        heading: "Sessions — Server-side State",
+        content: `Session = server pe user ka data store karo. Session ID cookie mein store hoti hai.`,
+        code: `<?php
+session_start();  // MUST be called first, before any output!
+
+// Session data set karo
+$_SESSION['user_id'] = 42;
+$_SESSION['username'] = 'Ali';
+$_SESSION['role'] = 'admin';
+
+// Session data access
+if (isset($_SESSION['user_id'])) {
+    $userId = $_SESSION['user_id'];
+    echo "Welcome, " . $_SESSION['username'];
+}
+
+// Session destroy (logout)
+session_start();
+$_SESSION = [];           // sab clear karo
+session_destroy();        // session delete karo
+
+// Session config
+ini_set('session.gc_maxlifetime', 3600);  // 1 hour
+session_regenerate_id(true);  // Security: new ID on login
+
+// Authentication check helper
+function requireLogin() {
+    session_start();
+    if (!isset($_SESSION['user_id'])) {
+        header('Location: /login.php');
+        exit();
+    }
+}`,
+        language: "php",
+      },
+      {
+        heading: "File Upload & Handling",
+        content: `PHP mein file upload \`$_FILES\` superglobal se handle hota hai.`,
+        code: `<?php
+// File upload handle karo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
+    $file = $_FILES['image'];
+    
+    // Validation
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    $maxSize = 5 * 1024 * 1024;  // 5MB
+    
+    if (!in_array($file['type'], $allowedTypes)) {
+        die("Only JPEG, PNG, GIF allowed");
+    }
+    if ($file['size'] > $maxSize) {
+        die("File too large (max 5MB)");
+    }
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        die("Upload error: " . $file['error']);
+    }
+    
+    // Unique filename
+    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = uniqid() . '.' . strtolower($ext);
+    $uploadPath = __DIR__ . '/uploads/' . $filename;
+    
+    if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+        echo "Uploaded: /uploads/" . $filename;
+    }
+}
+
+// File read/write
+$content = file_get_contents('data.txt');
+file_put_contents('log.txt', date('Y-m-d') . ": Event\n", FILE_APPEND);`,
+        language: "php",
+        warning: "User-uploaded files ko never directly run mat karo! Type validate karo, unique names use karo, web-accessible directory se bahar store karo.",
+      },
+    ],
+    mcqs: [
+      { q: "session_start() kab call karna chahiye?", options: ["File ke end mein", "Kisi bhi HTML output se pehle — file ke top pe", "Kahi bhi", "Sirf POST requests mein"], correct: 1, explain: "session_start() koi bhi output (HTML, spaces) bhejne se pehle call karna zaroori hai — warna 'Cannot modify header information' error aata hai." },
+      { q: "File upload ke baad move_uploaded_file() kyun use karte hain?", options: ["File rename karna", "Tmp directory se destination pe safely move, security checks ke saath", "File compress karna", "File delete karna"], correct: 1, explain: "move_uploaded_file() verify karta hai ki file actually HTTP upload hai (not file system attack) aur safely move karta hai." },
+    ],
+    cheatsheet: [
+      "session_start() — every page pe pehle",
+      "$_SESSION['key'] = val — session set",
+      "session_destroy() — logout",
+      "session_regenerate_id(true) — security on login",
+      "$_FILES['input']['tmp_name'] — uploaded file path",
+      "move_uploaded_file(tmp, dest) — save file",
+      "file_get_contents(path) — file read",
+      "file_put_contents(path, data, FILE_APPEND) — write",
+    ],
+    revision: [
+      "Sessions = server-side state, session_start() pehle",
+      "session_destroy() = logout",
+      "File upload = $_FILES superglobal",
+      "Always validate: type, size, error code",
+      "move_uploaded_file() = safe file move",
+    ],
+  },
+  {
+    id: "php-composer",
+    title: "Namespaces & Composer",
+    emoji: "📦",
+    category: "Intermediate",
+    description: "PHP namespaces se code organize karo, Composer se packages manage karo",
+    sections: [
+      {
+        heading: "Namespaces — Code Organization",
+        content: `Namespaces se class name conflicts avoid karo aur code organize karo.
+- PSR-4 autoloading = folder structure = namespace structure`,
+        code: `<?php
+// File: src/Services/EmailService.php
+namespace App\\Services;
+
+use App\\Models\\User;
+use Illuminate\\Mail\\Mailer;  // third-party
+
+class EmailService {
+    private Mailer $mailer;
+    
+    public function __construct(Mailer $mailer) {
+        $this->mailer = $mailer;
+    }
+    
+    public function sendWelcome(User $user): bool {
+        // ...
+    }
+}
+
+// File: index.php — use karna
+use App\\Services\\EmailService;
+use App\\Models\\User;
+
+$service = new EmailService($mailer);
+
+// Alias
+use App\\Services\\EmailService as Email;
+$email = new Email($mailer);`,
+        language: "php",
+      },
+      {
+        heading: "Composer — PHP Package Manager",
+        content: `Composer = PHP ka npm/pip — packages download aur autoloading manage karta hai.`,
+        code: `# Package install karo
+composer require guzzlehttp/guzzle
+composer require --dev phpunit/phpunit
+
+# composer.json
+{
+    "name": "myapp/api",
+    "require": {
+        "php": ">=8.1",
+        "guzzlehttp/guzzle": "^7.0",
+        "vlucas/phpdotenv": "^5.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\\\": "src/"
+        }
+    }
+}
+
+# Autoload regenerate karo
+composer dump-autoload
+
+# Update packages
+composer update
+composer install  # composer.lock se (deployment)`,
+        code2: `<?php
+// index.php — autoloader include
+require __DIR__ . '/vendor/autoload.php';
+
+// Ab koi bhi App\\ namespace class auto-load hogi!
+use App\\Services\\EmailService;
+use Dotenv\\Dotenv;
+
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+$service = new EmailService();`,
+        language: "bash",
+        tip: "composer install vendor/autoload.php include karo — phir automatically sab classes load hongi. vendor/ folder git mein mat dalo (.gitignore mein add karo).",
+      },
+    ],
+    mcqs: [
+      { q: "Composer install vs composer update mein fark?", options: ["Koi fark nahi", "install = composer.lock se exact versions, update = latest versions aur lock update", "update faster hai", "install production ke liye, update development"], correct: 1, explain: "install uses composer.lock exact versions (deployment ke liye consistent). update latest allowed versions install karta hai aur lock file update karta hai." },
+      { q: "PSR-4 autoloading kya hai?", options: ["PHP security standard", "Namespace → folder structure mapping — files automatically load hongi", "Package naming convention", "Testing standard"], correct: 1, explain: "PSR-4 = App\\Services\\Email → src/Services/Email.php. Namespace aur folder structure match hone pe Composer automatically files load karta hai." },
+    ],
+    cheatsheet: [
+      "composer require package/name — install",
+      "composer require --dev pkg — dev only",
+      "composer install — lock file se",
+      "composer update — latest versions",
+      "composer dump-autoload — autoloader regenerate",
+      "vendor/autoload.php — include karo",
+      "namespace App\\Services; — declare",
+      "use App\\Services\\Email; — import",
+    ],
+    revision: [
+      "Namespaces = class name conflicts avoid",
+      "PSR-4 = namespace ↔ folder structure",
+      "Composer = PHP package manager",
+      "composer install = lock file (deployment)",
+      "vendor/autoload.php = autoloader include karo",
+    ],
+  },
+  {
+    id: "php-errors",
+    title: "Error Handling & Exceptions",
+    emoji: "⚠️",
+    category: "Intermediate",
+    description: "try-catch, custom exceptions, error logging, aur PHP error types",
+    sections: [
+      {
+        heading: "try-catch-finally",
+        content: `PHP 7+ mein try-catch se errors handle karo gracefully.`,
+        code: `<?php
+// Basic exception handling
+try {
+    $result = divideNumbers(10, 0);
+    echo $result;
+} catch (DivisionByZeroError $e) {
+    error_log("Division error: " . $e->getMessage());
+    echo "Cannot divide by zero";
+} catch (InvalidArgumentException $e) {
+    echo "Invalid input: " . $e->getMessage();
+} catch (Exception $e) {
+    echo "Error occurred: " . $e->getMessage();
+} finally {
+    // Hamesha run hoga (success ya failure)
+    closeConnection();
+}
+
+// Custom Exception
+class ValidationException extends RuntimeException {
+    private array $errors;
+    
+    public function __construct(array $errors) {
+        parent::__construct("Validation failed");
+        $this->errors = $errors;
+    }
+    
+    public function getErrors(): array {
+        return $this->errors;
+    }
+}
+
+// Throw karo
+function validateUser(array $data): void {
+    $errors = [];
+    if (empty($data['name'])) $errors['name'] = 'Name required';
+    if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors['email'] = 'Valid email required';
+    }
+    if (!empty($errors)) throw new ValidationException($errors);
+}
+
+// Catch karo
+try {
+    validateUser(['name' => '', 'email' => 'bad']);
+} catch (ValidationException $e) {
+    http_response_code(422);
+    echo json_encode(['errors' => $e->getErrors()]);
+}`,
+        language: "php",
+      },
+    ],
+    mcqs: [
+      { q: "finally block kab run hota hai?", options: ["Sirf success pe", "Sirf exception pe", "Hamesha — exception ho ya na ho", "Sirf return se pehle"], correct: 2, explain: "finally block hamesha run hota hai — exception catch ho ya na ho, return karo ya throw karo. Resource cleanup (DB connection close, file handle) ke liye perfect." },
+    ],
+    cheatsheet: [
+      "try { } catch (ExcType $e) { } finally { }",
+      "throw new Exception('message')",
+      "class MyEx extends RuntimeException { }",
+      "$e->getMessage() — error message",
+      "$e->getCode() — error code",
+      "error_log('msg') — server log mein write",
+      "set_exception_handler(fn) — global handler",
+    ],
+    revision: [
+      "try-catch = graceful error handling",
+      "finally = cleanup, hamesha run hota hai",
+      "Custom exceptions = specific error types",
+      "throw = exception trigger karo",
+      "error_log() = server log mein write karo",
+    ],
+  },
 ];
 
 export const phpInterviews = [

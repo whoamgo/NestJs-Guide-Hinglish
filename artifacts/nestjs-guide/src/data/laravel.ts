@@ -812,6 +812,336 @@ SendWelcomeEmail::dispatch($user)->delay(now()->addMinutes(10));
       "Queue = time-consuming tasks background mein",
     ],
   },
+  {
+    id: "laravel-middleware",
+    title: "Middleware & Request Lifecycle",
+    emoji: "🔄",
+    category: "Intermediate",
+    description: "HTTP middleware banana, request/response modify karna, aur Laravel request lifecycle",
+    sections: [
+      {
+        heading: "Middleware kya hai?",
+        content: `Middleware = request aur response ke beech mein code. HTTP requests filter karta hai.
+Common uses:
+- **Authentication** — user logged in hai?
+- **Authorization** — permission hai?
+- **Rate Limiting** — too many requests?
+- **Logging** — requests log karna
+- **CORS** — cross-origin headers`,
+        code: `// Middleware generate karo
+php artisan make:middleware EnsureTokenIsValid
+
+// app/Http/Middleware/EnsureTokenIsValid.php
+namespace App\\Http\\Middleware;
+
+use Closure;
+use Illuminate\\Http\\Request;
+
+class EnsureTokenIsValid {
+    public function handle(Request $request, Closure $next) {
+        // Request se pehle check
+        if ($request->header('X-API-Token') !== config('app.api_token')) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+        
+        // Next middleware/controller ko pass karo
+        $response = $next($request);
+        
+        // Response ke baad kuch karo
+        $response->header('X-Processed-At', now()->toISOString());
+        
+        return $response;
+    }
+}`,
+        language: "php",
+      },
+      {
+        heading: "Middleware Register & Apply Karna",
+        content: `Middleware ko register karo aur routes pe apply karo.`,
+        code: `// bootstrap/app.php (Laravel 11)
+->withMiddleware(function (Middleware $middleware) {
+    // Global middleware
+    $middleware->append(LogRequests::class);
+    
+    // Middleware alias
+    $middleware->alias([
+        'auth.token' => EnsureTokenIsValid::class,
+        'role'       => CheckUserRole::class,
+    ]);
+    
+    // Group
+    $middleware->group('api-auth', [
+        EnsureTokenIsValid::class,
+        RateLimiter::class,
+    ]);
+})
+
+// routes/api.php — apply karo
+Route::middleware('auth.token')->group(function() {
+    Route::get('/users', [UserController::class, 'index']);
+    Route::post('/users', [UserController::class, 'store']);
+});
+
+// Multiple middleware
+Route::middleware(['auth', 'role:admin'])->group(function() {
+    Route::resource('/admin/users', AdminUserController::class);
+});
+
+// Middleware parameters
+class CheckRole {
+    public function handle(Request $req, Closure $next, string ...$roles) {
+        if (!in_array($req->user()->role, $roles)) {
+            abort(403, 'Forbidden');
+        }
+        return $next($req);
+    }
+}`,
+        language: "php",
+        tip: "Middleware ko small aur focused rakho — ek kaam kare. Multiple middleware chain karo instead of ek mota middleware.",
+      },
+    ],
+    mcqs: [
+      { q: "Middleware mein $next($request) kya karta hai?", options: ["Request complete karta hai", "Next middleware ya controller ko request pass karta hai", "Response send karta hai", "Authentication check karta hai"], correct: 1, explain: "$next($request) request ko next middleware ya final controller pe pass karta hai. Call na karo toh request yahi stop ho jaayega." },
+      { q: "Global middleware aur Route middleware mein fark?", options: ["Performance fark", "Global = har request pe, Route = specific routes pe", "Global = production only", "Route = middleware group ke liye sirf"], correct: 1, explain: "Global middleware (like TrimStrings) har HTTP request pe run hota hai. Route middleware specific routes ya groups pe apply karo." },
+    ],
+    cheatsheet: [
+      "php artisan make:middleware NameMiddleware",
+      "handle(Request $req, Closure $next): Response",
+      "return $next($request) — pass forward",
+      "Route::middleware('name')->group(fn)",
+      "->withMiddleware(fn) — register (Laravel 11)",
+      "abort(403) — forbidden response",
+    ],
+    revision: [
+      "Middleware = request-response ke beech mein filter",
+      "$next($request) = forward to next layer",
+      "Global = har request, Route = specific routes",
+      "Middleware parameters: role:admin,editor",
+      "Bootstrap/app.php mein register karo (Laravel 11)",
+    ],
+  },
+  {
+    id: "laravel-validation",
+    title: "Validation & Form Requests",
+    emoji: "✅",
+    category: "Intermediate",
+    description: "Request validation, Form Request classes, custom rules, aur validation messages",
+    sections: [
+      {
+        heading: "Validation Basics",
+        content: `Laravel mein validation Controller ya Form Request class mein karo.`,
+        code: `// Controller mein inline validation
+class UserController extends Controller {
+    public function store(Request $request) {
+        $validated = $request->validate([
+            'name'     => 'required|string|min:2|max:100',
+            'email'    => 'required|email|unique:users,email',
+            'age'      => 'required|integer|min:18|max:120',
+            'password' => 'required|string|min:8|confirmed',
+            'role'     => 'required|in:user,admin,moderator',
+            'avatar'   => 'nullable|image|mimes:jpg,png|max:2048',
+        ]);
+        
+        // $validated mein sirf validated fields hain
+        User::create($validated);
+        return response()->json($validated, 201);
+    }
+}
+
+// Custom error messages
+$request->validate(
+    ['email' => 'required|email'],
+    ['email.required' => 'Email address zaroori hai!',
+     'email.email'    => 'Sahi email format do']
+);`,
+        language: "php",
+      },
+      {
+        heading: "Form Request — Reusable Validation",
+        content: `Form Request = dedicated class for validation + authorization.`,
+        code: `// Generate
+php artisan make:request StoreUserRequest
+
+// app/Http/Requests/StoreUserRequest.php
+class StoreUserRequest extends FormRequest {
+    public function authorize(): bool {
+        // Permission check — true = allow
+        return $this->user()->can('create-users');
+    }
+    
+    public function rules(): array {
+        return [
+            'name'     => ['required', 'string', 'min:2', 'max:100'],
+            'email'    => ['required', 'email', Rule::unique('users')->ignore($this->user)],
+            'password' => ['required', Password::min(8)->letters()->numbers()],
+        ];
+    }
+    
+    public function messages(): array {
+        return [
+            'name.required' => 'Naam zaroori hai',
+            'email.unique'  => 'Email already registered hai',
+        ];
+    }
+    
+    // Pre-validation data modify
+    protected function prepareForValidation(): void {
+        $this->merge(['email' => strtolower($this->email)]);
+    }
+}
+
+// Controller mein use karo
+class UserController extends Controller {
+    public function store(StoreUserRequest $request) {
+        // Automatically validated! Yahan pahuncha = sab valid
+        User::create($request->validated());
+    }
+}`,
+        language: "php",
+        tip: "Form Request use karo Controllers slim rakhne ke liye. Agar ek se zyada controllers same validation use karein toh Form Request must hai!",
+      },
+    ],
+    mcqs: [
+      { q: "Form Request authorize() method kya karta hai?", options: ["Validation run karta hai", "User ko authenticate karta hai", "Permission check — false return pe 403 forbidden", "Middleware check karta hai"], correct: 2, explain: "authorize() true return kare toh validation proceed hoti hai. false return pe Laravel automatically 403 Forbidden response deta hai." },
+      { q: "unique:users,email validation rule kya karta hai?", options: ["Email format check", "Users table mein email unique hai ya nahi check", "Email exists check", "Domain validation"], correct: 1, explain: "unique:table,column rule database mein check karta hai ki value already exist nahi karti. Update ke liye Rule::unique()->ignore(id) use karo." },
+    ],
+    cheatsheet: [
+      "php artisan make:request MyRequest",
+      "'required|string|min:2|max:100' — rules",
+      "'email|unique:users,email' — email + unique",
+      "'confirmed' — field_confirmation match",
+      "'nullable|image|max:2048' — optional image",
+      "Rule::unique('users')->ignore($id) — update",
+      "$request->validated() — only valid fields",
+      "Password::min(8)->letters()->numbers()",
+    ],
+    revision: [
+      "validate() = inline validation in controller",
+      "Form Request = reusable validation class",
+      "authorize() = permission check, false = 403",
+      "rules() = validation rules array",
+      "$request->validated() = safe, clean data only",
+    ],
+  },
+  {
+    id: "laravel-queues",
+    title: "Queues & Jobs",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "Background jobs, queue drivers, email/notification queuing, aur job monitoring",
+    sections: [
+      {
+        heading: "Queues kyun zaroori hain?",
+        content: `Time-consuming tasks ko background mein karo — user ka wait mat karwao.
+- Email sending (2-5 seconds)
+- Image processing
+- PDF generation
+- SMS/Push notifications
+- Third-party API calls`,
+        code: `// Job create karo
+php artisan make:job SendWelcomeEmail
+
+// app/Jobs/SendWelcomeEmail.php
+class SendWelcomeEmail implements ShouldQueue {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    
+    public int $tries = 3;     // retry count
+    public int $timeout = 60;  // seconds
+    
+    public function __construct(
+        private User $user
+    ) {}
+    
+    public function handle(Mailer $mailer): void {
+        $mailer->to($this->user->email)
+               ->send(new WelcomeMail($this->user));
+    }
+    
+    public function failed(Throwable $exception): void {
+        // Job fail hone pe
+        Log::error("Welcome email failed for user {$this->user->id}", [
+            'error' => $exception->getMessage()
+        ]);
+    }
+}
+
+// Dispatch karo (background mein jaayega!)
+SendWelcomeEmail::dispatch($user);
+
+// Delay ke saath
+SendWelcomeEmail::dispatch($user)->delay(now()->addMinutes(5));
+
+// Specific queue pe
+SendWelcomeEmail::dispatch($user)->onQueue('emails');`,
+        language: "php",
+      },
+      {
+        heading: "Queue Worker & Configuration",
+        content: `Queue drivers: database, Redis, SQS (production mein Redis best hai).`,
+        code: `# .env
+QUEUE_CONNECTION=redis  # database, redis, sqs
+
+# Queue worker start karo
+php artisan queue:work redis --queue=emails,default
+
+# Horizon (Redis-based dashboard)
+composer require laravel/horizon
+php artisan horizon
+
+# Queue monitor karo
+php artisan queue:listen
+php artisan queue:monitor emails:50,default:100
+
+# Failed jobs dekho aur retry karo
+php artisan queue:failed
+php artisan queue:retry all
+php artisan queue:flush  # sab failed delete
+
+// config/queue.php
+'connections' => [
+    'redis' => [
+        'driver'     => 'redis',
+        'connection' => 'default',
+        'queue'      => ['default'],
+        'retry_after' => 90,
+        'block_for'  => null,
+    ],
+],
+
+// Batch Jobs — multiple jobs saath
+use Illuminate\\Bus\\Batch;
+Bus::batch([
+    new ProcessImage($image1),
+    new ProcessImage($image2),
+])->then(fn(Batch $b) => Log::info('All done!'))
+  ->catch(fn(Batch $b, Throwable $e) => Log::error('Failed'))
+  ->dispatch();`,
+        language: "php",
+        tip: "Production mein Redis as queue driver use karo (database se much faster). Supervisor ya Laravel Horizon se queue worker manage karo.",
+      },
+    ],
+    mcqs: [
+      { q: "ShouldQueue interface implement karne se kya hota hai?", options: ["Job automatically schedule hoti hai", "Job synchronously run hoti hai", "Job queue mein dispatch hoti hai background mein", "Job retry hoti hai automatically"], correct: 2, explain: "ShouldQueue implement karne se dispatch() call hone pe job queue mein jaati hai — background worker process karta hai. Without it, synchronously run hogi." },
+      { q: "Queue worker production mein kaise manage karein?", options: ["Manual cron job", "Supervisor ya Laravel Horizon se process management", "Apache config se", "PHP-FPM se automatically"], correct: 1, explain: "Supervisor (process monitor) queue workers ko automatically restart karta hai agar crash hon. Laravel Horizon Redis workers ke liye dashboard bhi deta hai." },
+    ],
+    cheatsheet: [
+      "php artisan make:job JobName",
+      "class MyJob implements ShouldQueue",
+      "MyJob::dispatch($data) — queue mein bhejo",
+      "->delay(now()->addMinutes(5)) — delay",
+      "->onQueue('emails') — specific queue",
+      "php artisan queue:work — worker start",
+      "$tries = 3, $timeout = 60 — retry config",
+      "failed() method — failure handling",
+    ],
+    revision: [
+      "Queues = background jobs, user wait nahi karta",
+      "ShouldQueue implement = job queued hogi",
+      "dispatch() = queue mein bhejo",
+      "failed() method = failure handling",
+      "Redis = production queue driver (fast)",
+    ],
+  },
 ];
 
 export const laravelInterviews = [

@@ -862,4 +862,358 @@ function SearchBar() {
   return <input value={query} onChange={e => setQuery(e.target.value)} />;
 }`,
   },
+  {
+    id: "react-reducer",
+    title: "useReducer & useRef",
+    emoji: "🎛️",
+    category: "Intermediate",
+    description: "Complex state management useReducer se, aur DOM/values access useRef se",
+    sections: [
+      {
+        heading: "useReducer — Complex State",
+        content: `useReducer = useState ka powerful alternative complex state ke liye.
+- Multiple related state values
+- Complex state transitions
+- Ek action se multiple state changes`,
+        code: `import { useReducer } from 'react';
+
+type State = {
+  items: string[];
+  loading: boolean;
+  error: string | null;
+};
+
+type Action = 
+  | { type: 'ADD_ITEM'; payload: string }
+  | { type: 'REMOVE_ITEM'; payload: number }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string };
+
+const initialState: State = { items: [], loading: false, error: null };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case 'ADD_ITEM':
+      return { ...state, items: [...state.items, action.payload] };
+    case 'REMOVE_ITEM':
+      return { ...state, items: state.items.filter((_, i) => i !== action.payload) };
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload, error: null };
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    default:
+      return state;
+  }
+}
+
+function TodoApp() {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  
+  const addItem = (text: string) => dispatch({ type: 'ADD_ITEM', payload: text });
+  const removeItem = (i: number) => dispatch({ type: 'REMOVE_ITEM', payload: i });
+  
+  return (
+    <div>
+      {state.error && <p className="error">{state.error}</p>}
+      {state.items.map((item, i) => (
+        <div key={i}>{item} <button onClick={() => removeItem(i)}>Remove</button></div>
+      ))}
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "useReducer tab use karo jab 3+ related state variables hon ya ek action multiple values update kare. Simple state ke liye useState hi better hai.",
+      },
+      {
+        heading: "useRef — DOM Access & Mutable Values",
+        content: `useRef ke 2 main uses:
+1. **DOM element access** — focus, scroll, media control
+2. **Mutable value store** — re-render trigger kiye bina`,
+        code: `import { useRef, useEffect } from 'react';
+
+// DOM access
+function SearchInput() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    inputRef.current?.focus();  // auto focus on mount
+  }, []);
+  
+  const clearAndFocus = () => {
+    if (inputRef.current) {
+      inputRef.current.value = '';
+      inputRef.current.focus();
+    }
+  };
+  
+  return (
+    <div>
+      <input ref={inputRef} type="text" placeholder="Search..." />
+      <button onClick={clearAndFocus}>Clear</button>
+    </div>
+  );
+}
+
+// Mutable value (no re-render)
+function Timer() {
+  const [count, setCount] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  
+  const start = () => {
+    intervalRef.current = setInterval(() => setCount(c => c + 1), 1000);
+  };
+  
+  const stop = () => {
+    clearInterval(intervalRef.current);  // no re-render needed
+  };
+  
+  // Previous value track karo
+  const prevCount = useRef<number>();
+  useEffect(() => {
+    prevCount.current = count;  // after render update
+  });
+  
+  return <p>Count: {count}, Prev: {prevCount.current}</p>;
+}`,
+        language: "tsx",
+      },
+    ],
+    mcqs: [
+      { q: "useReducer useState se kab better hai?", options: ["Hamesha", "Jab state simple ho", "Jab 3+ related state values hon ya complex transitions", "Performance ke liye hamesha"], correct: 2, explain: "useReducer complex state logic ke liye hai — multiple related values, complex transitions. Simple single value ke liye useState hi fine hai." },
+      { q: "useRef ka main feature kya hai?", options: ["State management", "Mutable value jo re-render trigger nahi karta, DOM access bhi", "Side effects handle karna", "Context create karna"], correct: 1, explain: "useRef.current change karne se component re-render nahi hota. Isliye timers, intervals, DOM refs ke liye perfect hai." },
+    ],
+    cheatsheet: [
+      "const [state, dispatch] = useReducer(reducer, init)",
+      "dispatch({ type: 'ACTION', payload: val })",
+      "const ref = useRef<HTMLInputElement>(null)",
+      "ref.current?.focus() — DOM method call",
+      "ref.current = value — mutable, no re-render",
+    ],
+    revision: [
+      "useReducer = complex state, predictable transitions",
+      "reducer(state, action) => newState — pure function",
+      "useRef = DOM access + mutable values without re-render",
+      "ref.current change = no re-render (unlike useState)",
+      "useRef prev value trick = track previous render value",
+    ],
+  },
+  {
+    id: "react-forms",
+    title: "Forms & Validation",
+    emoji: "📝",
+    category: "Intermediate",
+    description: "Controlled components, React Hook Form, aur Zod se form validation",
+    sections: [
+      {
+        heading: "Controlled vs Uncontrolled Forms",
+        content: `React mein 2 form approaches:
+- **Controlled** — state se value manage karo (recommended)
+- **Uncontrolled** — DOM se directly value lo (useRef)`,
+        code: `import { useState } from 'react';
+
+// Controlled Form (recommended)
+function LoginForm() {
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    // Clear error on change
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+  
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!form.email.includes('@')) newErrors.email = 'Valid email required';
+    if (form.password.length < 8) newErrors.password = 'Min 8 characters';
+    return newErrors;
+  };
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const errs = validate();
+    if (Object.keys(errs).length) return setErrors(errs);
+    // Submit!
+    console.log('Form data:', form);
+  };
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <input name="email" value={form.email} onChange={handleChange} />
+      {errors.email && <span className="error">{errors.email}</span>}
+      <input name="password" type="password" value={form.password} onChange={handleChange} />
+      {errors.password && <span className="error">{errors.password}</span>}
+      <button type="submit">Login</button>
+    </form>
+  );
+}`,
+        language: "tsx",
+      },
+      {
+        heading: "React Hook Form — Production Ready",
+        content: `React Hook Form (RHF) = minimal re-renders, easy validation, great performance.`,
+        code: `import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+// Schema define karo
+const schema = z.object({
+  name: z.string().min(2, 'Naam kam se kam 2 characters'),
+  email: z.string().email('Valid email chahiye'),
+  age: z.coerce.number().min(18, 'Must be 18+'),
+  role: z.enum(['user', 'admin']),
+});
+
+type FormData = z.infer<typeof schema>;
+
+function UserForm() {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
+  
+  const onSubmit = async (data: FormData) => {
+    await createUser(data);  // async submit
+    reset();  // form clear
+  };
+  
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input {...register('name')} placeholder="Name" />
+      {errors.name && <p>{errors.name.message}</p>}
+      
+      <input {...register('email')} type="email" />
+      {errors.email && <p>{errors.email.message}</p>}
+      
+      <input {...register('age')} type="number" />
+      {errors.age && <p>{errors.age.message}</p>}
+      
+      <select {...register('role')}>
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+      </select>
+      
+      <button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Submitting...' : 'Submit'}
+      </button>
+    </form>
+  );
+}`,
+        language: "tsx",
+        tip: "React Hook Form + Zod = best combo. RHF handles form state, Zod handles validation — dono typescript friendly hain!",
+      },
+    ],
+    mcqs: [
+      { q: "Controlled form mein input value kahan stored hoti hai?", options: ["DOM mein", "React state mein", "useRef mein", "Local storage mein"], correct: 1, explain: "Controlled inputs mein value React state se aati hai aur onChange se update hoti hai. React DOM ka single source of truth hota hai." },
+      { q: "React Hook Form uncontrolled approach kyun use karta hai?", options: ["Code simple hai", "Fewer re-renders — har keystroke pe re-render nahi", "Better validation", "TypeScript support"], correct: 1, explain: "RHF internally refs use karta hai — har keystroke pe component re-render nahi hota. Large forms ke liye significantly better performance." },
+    ],
+    cheatsheet: [
+      "const { register, handleSubmit, formState } = useForm()",
+      "{...register('fieldName')} — input register karo",
+      "handleSubmit(onSubmit) — form submit",
+      "errors.fieldName?.message — error display",
+      "zodResolver(schema) — Zod integration",
+      "z.infer<typeof schema> — TypeScript type",
+      "reset() — form clear karo",
+    ],
+    revision: [
+      "Controlled = state driven, Uncontrolled = ref/DOM",
+      "React Hook Form = minimal re-renders, great performance",
+      "Zod + RHF = type-safe validation",
+      "register() = input ko form se connect karo",
+      "handleSubmit = validation ke baad call karo",
+    ],
+  },
+  {
+    id: "react-state-mgmt",
+    title: "State Management (Redux & Zustand)",
+    emoji: "🗄️",
+    category: "Advanced",
+    description: "Global state kab chahiye, Zustand se simple setup, aur Redux Toolkit",
+    sections: [
+      {
+        heading: "Kab Global State Chahiye?",
+        content: `Pehle Context + useState try karo. Global state library kab zaruri hai:
+- **Multiple pages** same data share karein
+- **Server cache** (user, products, etc.)
+- **Deep prop drilling** — 5+ levels
+- **Complex actions** — undo/redo, optimistic updates`,
+        diagram: `Component Tree pe State Decision:
+
+Single component → useState
+2-3 components  → props drilling
+Many components → Context API
+Complex/large app → Zustand / Redux Toolkit`,
+      },
+      {
+        heading: "Zustand — Simple & Powerful",
+        content: `Zustand = minimal, no boilerplate global state library.`,
+        code: `import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface CartState {
+  items: CartItem[];
+  addItem: (item: CartItem) => void;
+  removeItem: (id: string) => void;
+  clearCart: () => void;
+  total: () => number;
+}
+
+// Store create karo
+const useCartStore = create<CartState>()(
+  persist(  // localStorage mein persist
+    (set, get) => ({
+      items: [],
+      addItem: (item) =>
+        set((state) => ({
+          items: [...state.items, item],
+        })),
+      removeItem: (id) =>
+        set((state) => ({
+          items: state.items.filter((i) => i.id !== id),
+        })),
+      clearCart: () => set({ items: [] }),
+      total: () => get().items.reduce((sum, i) => sum + i.price * i.qty, 0),
+    }),
+    { name: 'cart-storage' }  // localStorage key
+  )
+);
+
+// Use karo — kisi bhi component mein!
+function CartCount() {
+  const count = useCartStore(state => state.items.length);
+  return <span>{count}</span>;
+}
+
+function AddToCart({ product }) {
+  const addItem = useCartStore(state => state.addItem);
+  return <button onClick={() => addItem(product)}>Add</button>;
+}`,
+        language: "tsx",
+        tip: "Zustand Redux se much simpler hai — no actions, reducers, providers. Small to medium apps ke liye Zustand, large enterprise ke liye Redux Toolkit.",
+      },
+    ],
+    mcqs: [
+      { q: "Zustand vs Redux Toolkit — Zustand kab better choice hai?", options: ["Large enterprise apps", "Small to medium apps — less boilerplate, simpler setup", "Hamesha", "Real-time apps"], correct: 1, explain: "Zustand minimal setup mein global state deta hai. Redux Toolkit large teams, complex state, time-travel debugging ke liye better. Small-medium apps pe Zustand win karta hai." },
+      { q: "Zustand persist middleware kya karta hai?", options: ["State encrypt karta hai", "State localStorage mein save karta hai — reload pe bhi state rehti hai", "State compress karta hai", "State validate karta hai"], correct: 1, explain: "persist middleware automatically state ko localStorage (ya sessionStorage) mein save karta hai. Page reload ke baad bhi state rehydrate ho jaati hai." },
+    ],
+    cheatsheet: [
+      "create<State>()((set, get) => ({...})) — store",
+      "useStore(state => state.value) — select state",
+      "useStore(state => state.action) — select action",
+      "set(state => ({...})) — state update",
+      "get() — current state read karo",
+      "persist(store, {name: 'key'}) — localStorage",
+    ],
+    revision: [
+      "Global state: Context → Zustand → Redux (complexity order)",
+      "Zustand = create() + use in any component",
+      "set() = state update, get() = state read",
+      "persist middleware = localStorage sync",
+      "Select only needed state = no unnecessary re-renders",
+    ],
+  },
 ];

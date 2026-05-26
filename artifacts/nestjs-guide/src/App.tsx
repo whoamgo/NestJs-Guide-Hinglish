@@ -13,6 +13,8 @@ export type ActiveView =
   | { type: "chapter"; courseId: string; chapterId: string }
   | { type: "interview"; courseId: string };
 
+export type Lang = "hi" | "en";
+
 interface AppContextType {
   darkMode: boolean;
   toggleDark: () => void;
@@ -21,6 +23,8 @@ interface AppContextType {
   searchOpen: boolean;
   setSearchOpen: (v: boolean) => void;
   activeCourseId: string;
+  lang: Lang;
+  setLang: (l: Lang) => void;
 }
 
 export const AppContext = createContext<AppContextType>({
@@ -31,6 +35,8 @@ export const AppContext = createContext<AppContextType>({
   searchOpen: false,
   setSearchOpen: () => {},
   activeCourseId: "nestjs",
+  lang: "hi",
+  setLang: () => {},
 });
 
 export function useApp() {
@@ -61,6 +67,14 @@ export default function App() {
   );
   const [completed, setCompleted] = useState<Record<string, Set<string>>>(loadCompleted);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [lang, setLangState] = useState<Lang>(() =>
+    (localStorage.getItem("lang") as Lang) || "hi"
+  );
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    localStorage.setItem("lang", l);
+  };
 
   const activeCourseId =
     activeView.type === "home" ? "nestjs" :
@@ -111,7 +125,7 @@ export default function App() {
   const courseInfo = courses.find((c) => c.id === activeCourseId);
 
   return (
-    <AppContext.Provider value={{ darkMode, toggleDark, completed, toggleComplete, searchOpen, setSearchOpen, activeCourseId }}>
+    <AppContext.Provider value={{ darkMode, toggleDark, completed, toggleComplete, searchOpen, setSearchOpen, activeCourseId, lang, setLang }}>
       <div className="min-h-screen bg-background flex transition-colors">
         {sidebarOpen && (
           <div className="fixed inset-0 bg-black/50 z-20 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -137,7 +151,9 @@ export default function App() {
             <button onClick={() => setActiveView({ type: "home" })} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <span className="text-xl">💻</span>
               <span className="font-bold text-primary hidden sm:block">Full Stack Guide</span>
-              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium hidden sm:block">Hinglish</span>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium hidden sm:block">
+                {lang === "hi" ? "Hinglish" : "English"}
+              </span>
             </button>
 
             {/* Breadcrumb */}
@@ -159,7 +175,7 @@ export default function App() {
                 {activeView.type === "interview" && (
                   <>
                     <span className="text-border">/</span>
-                    <span className="text-foreground font-medium">🎯 Interview Q&A</span>
+                    <span className="text-foreground font-medium">🎯 {lang === "hi" ? "Interview Q&A" : "Interview Q&A"}</span>
                   </>
                 )}
               </div>
@@ -173,7 +189,7 @@ export default function App() {
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <span className="hidden sm:block text-xs">Search</span>
+                <span className="hidden sm:block text-xs">{lang === "hi" ? "Dhundo" : "Search"}</span>
                 <kbd className="hidden sm:block text-xs bg-background border border-border px-1 rounded">⌘K</kbd>
               </button>
 
@@ -185,6 +201,19 @@ export default function App() {
                   <span>{progress}%</span>
                 </div>
               )}
+
+              {/* Language Toggle */}
+              <button
+                onClick={() => setLang(lang === "hi" ? "en" : "hi")}
+                title={lang === "hi" ? "Switch to English" : "Hinglish pe switch karo"}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-border hover:bg-muted transition-colors text-muted-foreground"
+              >
+                {lang === "hi" ? (
+                  <>🇬🇧 <span className="hidden sm:inline">EN</span></>
+                ) : (
+                  <>🇮🇳 <span className="hidden sm:inline">HI</span></>
+                )}
+              </button>
 
               <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                 {darkMode ? (

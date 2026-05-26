@@ -842,4 +842,327 @@ if (isMainThread) {
     });
 }`,
   },
+  {
+    id: "node-fs",
+    title: "File System & Streams",
+    emoji: "📁",
+    category: "Intermediate",
+    description: "fs module se files read/write karna, streams se large files efficiently handle karna",
+    sections: [
+      {
+        heading: "fs Module — File Operations",
+        content: `Node.js ka built-in \`fs\` module file system operations ke liye hai.
+- **Sync methods** — blocking (development only)
+- **Async callbacks** — old style, prefer promises
+- **fs/promises** — modern async/await style`,
+        code: `const fs = require('fs/promises');  // modern
+const path = require('path');
+
+// Read file
+async function readConfig() {
+  const filePath = path.join(__dirname, 'config.json');
+  const content = await fs.readFile(filePath, 'utf-8');
+  return JSON.parse(content);
+}
+
+// Write file
+async function saveData(data) {
+  await fs.writeFile('data.json', JSON.stringify(data, null, 2), 'utf-8');
+}
+
+// Append to file
+await fs.appendFile('logs.txt', \`[\${new Date().toISOString()}] Request\n\`);
+
+// File/directory info
+const stats = await fs.stat('config.json');
+console.log(stats.isFile(), stats.size, stats.mtime);
+
+// Directory operations
+await fs.mkdir('uploads', { recursive: true });  // create (no error if exists)
+const files = await fs.readdir('./uploads');
+await fs.unlink('temp.txt');  // delete file
+await fs.rename('old.txt', 'new.txt');  // move/rename`,
+        language: "javascript",
+      },
+      {
+        heading: "Streams — Large Files Efficiently",
+        content: `Streams = data ko pieces mein process karo — memory efficient!
+- **Readable** — data source (file, HTTP request)
+- **Writable** — data destination (file, HTTP response)
+- **Transform** — data modify karo (compression, encryption)
+- **pipe()** — streams connect karo`,
+        code: `const fs = require('fs');
+const zlib = require('zlib');
+
+// Large file copy (streaming — memory efficient!)
+async function copyLargeFile(src, dest) {
+  const readable = fs.createReadStream(src, { highWaterMark: 64 * 1024 });
+  const writable = fs.createWriteStream(dest);
+  
+  // pipe = readable → writable
+  readable.pipe(writable);
+  
+  return new Promise((resolve, reject) => {
+    writable.on('finish', resolve);
+    readable.on('error', reject);
+  });
+}
+
+// File compress karo (pipe chain)
+fs.createReadStream('big-file.txt')
+  .pipe(zlib.createGzip())
+  .pipe(fs.createWriteStream('big-file.txt.gz'));
+
+// HTTP response mein file stream karo (Express)
+app.get('/download/:file', (req, res) => {
+  const filePath = path.join('uploads', req.params.file);
+  res.setHeader('Content-Disposition', \`attachment; filename="\${req.params.file}"\`);
+  fs.createReadStream(filePath).pipe(res);
+  // File puri memory mein load nahi hogi!
+});`,
+        language: "javascript",
+        tip: "Large files ko never readFile karo — stream use karo! readFile poori file memory mein load karta hai, stream chunks mein process karta hai.",
+      },
+    ],
+    mcqs: [
+      { q: "Streams ka main advantage kya hai?", options: ["Faster processing", "Memory efficient — large data chunks mein process karo", "Simple code", "Better error handling"], correct: 1, explain: "Streams large files/data ko puri tarah memory mein load kiye bina process karte hain. 10GB file stream se serve kar sakte ho bina 10GB RAM ke!" },
+      { q: "path.join() kyun use karte hain?", options: ["Faster file access", "OS-specific path separators handle karo (Windows vs Unix)", "Path encryption", "Relative to absolute convert"], correct: 1, explain: "path.join() Windows (\\) aur Unix (/) ke liye correct path separators use karta hai — cross-platform code ke liye zaroori." },
+    ],
+    cheatsheet: [
+      "const fs = require('fs/promises') — modern async fs",
+      "await fs.readFile(path, 'utf-8') — file read",
+      "await fs.writeFile(path, data) — file write",
+      "await fs.mkdir(path, {recursive:true}) — directory",
+      "fs.createReadStream(path) — readable stream",
+      "readable.pipe(writable) — stream connect",
+      "path.join(__dirname, 'file.txt') — safe path",
+    ],
+    revision: [
+      "fs/promises = modern async file operations",
+      "Stream = chunks mein process, memory efficient",
+      "pipe() = readable stream ko writable se connect",
+      "path.join() = OS-safe paths",
+      "Large files = always stream, never readFile",
+    ],
+  },
+  {
+    id: "node-security",
+    title: "Security Best Practices",
+    emoji: "🔐",
+    category: "Intermediate",
+    description: "Helmet, rate limiting, input validation, SQL injection prevention, aur CORS",
+    sections: [
+      {
+        heading: "Common Security Vulnerabilities",
+        content: `Node.js/Express apps ke liye common security threats:
+- **SQL/NoSQL Injection** — malicious queries
+- **XSS** — malicious scripts inject karna
+- **CSRF** — cross-site request forgery
+- **Rate limiting** — brute force attacks
+- **Dependency vulnerabilities** — npm audit`,
+        code: `const express = require('express');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const cors = require('cors');
+
+const app = express();
+
+// Helmet — security headers set karo (one line!)
+app.use(helmet());
+// Yeh set karta hai:
+// Content-Security-Policy, X-XSS-Protection, 
+// X-Frame-Options, Strict-Transport-Security, etc.
+
+// CORS — allowed origins
+app.use(cors({
+  origin: ['https://myapp.com', 'https://admin.myapp.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+}));
+
+// Rate Limiting — brute force protection
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  max: 5,                      // 5 attempts
+  message: { error: 'Too many attempts, try after 15 minutes' },
+  standardHeaders: true,
+});
+app.post('/auth/login', loginLimiter, loginHandler);
+
+const apiLimiter = rateLimit({ windowMs: 60000, max: 100 });
+app.use('/api', apiLimiter);`,
+        language: "javascript",
+      },
+      {
+        heading: "Input Validation & SQL Injection Prevention",
+        content: `User input hamesha validate aur sanitize karo. Parameterized queries use karo!`,
+        code: `const { z } = require('zod');
+
+// Zod se input validation
+const createUserSchema = z.object({
+  name: z.string().min(2).max(100).trim(),
+  email: z.string().email().toLowerCase(),
+  age: z.number().int().min(18).max(120),
+  role: z.enum(['user', 'admin']).default('user'),
+});
+
+// Route mein validate karo
+app.post('/users', async (req, res) => {
+  const result = createUserSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ errors: result.error.flatten() });
+  }
+  const validData = result.data;  // clean, validated data
+});
+
+// SQL Injection Prevention — parameterized queries!
+// ❌ NEVER DO THIS
+const query = \`SELECT * FROM users WHERE email = '\${req.body.email}'\`;
+// email = "' OR 1=1 --" → dumps all users!
+
+// ✅ Always parameterized
+const user = await db.query(
+  'SELECT * FROM users WHERE email = ?',
+  [req.body.email]  // safely escaped
+);
+
+// Sensitive data — hash passwords
+const bcrypt = require('bcrypt');
+const SALT_ROUNDS = 12;
+const hash = await bcrypt.hash(password, SALT_ROUNDS);
+const match = await bcrypt.compare(plainPassword, hash);`,
+        language: "javascript",
+        warning: "Kabhi bhi passwords plain text mein store mat karo! bcrypt ya argon2 use karo. SALT_ROUNDS minimum 10 rakho.",
+      },
+    ],
+    mcqs: [
+      { q: "helmet() kya karta hai?", options: ["HTTPS redirect", "Security-related HTTP headers set karta hai", "Input validation", "Password hashing"], correct: 1, explain: "helmet() security HTTP headers automatically set karta hai — XSS Protection, Content Security Policy, X-Frame-Options, etc. One line security boost!" },
+      { q: "SQL injection prevent karne ka sahi tarika?", options: ["Input trim karo", "Parameterized queries / prepared statements use karo", "Special chars replace karo", "HTTPS use karo"], correct: 1, explain: "Parameterized queries user input ko always safely escape karte hain. String concatenation se SQL queries kabhi mat banao!" },
+    ],
+    cheatsheet: [
+      "app.use(helmet()) — security headers",
+      "rateLimit({windowMs, max}) — brute force protection",
+      "cors({origin: [...]}) — allowed origins",
+      "db.query('SELECT ? FROM', [val]) — parameterized",
+      "bcrypt.hash(pass, 12) — password hash",
+      "bcrypt.compare(plain, hash) — verify",
+      "npm audit — dependency vulnerabilities check",
+    ],
+    revision: [
+      "Helmet = security HTTP headers one liner",
+      "Rate limiting = brute force attacks prevent",
+      "Parameterized queries = SQL injection prevent",
+      "Never plain text passwords — bcrypt use karo",
+      "CORS = allowed origins restrict karo",
+    ],
+  },
+  {
+    id: "node-deployment",
+    title: "Environment Config & Production",
+    emoji: "🚀",
+    category: "Advanced",
+    description: "dotenv, config management, PM2, logging with pino/winston, aur production tips",
+    sections: [
+      {
+        heading: "Environment Variables & Config",
+        content: `Secrets aur config ko code se alag rakho — environment variables use karo!`,
+        code: `// .env file (NEVER commit to git!)
+// DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
+// JWT_SECRET=super-secret-key-here
+// NODE_ENV=development
+// PORT=3000
+
+// dotenv setup
+require('dotenv').config();
+
+// Better: typed config validation
+const { z } = require('zod');
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().default(3000),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+});
+
+// App start pe validate karo — fail fast!
+const env = envSchema.parse(process.env);
+
+module.exports = {
+  isDev: env.NODE_ENV === 'development',
+  port: env.PORT,
+  db: { url: env.DATABASE_URL },
+  jwt: { secret: env.JWT_SECRET },
+};
+
+// .gitignore mein add karo:
+// .env
+// .env.local
+// node_modules/`,
+        language: "javascript",
+      },
+      {
+        heading: "PM2 — Production Process Manager",
+        content: `PM2 production mein Node.js apps manage karta hai — auto restart, clustering, logging.`,
+        code: `# PM2 install
+npm install -g pm2
+
+# Start karo
+pm2 start app.js --name "my-api"
+pm2 start npm --name "my-app" -- start  # npm start
+
+# Cluster mode (all CPU cores use karo!)
+pm2 start app.js -i max --name "api-cluster"
+
+# Status, logs, monitoring
+pm2 status
+pm2 logs my-api
+pm2 monit  # real-time dashboard
+
+# Restart, reload (zero downtime), stop
+pm2 restart my-api
+pm2 reload my-api   # zero-downtime (cluster mode)
+pm2 stop my-api
+
+# Startup script (system reboot ke baad auto start)
+pm2 startup
+pm2 save
+
+# ecosystem.config.js — config file
+module.exports = {
+  apps: [{
+    name: 'my-api',
+    script: './dist/index.js',
+    instances: 'max',
+    exec_mode: 'cluster',
+    env_production: {
+      NODE_ENV: 'production',
+      PORT: 8080,
+    }
+  }]
+};`,
+        language: "bash",
+        tip: "Production mein pm2 cluster mode use karo — multiple CPU cores utilize hotige aur ek process crash hone pe doosre serve karte rahenge!",
+      },
+    ],
+    mcqs: [
+      { q: ".env file ko git mein commit kyun nahi karna chahiye?", options: ["Large file hai", "Secrets expose ho jaayenge — public repo mein sab dekh saktey hain", "Performance issues", "Syntax errors"], correct: 1, explain: ".env mein database passwords, API keys, JWT secrets hote hain. .gitignore mein add karo! .env.example commit karo (without values) documentation ke liye." },
+      { q: "PM2 cluster mode ka faida kya hai?", options: ["Single process", "Multiple CPU cores utilize, ek crash pe doosre serve karte hain", "Less memory", "Simpler debugging"], correct: 1, explain: "Cluster mode multiple process instances spawn karta hai — har CPU core ek process. Better performance + high availability ek process fail hone pe." },
+    ],
+    cheatsheet: [
+      "require('dotenv').config() — .env load karo",
+      "process.env.VAR_NAME — env variable access",
+      "pm2 start app.js -i max — cluster mode",
+      "pm2 reload app — zero-downtime reload",
+      "pm2 logs — application logs",
+      "pm2 startup && pm2 save — auto-start on reboot",
+    ],
+    revision: [
+      ".env file = secrets store karo, never git commit",
+      "Validate env variables app start pe (fail fast)",
+      "PM2 = process manager, auto restart, cluster mode",
+      "Cluster mode = all CPU cores utilize",
+      "pm2 save + startup = system reboot pe auto start",
+    ],
+  },
 ];

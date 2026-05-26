@@ -8,6 +8,7 @@ export { nodeChapters, nodeInterviews } from "./nodejs";
 export { reactChapters, reactInterviews } from "./reactjs";
 export { apiChapters, apiInterviews } from "./api";
 export { mysqlChapters, mysqlInterviews } from "./mysql";
+export { jsChapters, jsInterviews } from "./javascript";
 
 import { chapters as nestjsChapters } from "./chapters";
 import { interviewQuestions as nestjsInterviews } from "./interview";
@@ -18,6 +19,7 @@ import { nodeChapters, nodeInterviews } from "./nodejs";
 import { reactChapters, reactInterviews } from "./reactjs";
 import { apiChapters, apiInterviews } from "./api";
 import { mysqlChapters, mysqlInterviews } from "./mysql";
+import { jsChapters, jsInterviews } from "./javascript";
 import type { Chapter } from "./chapters";
 import type { InterviewQ } from "./interview";
 
@@ -30,6 +32,7 @@ export const allCourseData: Record<string, { chapters: Chapter[]; interviews: In
   reactjs: { chapters: reactChapters, interviews: reactInterviews as InterviewQ[] },
   api: { chapters: apiChapters, interviews: apiInterviews as InterviewQ[] },
   mysql: { chapters: mysqlChapters, interviews: mysqlInterviews as InterviewQ[] },
+  javascript: { chapters: jsChapters, interviews: jsInterviews as InterviewQ[] },
 };
 
 export function getCourseData(courseId: string) {
