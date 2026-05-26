@@ -1,5 +1,6 @@
 export { courses } from "./courses";
-export { chapters as nestjsChapters, interviewQuestions as nestjsInterviews } from "./chapters";
+export { chapters as nestjsChapters } from "./chapters";
+export { interviewQuestions as nestjsInterviews } from "./interview";
 export { phpChapters, phpInterviews } from "./php";
 export { oopChapters, oopInterviews } from "./oop";
 export { laravelChapters, laravelInterviews } from "./laravel";
@@ -8,7 +9,8 @@ export { reactChapters, reactInterviews } from "./reactjs";
 export { apiChapters, apiInterviews } from "./api";
 export { mysqlChapters, mysqlInterviews } from "./mysql";
 
-import { chapters as nestjsChapters, interviewQuestions as nestjsInterviews } from "./chapters";
+import { chapters as nestjsChapters } from "./chapters";
+import { interviewQuestions as nestjsInterviews } from "./interview";
 import { phpChapters, phpInterviews } from "./php";
 import { oopChapters, oopInterviews } from "./oop";
 import { laravelChapters, laravelInterviews } from "./laravel";
