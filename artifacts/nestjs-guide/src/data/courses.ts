@@ -154,6 +154,20 @@ export const courses: CourseInfo[] = [
     totalChapters: 20,
     totalInterviews: 6,
   },
+  {
+    id: "dsa",
+    title: "DSA with Python",
+    emoji: "🧩",
+    color: "text-purple-600 dark:text-purple-400",
+    bgGradient: "from-purple-500/10 to-violet-500/10",
+    borderColor: "border-purple-200 dark:border-purple-800",
+    badgeColor: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+    description: "Data Structures & Algorithms in Python — FAANG interview preparation",
+    level: "Intermediate",
+    topics: ["Arrays", "Linked List", "Stack/Queue", "Trees", "Graphs", "Sorting", "Binary Search", "DP"],
+    totalChapters: 12,
+    totalInterviews: 6,
+  },
 ];
 
 export function getCourse(id: string) {
