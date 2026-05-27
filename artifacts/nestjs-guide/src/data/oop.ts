@@ -689,6 +689,745 @@ sorter.setStrategy(new QuickSort()); // runtime mein swap!`,
       "Behavioral: Observer, Strategy, Command — communication",
     ],
   },
+  {
+    id: "oop-abstract-interfaces",
+    title: "Abstract Classes aur Interfaces",
+    titleEn: "Abstract Classes and Interfaces",
+    emoji: "📐",
+    category: "Intermediate",
+    description: "Abstract classes vs interfaces — kab kya use karein, contracts define karna, TypeScript implementation",
+    descriptionEn: "Abstract classes vs interfaces — when to use what, defining contracts, TypeScript implementation",
+    sections: [
+      {
+        heading: "Abstract Class kya hai?",
+        content: `**Abstract class** = Partial implementation + blueprint — direct instantiate nahi ho sakta.
+
+**Abstract methods:** Subclasses mein implement karne zaroori hain — compiler enforce karta hai.
+
+**Kab abstract class:**
+- Common implementation share karni ho
+- Template method pattern use karna ho
+- Constructor chahiye base class mein
+- Protected state share karna ho`,
+        code: `// Abstract class — partial implementation
+abstract class Animal {
+  constructor(protected name: string) {}
+
+  // Concrete method — sab use karein
+  eat(): void {
+    console.log(\`\${this.name} is eating...\`);
+  }
+
+  move(): void {
+    console.log(\`\${this.name} is moving: \${this.getMovement()}\`);
+  }
+
+  // Abstract methods — subclass MUST implement
+  abstract makeSound(): string;
+  protected abstract getMovement(): string;
+
+  // Template method — algorithm structure fix
+  dailyRoutine(): void {
+    console.log("Waking up...");
+    this.eat();
+    this.move();
+    console.log(this.makeSound());
+    console.log("Sleeping...");
+  }
+}
+
+class Dog extends Animal {
+  makeSound(): string { return "Woof! Woof!"; }
+  protected getMovement(): string { return "running"; }
+
+  fetch(): void { console.log(\`\${this.name} fetching ball!\`); }
+}
+
+class Bird extends Animal {
+  makeSound(): string { return "Tweet! Tweet!"; }
+  protected getMovement(): string { return "flying"; }
+}
+
+// const a = new Animal("X");  // ERROR! Cannot instantiate
+const dog = new Dog("Rex");
+dog.dailyRoutine();   // complete routine
+dog.fetch();          // Dog-specific method`,
+        language: "typescript",
+      },
+      {
+        heading: "Interface — Pure Contract",
+        content: `**Interface** = Pure contract — sirf method/property signatures, koi implementation nahi.
+
+**Multiple interfaces implement** kar sakte hain (class ek hi class extend kar sakta hai).
+
+**Kab interface:**
+- Multiple types ke liye common contract
+- Third-party classes bhi conform karein (structural typing)
+- Duck typing chahiye
+- Data shapes define karna (DTOs, API responses)`,
+        code: `// Interfaces — pure contracts
+interface Flyable {
+  fly(height: number): void;
+  getMaxAltitude(): number;
+}
+
+interface Swimmable {
+  swim(speed: number): void;
+  getMaxDepth(): number;
+}
+
+interface Printable {
+  toString(): string;
+  serialize(): object;
+}
+
+// Multiple interfaces implement karo
+class Duck implements Flyable, Swimmable, Printable {
+  constructor(private name: string) {}
+
+  fly(height: number): void {
+    console.log(\`\${this.name} flying at \${height}m\`);
+  }
+  getMaxAltitude(): number { return 100; }
+
+  swim(speed: number): void {
+    console.log(\`\${this.name} swimming at \${speed}m/s\`);
+  }
+  getMaxDepth(): number { return 2; }
+
+  toString(): string { return \`Duck(\${this.name})\`; }
+  serialize(): object { return { type: "Duck", name: this.name }; }
+}
+
+// Interface for data shapes (DTOs)
+interface CreateUserDTO {
+  readonly name: string;
+  readonly email: string;
+  readonly password: string;
+  readonly role?: "user" | "admin";
+}
+
+interface UserResponse {
+  readonly id: number;
+  readonly name: string;
+  readonly email: string;
+  readonly createdAt: Date;
+}
+
+function createUser(dto: CreateUserDTO): UserResponse {
+  // validation + DB save...
+  return { id: 1, ...dto, createdAt: new Date() };
+}
+
+// Interface extend
+interface AdminUser extends UserResponse {
+  permissions: string[];
+  lastLogin: Date;
+}`,
+        language: "typescript",
+        tip: "Rule of thumb: Interface = 'can do' (Flyable, Serializable). Abstract class = 'is a' (Animal, Vehicle). Dono saath bhi use ho sakte hain.",
+      },
+      {
+        heading: "Abstract vs Interface — Decision Guide",
+        content: `**Summary comparison:**
+
+| Feature | Abstract Class | Interface |
+|---------|---------------|-----------|
+| Implementation | Partial possible | Nahi |
+| Multiple | Ek hi extend | Multiple implement |
+| Constructor | Haan | Nahi |
+| Fields | State rakh sakta hai | Nahi (sirf signature) |
+| Access modifiers | public/private/protected | Always public |
+| Kab use | "Is-a" + shared code | "Can-do" / contract |
+
+**TypeScript interface = duck typing:**
+\`\`\`typescript
+interface Printable { print(): void; }
+class Report { print() { console.log("Report"); } }
+// Report explicitly implement nahi kiya — phir bhi Printable hai!
+const p: Printable = new Report();  // Works!
+\`\`\``,
+        code: `// Real-world example: Payment system
+interface PaymentProvider {
+  charge(amount: number, currency: string): Promise<string>;
+  refund(transactionId: string): Promise<boolean>;
+  getBalance(): Promise<number>;
+}
+
+// Abstract base — shared logic
+abstract class BasePayment implements PaymentProvider {
+  protected readonly apiKey: string;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  // Common validation
+  protected validate(amount: number): void {
+    if (amount <= 0) throw new Error("Amount must be positive");
+    if (amount > 1000000) throw new Error("Amount too large");
+  }
+
+  // Template method
+  async processPayment(amount: number, currency: string): Promise<string> {
+    this.validate(amount);
+    const txId = await this.charge(amount, currency);
+    await this.logTransaction(txId, amount);
+    return txId;
+  }
+
+  private async logTransaction(txId: string, amount: number): Promise<void> {
+    console.log(\`Transaction \${txId}: \${amount} logged\`);
+  }
+
+  // Abstract — child must implement
+  abstract charge(amount: number, currency: string): Promise<string>;
+  abstract refund(txId: string): Promise<boolean>;
+  abstract getBalance(): Promise<number>;
+}
+
+class StripePayment extends BasePayment {
+  async charge(amount: number, currency: string): Promise<string> {
+    return \`stripe_\${Date.now()}\`;
+  }
+  async refund(txId: string): Promise<boolean> { return true; }
+  async getBalance(): Promise<number> { return 5000; }
+}`,
+        language: "typescript",
+      },
+    ],
+    cheatsheet: [
+      "abstract class = partial implementation + blueprint",
+      "abstract method = subclass mein implement karna zaroori",
+      "interface = pure contract, no implementation",
+      "Multiple interfaces implement kar sakte hain",
+      "abstract = 'is-a', interface = 'can-do'",
+      "Interface = duck typing (structural subtyping)",
+    ],
+    revision: [
+      "Abstract class = direct instantiate nahi hota",
+      "Abstract methods = compiler enforce karta hai",
+      "Interface = multiple implement, pure contract",
+      "Abstract class = state + methods share karo",
+      "Template method = abstract class ka killer feature",
+    ],
+  },
+  {
+    id: "oop-composition",
+    title: "Composition over Inheritance",
+    titleEn: "Composition over Inheritance",
+    emoji: "🧩",
+    category: "Advanced",
+    description: "Inheritance ki limitations, composition pattern, mixins aur flexible design",
+    descriptionEn: "Inheritance limitations, composition pattern, mixins and flexible design",
+    sections: [
+      {
+        heading: "Inheritance ki problems",
+        content: `**Deep inheritance** = Fragile Base Class problem — base class change karo, sab broken.
+
+**Classic problem — "Gorilla/Banana" problem:**
+> "I wanted a banana but I got a gorilla holding the banana and the entire jungle."
+> — Joe Armstrong (Erlang creator)
+
+**Problems with inheritance:**
+- Tightly coupled — parent change = child break
+- Deep chains = complex, hard to trace
+- Multiple inheritance = Diamond problem
+- Base class knowledge zaroori
+- Testing hard (parent behavior bhi test karo)
+
+**Solution: Composition** = "Has-a" instead of "Is-a"`,
+        code: `// ❌ Inheritance — fragile!
+class Animal {
+  breathe() { console.log("breathing"); }
+  eat() { console.log("eating"); }
+}
+
+class LandAnimal extends Animal {
+  walk() { console.log("walking"); }
+}
+
+class SeaAnimal extends Animal {
+  swim() { console.log("swimming"); }
+}
+
+// Duck problem — both walk AND swim!
+// class Duck extends LandAnimal, SeaAnimal {} // NO! Multiple inheritance
+
+// ✅ Composition — flexible!
+// Behaviors as functions/objects
+const walker = {
+  walk: () => console.log("walking")
+};
+
+const swimmer = {
+  swim: () => console.log("swimming")
+};
+
+const flyer = {
+  fly: () => console.log("flying")
+};
+
+const eater = {
+  eat: () => console.log("eating")
+};
+
+// Mix and match behaviors!
+const duck = { ...eater, ...walker, ...swimmer, ...flyer, name: "Duck" };
+const fish = { ...eater, ...swimmer, name: "Fish" };
+const eagle = { ...eater, ...walker, ...flyer, name: "Eagle" };
+
+duck.swim();  // ✓
+fish.swim();  // ✓
+eagle.fly();  // ✓`,
+        language: "typescript",
+      },
+      {
+        heading: "Composition with Classes aur Mixins",
+        content: `**Class composition:** Objects ko properties mein inject karo — "has-a" relationship.
+**Mixins:** Multiple behaviors classes mein mix karo — TypeScript mixin pattern.`,
+        code: `// Composition with classes
+interface Logger {
+  log(message: string): void;
+}
+
+interface Validator {
+  validate(data: unknown): boolean;
+}
+
+interface EventEmitter {
+  emit(event: string, data: unknown): void;
+  on(event: string, handler: Function): void;
+}
+
+// Concrete implementations
+class ConsoleLogger implements Logger {
+  log(message: string): void {
+    console.log(\`[\${new Date().toISOString()}] \${message}\`);
+  }
+}
+
+class SchemaValidator implements Validator {
+  validate(data: unknown): boolean {
+    return typeof data === "object" && data !== null;
+  }
+}
+
+// UserService — composed, not inherited
+class UserService {
+  constructor(
+    private logger: Logger,         // injected!
+    private validator: Validator,   // injected!
+    private db: Database,           // injected!
+  ) {}
+
+  async createUser(data: CreateUserDTO): Promise<User> {
+    this.logger.log("Creating user...");
+
+    if (!this.validator.validate(data)) {
+      throw new Error("Invalid data");
+    }
+
+    const user = await this.db.create(data);
+    this.logger.log(\`User created: \${user.id}\`);
+    return user;
+  }
+}
+
+// Easily swap implementations!
+const service = new UserService(
+  new ConsoleLogger(),
+  new SchemaValidator(),
+  new MockDatabase()  // test mein mock use karo!
+);
+
+// TypeScript Mixin pattern
+type Constructor<T = {}> = new (...args: any[]) => T;
+
+function Serializable<T extends Constructor>(Base: T) {
+  return class extends Base {
+    serialize(): string {
+      return JSON.stringify(this);
+    }
+    static deserialize(json: string): T {
+      return JSON.parse(json);
+    }
+  };
+}
+
+function Timestamped<T extends Constructor>(Base: T) {
+  return class extends Base {
+    createdAt = new Date();
+    updatedAt = new Date();
+    touch() { this.updatedAt = new Date(); }
+  };
+}
+
+class BaseEntity {
+  constructor(public id: number) {}
+}
+
+// Multiple behaviors mix karo!
+const TimestampedSerializableEntity = Serializable(Timestamped(BaseEntity));
+
+class User extends TimestampedSerializableEntity {
+  constructor(id: number, public name: string) { super(id); }
+}
+
+const user = new User(1, "Ali");
+user.serialize();   // from Serializable
+user.touch();       // from Timestamped`,
+        language: "typescript",
+        tip: "Prefer composition when: behaviors vary independently, multiple unrelated behaviors chahiye, ya inheritance chain 2 levels se zyada ho rahi ho.",
+      },
+    ],
+    cheatsheet: [
+      "Has-a > Is-a — composition preferred",
+      "Constructor injection = dependencies pass karo",
+      "Behaviors = separate objects/functions",
+      "Mixin = function that takes class, returns enhanced class",
+      "DI = composition ka production-ready form",
+    ],
+    revision: [
+      "Inheritance = tight coupling, fragile base class",
+      "Composition = has-a, inject behavior as objects",
+      "Mixin = TypeScript mein multiple behaviors add",
+      "DI container = composition at scale",
+      "Testing: composition = mock inject easy hai",
+    ],
+  },
+  {
+    id: "oop-advanced-patterns",
+    title: "Advanced Design Patterns",
+    titleEn: "Advanced Design Patterns",
+    emoji: "🎭",
+    category: "Advanced",
+    description: "Iterator, Template Method, Chain of Responsibility, Mediator, State pattern",
+    descriptionEn: "Iterator, Template Method, Chain of Responsibility, Mediator, State pattern",
+    sections: [
+      {
+        heading: "Template Method aur Iterator Pattern",
+        content: `**Template Method:** Algorithm structure define karo — steps override karein. Abstract class ka killer feature.
+**Iterator:** Collection traverse karo without exposing internal structure — for...of support.`,
+        code: `// Template Method Pattern
+abstract class ReportGenerator {
+  // Template method — final! override nahi hoga
+  generateReport(data: any[]): string {
+    const filtered = this.filterData(data);       // step 1
+    const processed = this.processData(filtered);  // step 2
+    const formatted = this.formatOutput(processed); // step 3
+    return this.addHeader() + formatted + this.addFooter();
+  }
+
+  protected abstract filterData(data: any[]): any[];
+  protected abstract processData(data: any[]): any[];
+  protected abstract formatOutput(data: any[]): string;
+
+  // Optional hooks — subclass override kar sakta hai
+  protected addHeader(): string { return "--- Report ---\n"; }
+  protected addFooter(): string { return "\n--- End ---"; }
+}
+
+class SalesReport extends ReportGenerator {
+  protected filterData(data: any[]): any[] {
+    return data.filter(d => d.type === "sale");
+  }
+  protected processData(data: any[]): any[] {
+    return data.map(d => ({ ...d, total: d.qty * d.price }));
+  }
+  protected formatOutput(data: any[]): string {
+    return data.map(d => \`\${d.name}: Rs.\${d.total}\`).join("\n");
+  }
+}
+
+// Iterator Pattern
+class NumberRange implements Iterable<number> {
+  constructor(
+    private start: number,
+    private end: number,
+    private step: number = 1
+  ) {}
+
+  [Symbol.iterator](): Iterator<number> {
+    let current = this.start;
+    const end = this.end;
+    const step = this.step;
+
+    return {
+      next(): IteratorResult<number> {
+        if (current <= end) {
+          const value = current;
+          current += step;
+          return { value, done: false };
+        }
+        return { value: undefined as any, done: true };
+      }
+    };
+  }
+}
+
+const range = new NumberRange(1, 10, 2);
+for (const num of range) {
+  console.log(num); // 1, 3, 5, 7, 9
+}
+
+console.log([...new NumberRange(1, 5)]); // [1, 2, 3, 4, 5]`,
+        language: "typescript",
+      },
+      {
+        heading: "Chain of Responsibility aur State Pattern",
+        content: `**Chain of Responsibility:** Request ko handlers ki chain se pass karo — each handler decide kare process karna hai ya next pe pass.
+**State Pattern:** Object ka behavior uski state pe depend kare — state change = behavior change.`,
+        code: `// Chain of Responsibility — middleware chain
+abstract class Handler<T> {
+  private next: Handler<T> | null = null;
+
+  setNext(handler: Handler<T>): Handler<T> {
+    this.next = handler;
+    return handler;  // chaining!
+  }
+
+  handle(request: T): string | null {
+    if (this.next) return this.next.handle(request);
+    return null;  // no handler found
+  }
+}
+
+class AuthHandler extends Handler<Request> {
+  handle(req: Request): string | null {
+    if (!req.token) return "401: Unauthorized";
+    return super.handle(req);  // next handler
+  }
+}
+
+class RateLimitHandler extends Handler<Request> {
+  private counts = new Map<string, number>();
+  handle(req: Request): string | null {
+    const count = (this.counts.get(req.ip) || 0) + 1;
+    this.counts.set(req.ip, count);
+    if (count > 100) return "429: Too Many Requests";
+    return super.handle(req);
+  }
+}
+
+class ProcessHandler extends Handler<Request> {
+  handle(req: Request): string | null {
+    return "200: OK";  // actual processing
+  }
+}
+
+// Chain setup
+const auth = new AuthHandler();
+const rateLimit = new RateLimitHandler();
+const process = new ProcessHandler();
+
+auth.setNext(rateLimit).setNext(process);
+auth.handle(request);  // chain se guzarta hai!
+
+// State Pattern — Traffic Light
+interface TrafficLightState {
+  handle(light: TrafficLight): void;
+  getColor(): string;
+}
+
+class RedState implements TrafficLightState {
+  handle(light: TrafficLight): void {
+    console.log("Red → switching to Green");
+    light.setState(new GreenState());
+  }
+  getColor(): string { return "RED"; }
+}
+
+class GreenState implements TrafficLightState {
+  handle(light: TrafficLight): void {
+    console.log("Green → switching to Yellow");
+    light.setState(new YellowState());
+  }
+  getColor(): string { return "GREEN"; }
+}
+
+class YellowState implements TrafficLightState {
+  handle(light: TrafficLight): void {
+    console.log("Yellow → switching to Red");
+    light.setState(new RedState());
+  }
+  getColor(): string { return "YELLOW"; }
+}
+
+class TrafficLight {
+  private state: TrafficLightState = new RedState();
+
+  setState(state: TrafficLightState): void {
+    this.state = state;
+  }
+
+  change(): void { this.state.handle(this); }
+  getColor(): string { return this.state.getColor(); }
+}
+
+const light = new TrafficLight();
+light.change();  // Red → Green
+light.change();  // Green → Yellow
+light.change();  // Yellow → Red`,
+        language: "typescript",
+        tip: "State pattern = switch/if-else ka OOP alternative. Har state apna behavior encapsulate karta hai — new state add karna easy.",
+      },
+    ],
+    cheatsheet: [
+      "Template Method = algorithm skeleton, steps override",
+      "Iterator = [Symbol.iterator] implement karo",
+      "Chain of Responsibility = handler.setNext(next)",
+      "State = state object swap karo (not if-else)",
+      "Mediator = objects directly communicate nahi karte",
+    ],
+    revision: [
+      "Template Method = abstract class + algorithm steps",
+      "Iterator = for...of support, Iterable<T> implement",
+      "Chain = auth → rate-limit → process pipeline",
+      "State = behavior state object se aata hai",
+      "Each pattern = specific problem ka solution",
+    ],
+  },
+  {
+    id: "oop-generics-advanced",
+    title: "Generics aur Type Safety",
+    titleEn: "Generics and Type Safety",
+    emoji: "🔧",
+    category: "Advanced",
+    description: "TypeScript generics deeply — constraints, conditional types, mapped types, utility types",
+    descriptionEn: "TypeScript generics in depth — constraints, conditional types, mapped types, utility types",
+    sections: [
+      {
+        heading: "Generics — Type-safe Reusable Code",
+        content: `**Generic** = Type parameter — same code alag types ke saath kaam kare, type safety maintain kare.
+
+**Without generics:** any use karo = type safety khatam.
+**With generics:** Type parameter pass karo — compile-time type checking.
+
+**Constraints:** \`<T extends Something>\` — T pe conditions lagao.`,
+        code: `// Without generics — any = type safety khatam
+function firstItem(arr: any[]): any {
+  return arr[0];
+}
+const num = firstItem([1, 2, 3]);   // type: any (bad!)
+num.toFixed(2);  // runtime error possible
+
+// With generics — type safe!
+function firstItem<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+const num2 = firstItem([1, 2, 3]);    // type: number ✓
+const str = firstItem(["a", "b"]);    // type: string ✓
+
+// Generic class
+class Stack<T> {
+  private items: T[] = [];
+
+  push(item: T): void { this.items.push(item); }
+
+  pop(): T | undefined { return this.items.pop(); }
+
+  peek(): T | undefined { return this.items[this.items.length - 1]; }
+
+  get size(): number { return this.items.length; }
+
+  isEmpty(): boolean { return this.items.length === 0; }
+}
+
+const numStack = new Stack<number>();
+numStack.push(1);
+numStack.push(2);
+numStack.pop(); // returns number
+
+// Generic with constraint
+interface HasId { id: number; }
+
+function findById<T extends HasId>(items: T[], id: number): T | undefined {
+  return items.find(item => item.id === id);
+}
+
+const user = findById([{ id: 1, name: "Ali" }], 1);
+// user.name works! Type inferred as { id: number, name: string }`,
+        language: "typescript",
+      },
+      {
+        heading: "Utility Types aur Conditional Types",
+        content: `**Built-in utility types:** Partial, Required, Readonly, Pick, Omit, Record, ReturnType.
+**Conditional types:** \`T extends U ? X : Y\` — type level if-else.
+**Mapped types:** Every property transform karo.`,
+        code: `// Utility Types
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+  role: "user" | "admin";
+  createdAt: Date;
+}
+
+type CreateUserDTO = Omit<User, "id" | "createdAt">;
+// { name, email, password, role }
+
+type UpdateUserDTO = Partial<Omit<User, "id" | "createdAt">>;
+// All fields optional except id, createdAt
+
+type UserResponse = Readonly<Omit<User, "password">>;
+// No password, all readonly
+
+type UserRole = Pick<User, "role">;
+// { role: "user" | "admin" }
+
+// Record — key-value mapping
+type RolePermissions = Record<User["role"], string[]>;
+const permissions: RolePermissions = {
+  user: ["read"],
+  admin: ["read", "write", "delete"],
+};
+
+// Conditional types
+type IsArray<T> = T extends any[] ? "array" : "not-array";
+type A = IsArray<string[]>;   // "array"
+type B = IsArray<string>;     // "not-array"
+
+// Unwrap array type
+type ElementType<T> = T extends (infer U)[] ? U : T;
+type E = ElementType<string[]>;  // string
+type F = ElementType<number>;    // number
+
+// ReturnType
+async function fetchUser(): Promise<User> { ... }
+type FetchResult = Awaited<ReturnType<typeof fetchUser>>;  // User
+
+// Custom mapped type — make all methods optional
+type Mutable<T> = {
+  -readonly [P in keyof T]: T[P];  // readonly remove karo
+};
+
+// Deep Partial
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};`,
+        language: "typescript",
+        tip: "Utility types = type transformations — avoid code duplication at type level. Real-world: DTOs, API responses, form types sab base interface se derive karo.",
+      },
+    ],
+    cheatsheet: [
+      "function fn<T>(arg: T): T — generic function",
+      "T extends HasId — constraint lagao",
+      "Partial<T> — sab fields optional",
+      "Omit<T, 'key'> — fields remove karo",
+      "Pick<T, 'a'|'b'> — sirf yeh fields rakhho",
+      "Record<K, V> — key-value type map",
+      "Readonly<T> — immutable type",
+    ],
+    revision: [
+      "Generics = type parameters — reusable + type safe",
+      "Constraint <T extends X> = T pe condition lagao",
+      "Partial/Required/Readonly — common transforms",
+      "Omit/Pick — fields add/remove from type",
+      "Conditional types = type level if-else",
+    ],
+  },
 ];
 
 export const oopInterviews = [
@@ -1600,5 +2339,1035 @@ class OrderService {
 // Test mein:
 const mockDb = { save: jest.fn() };
 const service = new OrderService(mockDb);`,
+  },
+  {
+    id: 216,
+    level: "Beginner" as const,
+    question: "Encapsulation kya hai? Real-world example de ke explain karo.",
+    answer: `Encapsulation = Data aur methods ek class mein bundle karna + access control.
+
+ATM machine example:
+- PIN aur balance = private (direct access nahi)
+- withdraw(), deposit(), checkBalance() = public interface
+
+class BankAccount {
+  private balance: number = 0;
+  private pin: string;
+  
+  constructor(pin: string, initialBalance: number) {
+    this.pin = pin;
+    this.balance = initialBalance;
+  }
+  
+  deposit(amount: number): void {
+    if (amount <= 0) throw new Error("Invalid amount");
+    this.balance += amount;
+  }
+  
+  withdraw(pin: string, amount: number): void {
+    if (pin !== this.pin) throw new Error("Wrong PIN!");
+    if (amount > this.balance) throw new Error("Insufficient funds");
+    this.balance -= amount;
+  }
+  
+  getBalance(): number { return this.balance; }  // read-only access
+}
+
+Benefits: Data protection, validation, implementation hide karo, change without breaking.`,
+    tags: ["encapsulation", "basics"],
+  },
+  {
+    id: 217,
+    level: "Beginner" as const,
+    question: "Inheritance vs Composition — difference aur kab kaunsa use karo?",
+    answer: `Inheritance: "Is-a" relationship — Car is-a Vehicle.
+Composition: "Has-a" relationship — Car has-a Engine.
+
+Inheritance problems:
+- Tight coupling — base class change = child break
+- Deep chains = complex
+- Multiple inheritance = Diamond problem
+
+Composition benefits:
+- Loose coupling — behavior inject karo
+- Flexible — runtime mein swap karo
+- Testing easy — mock inject karo
+
+Rule: "Prefer composition over inheritance" (GoF book)
+
+Kab Inheritance: 
+- True "is-a" relationship
+- Code genuinely share karna ho
+- Polymorphism chahiye
+
+Kab Composition:
+- Behaviors independently vary karein
+- Multiple unrelated behaviors
+- Framework code nahi likha ja raha
+
+Example: Logger — don't inherit, inject it!`,
+    tags: ["inheritance", "composition", "design"],
+  },
+  {
+    id: 218,
+    level: "Intermediate" as const,
+    question: "SOLID principles mein 'L' — Liskov Substitution Principle detail mein explain karo.",
+    answer: `LSP: Subclass ko parent class ki jagah use karna possible hona chahiye — behavior break nahi hona chahiye.
+
+Violation example:
+class Rectangle {
+  setWidth(w: number) { this.width = w; }
+  setHeight(h: number) { this.height = h; }
+  area(): number { return this.width * this.height; }
+}
+
+class Square extends Rectangle {
+  setWidth(w: number) {
+    this.width = w;
+    this.height = w;  // LSP violation! Rectangle ka behavior different
+  }
+}
+
+function testArea(rect: Rectangle) {
+  rect.setWidth(4);
+  rect.setHeight(5);
+  console.log(rect.area()); // Rectangle: 20, Square: 25! Wrong!
+}
+
+Fix: Don't force Square extends Rectangle.
+Inhe alag classes banao, dono Shape implement karein.
+
+Signs of LSP violation:
+- instanceof checks
+- NotImplementedException throws
+- Preconditions strengthen karna
+- Postconditions weaken karna`,
+    tags: ["solid", "lsp"],
+  },
+  {
+    id: 219,
+    level: "Intermediate" as const,
+    question: "Method overloading aur method overriding mein kya fark hai?",
+    answer: `Method Overloading: Same name, different parameters — COMPILE TIME polymorphism.
+Method Overriding: Parent method redefine karo child mein — RUNTIME polymorphism.
+
+// Overloading (TypeScript — compile time)
+class Calculator {
+  add(a: number, b: number): number;
+  add(a: string, b: string): string;
+  add(a: any, b: any): any {
+    return a + b;
+  }
+}
+
+calc.add(1, 2);        // 3
+calc.add("Hi", " Ali"); // "Hi Ali"
+
+// Overriding (Runtime polymorphism)
+class Shape {
+  area(): number { return 0; }
+  describe(): string { return "I am a shape"; }
+}
+
+class Circle extends Shape {
+  constructor(private r: number) { super(); }
+  
+  area(): number {  // OVERRIDE!
+    return Math.PI * this.r * this.r;
+  }
+  
+  describe(): string {
+    return super.describe() + " — Circle!";  // super call
+  }
+}
+
+const s: Shape = new Circle(5);
+s.area();  // calls Circle.area() — runtime dispatch!`,
+    tags: ["polymorphism", "overloading", "overriding"],
+  },
+  {
+    id: 220,
+    level: "Intermediate" as const,
+    question: "Abstract class aur Interface mein kya choose karein aur kyun?",
+    answer: `Abstract Class use karo jab:
+- Shared implementation ho (code reuse)
+- Constructor logic chahiye
+- Protected state share karna ho
+- Template method pattern use karna ho
+- Single inheritance hierarchy fine ho
+
+Interface use karo jab:
+- Pure contract define karna ho
+- Multiple "behaviors" implement karna ho
+- Third-party classes bhi conform karein
+- Duck typing chahiye
+- Data shapes define karo (DTOs)
+
+Real decision:
+abstract class Animal { eat() {} }  // shared behavior — abstract class
+interface Flyable { fly(): void; }  // capability — interface
+
+class Bird extends Animal implements Flyable {
+  fly() { console.log("flying"); }
+}
+
+TypeScript tip: Interfaces = structural typing —
+class Report { print() {} }
+const p: Printable = new Report();  // Works even without explicit implements!`,
+    tags: ["abstract", "interface", "design"],
+  },
+  {
+    id: 221,
+    level: "Intermediate" as const,
+    question: "Dependency Injection kya hai? IoC Container kya hota hai?",
+    answer: `DI: Dependencies bahar se inject karo — class khud nahi banati.
+
+Without DI (tightly coupled):
+class UserService {
+  private db = new MySQLDatabase(); // hard-coded!
+  private logger = new ConsoleLogger(); // hard-coded!
+}
+
+With DI (loose coupling):
+class UserService {
+  constructor(
+    private db: Database,       // injected!
+    private logger: Logger,     // injected!
+  ) {}
+}
+
+Benefits: Testable (mock inject), swappable, single responsibility.
+
+IoC Container: Framework jo automatically dependencies inject kare.
+NestJS example:
+@Injectable()
+class UserService {
+  constructor(private db: DatabaseService) {}  // auto-injected!
+}
+
+@Module({
+  providers: [UserService, DatabaseService],
+})
+class AppModule {}
+
+// NestJS automatically creates + injects DatabaseService
+
+IoC Container karta hai:
+1. Services register karo
+2. Dependencies resolve karo (dependency graph)
+3. Instances create + inject karo
+4. Lifecycle manage karo (singleton, transient)`,
+    tags: ["di", "ioc", "solid"],
+  },
+  {
+    id: 222,
+    level: "Intermediate" as const,
+    question: "Polymorphism ke different types explain karo examples ke saath.",
+    answer: `Polymorphism ke 4 types:
+
+1. Compile-time (Static) — Method Overloading
+class Math {
+  add(a: number, b: number): number;
+  add(a: string, b: string): string;
+  add(a: any, b: any): any { return a + b; }
+}
+
+2. Runtime (Dynamic) — Method Overriding
+const shapes: Shape[] = [new Circle(), new Square()];
+shapes.forEach(s => s.area()); // each calls own area()
+
+3. Parametric (Generics)
+function identity<T>(x: T): T { return x; }
+identity<number>(5);
+identity<string>("hi");
+
+4. Ad-hoc (Operator Overloading — limited in TS)
+// TypeScript mein direct operator overloading nahi
+// But Python mein: __add__, __mul__ etc.
+
+Most important: Runtime polymorphism (virtual dispatch)
+- Parent reference = child object
+- Correct method at runtime call hoti hai
+- Open for extension, closed for modification (OCP)
+
+const payment: PaymentProvider = new StripePayment();
+payment.charge(100, "USD"); // StripePayment.charge() call hogi!`,
+    tags: ["polymorphism", "types"],
+  },
+  {
+    id: 223,
+    level: "Advanced" as const,
+    question: "SOLID mein Open/Closed Principle kaise implement karte hain?",
+    answer: `OCP: Classes extension ke liye open, modification ke liye closed.
+
+❌ Violation — every new type = modify existing:
+class ShapeArea {
+  calculate(shape: Shape): number {
+    if (shape.type === "circle") return Math.PI * shape.r ** 2;
+    if (shape.type === "square") return shape.s ** 2;
+    // New shape = modify this class!
+  }
+}
+
+✅ OCP compliant:
+interface Shape {
+  area(): number;  // each shape calculates own area
+}
+
+class Circle implements Shape {
+  constructor(private r: number) {}
+  area(): number { return Math.PI * this.r ** 2; }
+}
+
+class Square implements Shape {
+  constructor(private s: number) {}
+  area(): number { return this.s ** 2; }
+}
+
+// New shape: just add new class — nothing changes!
+class Triangle implements Shape {
+  constructor(private b: number, private h: number) {}
+  area(): number { return 0.5 * this.b * this.h; }
+}
+
+function totalArea(shapes: Shape[]): number {
+  return shapes.reduce((sum, s) => sum + s.area(), 0);
+}
+
+Real-world: Payment methods, export formats, notification types.`,
+    tags: ["solid", "ocp"],
+  },
+  {
+    id: 224,
+    level: "Advanced" as const,
+    question: "Observer pattern real-world mein kahan use hota hai? Event system banana sikhao.",
+    answer: `Observer = Publisher/Subscriber — jab ek object change ho, sab dependents automatically notify ho.
+
+Real-world uses:
+- DOM event listeners
+- Redux state changes
+- Angular services (Subject)
+- Node.js EventEmitter
+- Database triggers
+- Stock price updates
+- Chat applications
+
+TypeScript implementation:
+class EventEmitter<T extends Record<string, any>> {
+  private listeners: Partial<{ [K in keyof T]: Set<(data: T[K]) => void> }> = {};
+
+  on<K extends keyof T>(event: K, listener: (data: T[K]) => void): () => void {
+    if (!this.listeners[event]) {
+      this.listeners[event] = new Set();
+    }
+    this.listeners[event]!.add(listener);
+    return () => this.off(event, listener);  // unsubscribe function!
+  }
+
+  off<K extends keyof T>(event: K, listener: (data: T[K]) => void): void {
+    this.listeners[event]?.delete(listener);
+  }
+
+  emit<K extends keyof T>(event: K, data: T[K]): void {
+    this.listeners[event]?.forEach(listener => listener(data));
+  }
+}
+
+// Typed events
+type AppEvents = {
+  "user:created": { userId: string; email: string };
+  "order:placed": { orderId: string; amount: number };
+  "payment:failed": { orderId: string; reason: string };
+};
+
+const emitter = new EventEmitter<AppEvents>();
+
+const unsub = emitter.on("user:created", ({ userId, email }) => {
+  sendWelcomeEmail(email);
+});
+
+emitter.emit("user:created", { userId: "123", email: "ali@test.com" });
+unsub(); // cleanup!`,
+    tags: ["observer", "events", "patterns"],
+  },
+  {
+    id: 225,
+    level: "Advanced" as const,
+    question: "Factory Method aur Abstract Factory pattern mein kya fark hai?",
+    answer: `Factory Method: Ek product create karne ka method — subclass decide kare which class.
+Abstract Factory: Related products ka family create karo — consistent UI kits etc.
+
+Factory Method:
+abstract class Dialog {
+  // Factory method
+  abstract createButton(): Button;
+
+  render(): void {
+    const button = this.createButton();  // subclass decide kare!
+    button.render();
+  }
+}
+
+class WindowsDialog extends Dialog {
+  createButton(): Button { return new WindowsButton(); }
+}
+
+class WebDialog extends Dialog {
+  createButton(): Button { return new WebButton(); }
+}
+
+Abstract Factory — families:
+interface UIFactory {
+  createButton(): Button;
+  createCheckbox(): Checkbox;
+  createInput(): Input;
+}
+
+class WindowsUIFactory implements UIFactory {
+  createButton(): Button { return new WinButton(); }
+  createCheckbox(): Checkbox { return new WinCheckbox(); }
+  createInput(): Input { return new WinInput(); }
+}
+
+class MacUIFactory implements UIFactory {
+  createButton(): Button { return new MacButton(); }
+  createCheckbox(): Checkbox { return new MacCheckbox(); }
+  createInput(): Input { return new MacInput(); }
+}
+
+// Consistent UI — same factory se sab components
+function buildUI(factory: UIFactory) {
+  return {
+    button: factory.createButton(),
+    checkbox: factory.createCheckbox(),
+    input: factory.createInput(),
+  };
+}`,
+    tags: ["factory", "abstract-factory", "creational"],
+  },
+  {
+    id: 226,
+    level: "Advanced" as const,
+    question: "Decorator pattern kya hai? TypeScript decorators se kaise relate karta hai?",
+    answer: `Decorator (Design Pattern): Object ko wrap karke behavior add karo — original change kiye bina.
+
+interface Coffee {
+  cost(): number;
+  description(): string;
+}
+
+class SimpleCoffee implements Coffee {
+  cost(): number { return 100; }
+  description(): string { return "Simple coffee"; }
+}
+
+// Decorator base
+abstract class CoffeeDecorator implements Coffee {
+  constructor(protected coffee: Coffee) {}
+  cost(): number { return this.coffee.cost(); }
+  description(): string { return this.coffee.description(); }
+}
+
+class MilkDecorator extends CoffeeDecorator {
+  cost(): number { return this.coffee.cost() + 20; }
+  description(): string { return this.coffee.description() + ", milk"; }
+}
+
+class SugarDecorator extends CoffeeDecorator {
+  cost(): number { return this.coffee.cost() + 10; }
+  description(): string { return this.coffee.description() + ", sugar"; }
+}
+
+let coffee: Coffee = new SimpleCoffee();     // 100
+coffee = new MilkDecorator(coffee);          // 120
+coffee = new SugarDecorator(coffee);         // 130
+coffee = new MilkDecorator(coffee);          // 150 (double milk!)
+
+// TypeScript @Decorator (metadata decorators):
+function Log(target: any, key: string, descriptor: PropertyDescriptor) {
+  const original = descriptor.value;
+  descriptor.value = function(...args: any[]) {
+    console.log(\`Calling \${key}(\${args})\`);
+    return original.apply(this, args);
+  };
+  return descriptor;
+}
+
+class Service {
+  @Log  // same concept — wrap method!
+  process(data: string): string { return data.toUpperCase(); }
+}`,
+    tags: ["decorator", "structural", "patterns"],
+  },
+  {
+    id: 227,
+    level: "Advanced" as const,
+    question: "Repository pattern kya hai? OOP mein data access layer kaise design karein?",
+    answer: `Repository pattern: Data access logic abstract karo — business logic DB se decouple.
+
+interface UserRepository {
+  findById(id: number): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findAll(filters?: UserFilters): Promise<User[]>;
+  create(data: CreateUserDTO): Promise<User>;
+  update(id: number, data: UpdateUserDTO): Promise<User>;
+  delete(id: number): Promise<void>;
+}
+
+// MySQL implementation
+class MySQLUserRepository implements UserRepository {
+  constructor(private db: Pool) {}
+
+  async findById(id: number): Promise<User | null> {
+    const [rows] = await this.db.execute(
+      "SELECT * FROM users WHERE id = ?", [id]
+    );
+    return (rows as User[])[0] || null;
+  }
+
+  async create(data: CreateUserDTO): Promise<User> {
+    const [result] = await this.db.execute(
+      "INSERT INTO users SET ?", [data]
+    );
+    return this.findById((result as any).insertId) as Promise<User>;
+  }
+  // ... other methods
+}
+
+// In-memory for testing!
+class InMemoryUserRepository implements UserRepository {
+  private users: User[] = [];
+  async findById(id: number) { return this.users.find(u => u.id === id) || null; }
+  async create(data: CreateUserDTO) {
+    const user = { ...data, id: Date.now() } as User;
+    this.users.push(user);
+    return user;
+  }
+  // ...
+}
+
+// UserService depends on interface — not implementation!
+class UserService {
+  constructor(private repo: UserRepository) {}
+  async getUser(id: number) { return this.repo.findById(id); }
+}`,
+    tags: ["repository", "data-access", "patterns"],
+  },
+  {
+    id: 228,
+    level: "Intermediate" as const,
+    question: "Static methods aur properties — kab use karein? Instance vs Static?",
+    answer: `Instance methods/props: Object ke saath — har object ka apna state.
+Static methods/props: Class ke saath — sab instances share karein.
+
+class MathUtils {
+  // Static — no instance needed
+  static PI = 3.14159;
+  
+  static circleArea(r: number): number {
+    return MathUtils.PI * r * r;
+  }
+  
+  static factorial(n: number): number {
+    return n <= 1 ? 1 : n * MathUtils.factorial(n - 1);
+  }
+}
+
+MathUtils.circleArea(5);  // instance nahi chahiye!
+new MathUtils().circleArea(5);  // anti-pattern!
+
+class Counter {
+  private static instanceCount = 0;  // shared state
+  private count = 0;                  // instance state
+  
+  constructor() {
+    Counter.instanceCount++;
+  }
+  
+  increment() { this.count++; }
+  
+  static getInstanceCount() { return Counter.instanceCount; }
+  getCount() { return this.count; }
+}
+
+const c1 = new Counter();
+const c2 = new Counter();
+Counter.getInstanceCount();  // 2
+
+Kab static use karo:
+- Utility functions (no state needed)
+- Factory methods (getInstance, create)
+- Constants, configuration
+- Counter, ID generator (shared state)
+
+Kab NOT static:
+- Object-specific behavior
+- State jo objects mein alag ho`,
+    tags: ["static", "instance", "oop"],
+  },
+  {
+    id: 229,
+    level: "Intermediate" as const,
+    question: "Design Patterns ke 3 categories aur their purposes explain karo.",
+    answer: `Gang of Four (GoF) — 23 patterns, 3 categories:
+
+1. CREATIONAL (Object Creation):
+   - Singleton: Ek instance — DB connection, Logger
+   - Factory Method: Object creation subclass decide kare
+   - Abstract Factory: Related objects ka family create karo
+   - Builder: Complex objects step by step — Query Builder, Pizza builder
+   - Prototype: Object clone karo
+
+2. STRUCTURAL (Object Composition):
+   - Adapter: Incompatible interfaces compatible banao — old API wrapper
+   - Decorator: Behavior add karo without subclassing — Middleware, logging
+   - Facade: Complex subsystem ka simple interface — SDK
+   - Proxy: Object access control — lazy loading, caching
+   - Composite: Tree structures — File system, DOM
+   - Bridge: Abstraction se implementation decouple
+
+3. BEHAVIORAL (Object Communication):
+   - Observer: Event notification — EventEmitter, Redux
+   - Strategy: Runtime algorithm swap — sort strategies, payment methods
+   - Command: Request encapsulate — undo/redo, transaction
+   - Chain of Responsibility: Request handlers chain — middleware
+   - State: Behavior state se decide ho — Traffic light, Order status
+   - Template Method: Algorithm skeleton — Report generators
+   - Iterator: Collection traverse — for...of, generators
+
+Most common in interviews: Singleton, Factory, Observer, Strategy, Decorator, Repository.`,
+    tags: ["design-patterns", "gof", "categories"],
+  },
+  {
+    id: 230,
+    level: "Advanced" as const,
+    question: "Command pattern kya hai? Undo/Redo kaise implement karte hain?",
+    answer: `Command pattern: Request ko object mein encapsulate karo — undo/redo, logging, queuing possible.
+
+interface Command {
+  execute(): void;
+  undo(): void;
+}
+
+class TextEditor {
+  private text = "";
+  
+  insertText(text: string, position: number): void {
+    this.text = this.text.slice(0, position) + text + this.text.slice(position);
+  }
+  
+  deleteText(position: number, length: number): void {
+    this.text = this.text.slice(0, position) + this.text.slice(position + length);
+  }
+  
+  getText(): string { return this.text; }
+}
+
+class InsertCommand implements Command {
+  constructor(
+    private editor: TextEditor,
+    private text: string,
+    private position: number
+  ) {}
+  
+  execute(): void { this.editor.insertText(this.text, this.position); }
+  undo(): void { this.editor.deleteText(this.position, this.text.length); }
+}
+
+class CommandHistory {
+  private history: Command[] = [];
+  private undone: Command[] = [];
+  
+  execute(command: Command): void {
+    command.execute();
+    this.history.push(command);
+    this.undone = [];  // redo history clear
+  }
+  
+  undo(): void {
+    const command = this.history.pop();
+    if (command) {
+      command.undo();
+      this.undone.push(command);
+    }
+  }
+  
+  redo(): void {
+    const command = this.undone.pop();
+    if (command) {
+      command.execute();
+      this.history.push(command);
+    }
+  }
+}
+
+const editor = new TextEditor();
+const history = new CommandHistory();
+history.execute(new InsertCommand(editor, "Hello", 0));
+history.execute(new InsertCommand(editor, " World", 5));
+history.undo();  // "Hello"
+history.redo();  // "Hello World"`,
+    tags: ["command", "undo-redo", "behavioral"],
+  },
+  {
+    id: 231,
+    level: "Advanced" as const,
+    question: "Proxy pattern ke real use cases kya hain? Virtual proxy aur protection proxy explain karo.",
+    answer: `Proxy: Real object ke access ke beech logic add karo — same interface maintain karo.
+
+Types:
+1. Virtual Proxy: Expensive object ka lazy initialization
+2. Protection Proxy: Access control
+3. Caching Proxy: Results cache karo
+4. Logging Proxy: Calls log karo
+5. Remote Proxy: Remote object represent karo
+
+// Virtual Proxy — lazy loading
+class ExpensiveService {
+  constructor() {
+    console.log("Loading heavy ML model...");
+    // Expensive initialization!
+  }
+  predict(data: number[]): number { return Math.random(); }
+}
+
+class LazyServiceProxy {
+  private instance: ExpensiveService | null = null;
+  
+  predict(data: number[]): number {
+    if (!this.instance) {
+      this.instance = new ExpensiveService();  // lazy!
+    }
+    return this.instance.predict(data);
+  }
+}
+
+// Caching Proxy
+class CachingApiProxy {
+  private cache = new Map<string, { data: any; expires: number }>();
+  
+  constructor(private api: ApiService, private ttl = 60000) {}
+  
+  async get(url: string): Promise<any> {
+    const cached = this.cache.get(url);
+    if (cached && Date.now() < cached.expires) {
+      return cached.data;  // cache hit!
+    }
+    
+    const data = await this.api.get(url);
+    this.cache.set(url, { data, expires: Date.now() + this.ttl });
+    return data;
+  }
+}
+
+// ES6 Proxy — built-in!
+const handler = {
+  get(target: any, key: string) {
+    console.log(\`Getting \${key}\`);
+    return target[key];
+  },
+  set(target: any, key: string, value: any) {
+    if (typeof value !== typeof target[key]) throw new Error("Type mismatch!");
+    target[key] = value;
+    return true;
+  }
+};
+
+const validated = new Proxy({ name: "Ali", age: 25 }, handler);`,
+    tags: ["proxy", "structural", "caching"],
+  },
+  {
+    id: 232,
+    level: "Intermediate" as const,
+    question: "Access modifiers (public, private, protected) real-world mein kaise decide karein?",
+    answer: `Access modifiers = OOP ka encapsulation enforce karne ka tool.
+
+public: Koi bhi access kar sake — API surface.
+private: Sirf same class — implementation detail.
+protected: Same class + subclasses — template method ke liye.
+readonly: Assign once — immutable field.
+
+Decision guide:
+class UserService {
+  // Public API — external code ke liye
+  public async createUser(dto: CreateUserDTO): Promise<User> {
+    const hashed = await this.hashPassword(dto.password);
+    return this.userRepo.create({ ...dto, password: hashed });
+  }
+  
+  public async getUserById(id: number): Promise<User | null> {
+    return this.userRepo.findById(id);
+  }
+  
+  // Private — implementation detail, test mein spy karo
+  private async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
+  }
+  
+  // Private — internal caching
+  private readonly cache = new Map<number, User>();
+  
+  constructor(
+    // Private injection — external code ko nahi chahiye
+    private readonly userRepo: UserRepository,
+    private readonly logger: Logger,
+  ) {}
+}
+
+// Abstract class mein protected
+abstract class BaseController {
+  protected validateRequest(req: Request): void { ... }  // subclass use kare
+  protected sendSuccess(res: Response, data: any): void { ... }
+  
+  // Public — HTTP handler
+  public abstract handle(req: Request, res: Response): Promise<void>;
+}
+
+Rule: Start with private, loosen as needed.`,
+    tags: ["access-modifiers", "encapsulation"],
+  },
+  {
+    id: 233,
+    level: "Advanced" as const,
+    question: "Mediator pattern kya hai? Aur Facade se kaise alag hai?",
+    answer: `Mediator: Objects directly communicate nahi karte — ek central mediator se.
+Facade: Complex subsystem ka simple interface.
+
+Key difference:
+- Facade = simplify (complex → simple) — one-way
+- Mediator = coordinate (many-to-many) — bidirectional
+
+Mediator example — Chat room:
+interface ChatMediator {
+  sendMessage(message: string, from: User): void;
+  addUser(user: User): void;
+}
+
+class ChatRoom implements ChatMediator {
+  private users: User[] = [];
+  
+  addUser(user: User): void {
+    this.users.push(user);
+    this.sendMessage(\`\${user.name} joined the chat\`, user);
+  }
+  
+  sendMessage(message: string, from: User): void {
+    this.users
+      .filter(u => u !== from)  // sender ko nahi
+      .forEach(u => u.receive(message, from.name));
+  }
+}
+
+class User {
+  constructor(
+    public name: string,
+    private mediator: ChatMediator
+  ) {}
+  
+  send(message: string): void {
+    this.mediator.sendMessage(message, this);  // mediator ke through!
+  }
+  
+  receive(message: string, from: string): void {
+    console.log(\`[\${from} → \${this.name}]: \${message}\`);
+  }
+}
+
+// Users directly communicate nahi karte — sab ChatRoom se!
+const room = new ChatRoom();
+const ali = new User("Ali", room);
+const sara = new User("Sara", room);
+room.addUser(ali);
+room.addUser(sara);
+ali.send("Hello everyone!");`,
+    tags: ["mediator", "facade", "behavioral"],
+  },
+  {
+    id: 234,
+    level: "Intermediate" as const,
+    question: "Mixin kya hai? TypeScript mein multiple inheritance simulate kaise karein?",
+    answer: `Mixin = Multiple sources se behavior combine karo — TypeScript mein multiple inheritance workaround.
+
+// Mixin pattern — function that takes class, returns enhanced class
+type Constructor<T = {}> = new (...args: any[]) => T;
+
+function Timestamped<TBase extends Constructor>(Base: TBase) {
+  return class extends Base {
+    createdAt = new Date();
+    updatedAt = new Date();
+    
+    touch() { this.updatedAt = new Date(); }
+  };
+}
+
+function Activatable<TBase extends Constructor>(Base: TBase) {
+  return class extends Base {
+    isActive = false;
+    
+    activate() { this.isActive = true; }
+    deactivate() { this.isActive = false; }
+  };
+}
+
+function Serializable<TBase extends Constructor>(Base: TBase) {
+  return class extends Base {
+    serialize(): string { return JSON.stringify(this); }
+    
+    static deserialize<T>(json: string): T {
+      return JSON.parse(json);
+    }
+  };
+}
+
+// Base class
+class BaseEntity {
+  constructor(public id: number, public name: string) {}
+}
+
+// Mix all behaviors!
+const TimestampedActivatableSerializable = 
+  Serializable(Activatable(Timestamped(BaseEntity)));
+
+class Product extends TimestampedActivatableSerializable {
+  constructor(id: number, name: string, public price: number) {
+    super(id, name);
+  }
+}
+
+const p = new Product(1, "Laptop", 50000);
+p.activate();           // from Activatable
+p.touch();              // from Timestamped
+p.serialize();          // from Serializable
+console.log(p.isActive, p.createdAt);`,
+    tags: ["mixin", "multiple-inheritance", "composition"],
+  },
+  {
+    id: 235,
+    level: "Advanced" as const,
+    question: "Value Object aur Entity OOP mein kya hote hain? Domain-Driven Design mein role?",
+    answer: `Entity: Identity se define — ID change nahi hoti chahe properties badlein.
+Value Object: Value se define — no identity, immutable, equality by value.
+
+// Entity — ID se identify karo
+class User {
+  constructor(
+    public readonly id: string,  // stable identity
+    public name: string,          // mutable
+    public email: string,         // mutable
+  ) {}
+  
+  equals(other: User): boolean {
+    return this.id === other.id;  // ID se compare!
+  }
+  
+  updateEmail(email: string): void {
+    if (!email.includes("@")) throw new Error("Invalid email");
+    this.email = email;  // same entity, updated
+  }
+}
+
+// Value Object — immutable, equality by value
+class Money {
+  constructor(
+    public readonly amount: number,
+    public readonly currency: string,
+  ) {
+    if (amount < 0) throw new Error("Amount cannot be negative");
+    Object.freeze(this);  // immutable!
+  }
+  
+  add(other: Money): Money {
+    if (this.currency !== other.currency) throw new Error("Currency mismatch");
+    return new Money(this.amount + other.amount, this.currency);  // new object!
+  }
+  
+  equals(other: Money): boolean {
+    return this.amount === other.amount && this.currency === other.currency;
+  }
+  
+  toString(): string { return \`\${this.currency} \${this.amount}\`; }
+}
+
+// Usage
+const price = new Money(1000, "PKR");
+const tax = new Money(170, "PKR");
+const total = price.add(tax);  // new Money(1170, "PKR")
+
+// price still 1000 — immutable!
+
+const m1 = new Money(100, "USD");
+const m2 = new Money(100, "USD");
+m1 === m2;          // false (different objects)
+m1.equals(m2);      // true (same value!)`,
+    tags: ["value-object", "entity", "ddd"],
+  },
+  {
+    id: 236,
+    level: "Advanced" as const,
+    question: "OOP mein CQRS pattern kya hai? Read aur Write models kaise separate karein?",
+    answer: `CQRS = Command Query Responsibility Segregation — reads aur writes alag karo.
+
+Command: State change karta hai (Create, Update, Delete) — koi data return nahi.
+Query: State read karta hai — koi side effects nahi.
+
+// Commands — write side
+interface Command {}
+
+class CreateOrderCommand implements Command {
+  constructor(
+    public readonly userId: string,
+    public readonly items: OrderItem[],
+    public readonly shippingAddress: Address,
+  ) {}
+}
+
+class CommandHandler<T extends Command> {
+  handle(command: T): Promise<void> { throw new Error("Override!"); }
+}
+
+class CreateOrderCommandHandler extends CommandHandler<CreateOrderCommand> {
+  constructor(
+    private orderRepo: OrderRepository,
+    private eventBus: EventBus,
+  ) { super(); }
+  
+  async handle(cmd: CreateOrderCommand): Promise<void> {
+    const order = Order.create(cmd.userId, cmd.items, cmd.shippingAddress);
+    await this.orderRepo.save(order);
+    this.eventBus.emit("order:created", { orderId: order.id });
+    // Returns void — no data!
+  }
+}
+
+// Queries — read side (separate model, can be denormalized!)
+interface Query<TResult> {}
+
+class GetUserOrdersQuery implements Query<OrderSummary[]> {
+  constructor(
+    public readonly userId: string,
+    public readonly page: number = 1,
+    public readonly limit: number = 20,
+  ) {}
+}
+
+class GetUserOrdersHandler {
+  constructor(private readDb: ReadDatabase) {}
+  
+  async handle(query: GetUserOrdersQuery): Promise<OrderSummary[]> {
+    // Read from optimized read model (can be different DB, pre-joined)
+    return this.readDb.query(\`
+      SELECT o.id, o.status, o.total, COUNT(i.id) as itemCount
+      FROM orders o JOIN order_items i ON o.id = i.order_id
+      WHERE o.user_id = ?
+      GROUP BY o.id
+      LIMIT ? OFFSET ?
+    \`, [query.userId, query.limit, (query.page - 1) * query.limit]);
+  }
+}
+
+// Benefits: Scale reads/writes independently
+// Read model = optimized for queries (denormalized, cached)
+// Write model = optimized for business logic (normalized)`,
+    tags: ["cqrs", "architecture", "patterns"],
   },
 ];

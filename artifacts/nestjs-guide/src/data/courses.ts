@@ -68,7 +68,7 @@ export const courses: CourseInfo[] = [
     level: "Beginner",
     topics: ["Classes", "Inheritance", "Polymorphism", "SOLID", "Design Patterns"],
     totalChapters: 8,
-    totalInterviews: 15,
+    totalInterviews: 36,
   },
   {
     id: "laravel",
