@@ -2515,6 +2515,1036 @@ greet.apply({ name: "Ali" }, ["Hi"]);  // "Hi, Ali"
 const boundGreet = greet.bind({ name: "Ali" });`,
   },
   {
+    id: 607,
+    level: "Intermediate" as const,
+    tags: ["scope", "closures"],
+    question: "Closure kya hai? Real-world example do.",
+    answer: `Closure = function + uska lexical environment. Jab inner function outer function ke variables ko yaad rakhta hai even after outer function return ho jaaye.
+
+**Kaise kaam karta hai:**
+Outer function execute hoti hai, return ho jaati hai, lekin inner function uske variables ka reference hold karta hai.
+
+**Real-world uses:**
+- Private variables (data encapsulation)
+- Factory functions
+- Memoization
+- Event handlers with captured state`,
+    code: `// Counter example
+function makeCounter() {
+  let count = 0;           // outer variable
+  return {
+    increment: () => ++count,  // closure over 'count'
+    decrement: () => --count,
+    get: () => count,
+  };
+}
+
+const c1 = makeCounter();
+const c2 = makeCounter();   // separate instance!
+c1.increment(); // 1
+c1.increment(); // 2
+c2.increment(); // 1 (independent)
+
+// Private variable pattern
+function createUser(name) {
+  let _password = null;  // truly private!
+  return {
+    getName: () => name,
+    setPassword: (p) => { _password = p; },
+    checkPassword: (p) => _password === p,
+  };
+}`,
+  },
+  {
+    id: 608,
+    level: "Intermediate" as const,
+    tags: ["async", "promises"],
+    question: "Promise kya hai? .then/.catch/.finally explain karo.",
+    answer: `Promise = asynchronous operation ka future result represent karta hai. 3 states: pending, fulfilled, rejected.
+
+**Methods:**
+- **.then(onFulfilled)** — success pe run hota hai, new Promise return karta hai
+- **.catch(onRejected)** — error pe run hota hai
+- **.finally(fn)** — success ya failure dono pe run hota hai (cleanup)
+
+**Promise combinators:**
+- **Promise.all()** — sab resolve hone ka wait karo (koi ek fail → all fail)
+- **Promise.allSettled()** — sab settle hone ka wait karo (fail bhi include)
+- **Promise.race()** — pehla settle hone wala return karo
+- **Promise.any()** — pehla resolve hone wala return karo`,
+    code: `// Basic promise
+const p = new Promise((resolve, reject) => {
+  setTimeout(() => resolve("done!"), 1000);
+});
+
+p.then(val => console.log(val))   // "done!"
+ .catch(err => console.error(err))
+ .finally(() => console.log("cleanup"));
+
+// Promise.all — parallel
+const [user, posts] = await Promise.all([
+  fetch('/api/user').then(r => r.json()),
+  fetch('/api/posts').then(r => r.json()),
+]);
+
+// Chaining
+fetch('/api/user')
+  .then(r => r.json())
+  .then(user => fetch(\`/api/posts/\${user.id}\`))
+  .then(r => r.json())
+  .catch(err => console.error('Failed:', err));`,
+  },
+  {
+    id: 609,
+    level: "Intermediate" as const,
+    tags: ["async"],
+    question: "async/await kya hai? Error handling kaise karte hain?",
+    answer: `async/await = Promises ka syntactic sugar — async code ko synchronous jaisa likhne deta hai.
+
+**async function:**
+- Hamesha Promise return karta hai
+- Await use karne ke liye function async hona chahiye
+
+**await:**
+- Promise resolve hone ka wait karta hai
+- Sirf async function ke andar use kar sakte ho
+
+**Error handling:**
+- try/catch blocks use karo
+- Ya .catch() add karo async function call pe
+
+**await vs .then:** Same result, await zyada readable hai`,
+    code: `// Without async/await
+function getData() {
+  return fetch('/api/user')
+    .then(r => r.json())
+    .then(user => fetch(\`/api/posts/\${user.id}\`))
+    .then(r => r.json());
+}
+
+// With async/await (same thing, cleaner)
+async function getData() {
+  const userRes = await fetch('/api/user');
+  const user = await userRes.json();
+  const postsRes = await fetch(\`/api/posts/\${user.id}\`);
+  return postsRes.json();
+}
+
+// Error handling
+async function safeGet() {
+  try {
+    const data = await getData();
+    return data;
+  } catch (err) {
+    console.error('Error:', err.message);
+    return null;
+  }
+}
+
+// Parallel (don't await sequentially!)
+const [a, b] = await Promise.all([fetchA(), fetchB()]);`,
+  },
+  {
+    id: 610,
+    level: "Beginner" as const,
+    tags: ["es6", "syntax"],
+    question: "Spread (...) aur Rest (...) operator mein kya fark hai?",
+    answer: `Dono ka syntax same (...) hai lekin context alag hai.
+
+**Spread:** Iterable ko expand karta hai (array/object unpack)
+- Array copy karo, merge karo
+- Function call mein args pass karo
+- Object spread karo
+
+**Rest:** Multiple values ko ek variable mein collect karta hai
+- Function parameters ke liye
+- Destructuring mein
+
+**Rule:** Assignment ka left side = Rest, right side = Spread`,
+    code: `// SPREAD — expand karo
+const arr1 = [1, 2, 3];
+const arr2 = [...arr1, 4, 5];    // [1,2,3,4,5] — copy + extend
+
+const obj1 = { a: 1, b: 2 };
+const obj2 = { ...obj1, c: 3 };  // { a:1, b:2, c:3 }
+
+Math.max(...arr1);                // Math.max(1, 2, 3)
+
+// REST — collect karo
+function sum(...nums) {           // rest parameter
+  return nums.reduce((a, b) => a + b, 0);
+}
+sum(1, 2, 3, 4);                  // 10
+
+// Destructuring with rest
+const [first, second, ...rest] = [1, 2, 3, 4, 5];
+// first=1, second=2, rest=[3,4,5]
+
+const { a, ...others } = { a: 1, b: 2, c: 3 };
+// a=1, others={b:2, c:3}`,
+  },
+  {
+    id: 611,
+    level: "Beginner" as const,
+    tags: ["es6", "syntax"],
+    question: "Destructuring kya hai? Array aur Object destructuring explain karo.",
+    answer: `Destructuring = array ya object se values nikaal ke variables mein assign karo — compact syntax mein.
+
+**Array destructuring:** Position-based
+**Object destructuring:** Property name-based
+
+**Features:**
+- Default values set karo
+- Rename karo (aliasing)
+- Nested destructure karo
+- Function parameters mein use karo`,
+    code: `// Array destructuring
+const [a, b, c] = [1, 2, 3];
+const [x, , z] = [1, 2, 3];      // skip middle
+const [p = 10] = [];              // default value → 10
+
+// Swap variables!
+let m = 1, n = 2;
+[m, n] = [n, m];                  // m=2, n=1
+
+// Object destructuring
+const { name, age } = { name: "Ali", age: 25 };
+
+// Rename
+const { name: userName } = { name: "Ali" };
+// userName = "Ali"
+
+// Default + rename
+const { score = 0, level: lvl = "Beginner" } = {};
+
+// Nested
+const { address: { city } } = { address: { city: "Lahore" } };
+
+// In function parameters
+function greet({ name, age = 18 }) {
+  return \`\${name} is \${age}\`;
+}
+greet({ name: "Ali" });`,
+  },
+  {
+    id: 612,
+    level: "Intermediate" as const,
+    tags: ["es6", "data-structures"],
+    question: "Map aur Object mein kya fark hai? Set kya hota hai?",
+    answer: `**Map vs Object:**
+- Map: any type ki key (object, function, etc.). Object: sirf string/symbol keys
+- Map: insertion order preserve karta hai. Object: bhi karta hai (modern JS) lekin keys string bante hain
+- Map.size property hai. Object ke liye Object.keys().length
+- Map iteration direct (for...of). Object ke liye Object.entries()
+- Map: pure data ke liye better. Object: structured records ke liye
+
+**Set:**
+- Unique values ki collection — duplicates allowed nahi
+- Any type store kar sakte ho
+- has(), add(), delete() methods
+- Duplicate remove karne ka easy way: [...new Set(arr)]`,
+    code: `// Map
+const map = new Map();
+map.set('name', 'Ali');
+map.set(42, 'answer');
+map.set({}, 'object key!');
+map.get('name');    // "Ali"
+map.size;           // 3
+map.has('name');    // true
+
+for (const [key, val] of map) { ... }
+
+// Set
+const set = new Set([1, 2, 2, 3, 3, 3]);
+console.log([...set]);  // [1, 2, 3] — unique only!
+
+set.add(4);
+set.has(2);    // true
+set.delete(1);
+
+// Remove duplicates from array
+const unique = [...new Set([1, 2, 2, 3, 3])];
+// [1, 2, 3]`,
+  },
+  {
+    id: 613,
+    level: "Intermediate" as const,
+    tags: ["es6", "functions"],
+    question: "Arrow function aur regular function mein kya fark hai?",
+    answer: `**Syntax:** Arrow function compact hai.
+
+**this binding (main difference):**
+- Regular function: apna this hota hai (call context pe depend)
+- Arrow function: lexical this — surrounding scope ka this use karta hai
+
+**Other differences:**
+- Arrow function mein arguments object nahi hota
+- Arrow function constructor (new) nahi ban sakta
+- Arrow function prototype property nahi hoti
+- Arrow function hamesha anonymous hai (naam nahi)
+
+**Kab kya use karein:**
+- Methods: regular function (this chahiye)
+- Callbacks, array methods, short functions: arrow`,
+    code: `// Regular function — dynamic this
+const obj = {
+  name: "Ali",
+  greet: function() { return this.name; },  // "Ali" ✅
+  greetArrow: () => this.name,              // undefined ❌ (window.name)
+};
+
+// Constructor — only regular function
+function Person(name) { this.name = name; }
+const p = new Person("Ali");  // ✅
+
+const Arrow = (name) => { this.name = name; };
+// new Arrow(); // ❌ TypeError: Arrow is not a constructor
+
+// Practical: timer with arrow
+class Counter {
+  count = 0;
+  start() {
+    setInterval(() => {
+      this.count++;  // ✅ lexical this = Counter instance
+    }, 1000);
+  }
+}
+
+// Short syntax
+const double = x => x * 2;
+const add = (a, b) => a + b;
+const getUser = () => ({ name: "Ali" });  // object: wrap in ()`,
+  },
+  {
+    id: 614,
+    level: "Intermediate" as const,
+    tags: ["performance", "patterns"],
+    question: "Debounce aur Throttle kya hain? Fark explain karo.",
+    answer: `Dono function calls ko limit karne ke techniques hain — performance optimization ke liye.
+
+**Debounce:** Function tab call karo jab events ki "burst" ruk jaaye. Delay ke baad sirf ek baar.
+- **Use case:** Search input, window resize, form validation
+- User type karta rahta hai → timer reset hota hai → typing rukne ke X ms baad call
+
+**Throttle:** Function time interval mein sirf ek baar call karo — events aate rahein.
+- **Use case:** Scroll handlers, mouse move, API calls on scroll
+- X ms mein guaranteed ek call, chahe events kitne bhi aayein
+
+**Trick to remember:** Debounce = "wait ho jaao", Throttle = "regular interval pe"`,
+    code: `// Debounce implementation
+function debounce(fn, delay) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+// Use: search input
+const onSearch = debounce((query) => {
+  fetch(\`/api/search?q=\${query}\`);
+}, 300);  // 300ms ruko
+
+input.addEventListener('input', e => onSearch(e.target.value));
+
+// Throttle implementation
+function throttle(fn, limit) {
+  let inThrottle = false;
+  return function (...args) {
+    if (!inThrottle) {
+      fn.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => { inThrottle = false; }, limit);
+    }
+  };
+}
+
+// Use: scroll handler
+const onScroll = throttle(() => updatePosition(), 100);
+window.addEventListener('scroll', onScroll);`,
+  },
+  {
+    id: 615,
+    level: "Intermediate" as const,
+    tags: ["patterns", "scope"],
+    question: "IIFE kya hai? Kab use karte hain?",
+    answer: `IIFE = Immediately Invoked Function Expression. Define hote hi execute ho jaata hai.
+
+**Syntax:** (function() { ... })() ya (() => { ... })()
+
+**Kyun use karein:**
+1. **Scope isolation** — global scope pollute mat karo
+2. **Private variables** — variables bahar accessible nahi hote
+3. **Module pattern** (ES6 modules se pehle)
+4. **Avoid naming conflicts** — libraries mein
+5. **Async IIFE** — top-level await ke bina async code
+
+**Modern JS mein:** ES6 modules (import/export) ne IIFE ki zaroorat kam kar di, lekin still useful hai for initialization code.`,
+    code: `// Basic IIFE
+(function() {
+  const secret = "private!";
+  console.log("runs immediately!");
+})();
+// console.log(secret); // ❌ ReferenceError
+
+// Arrow IIFE
+(() => {
+  console.log("arrow IIFE");
+})();
+
+// With return value
+const result = (function() {
+  const PI = 3.14159;
+  return { area: r => PI * r * r };
+})();
+result.area(5);  // 78.5
+
+// Async IIFE (top-level async)
+(async () => {
+  const data = await fetch('/api/init').then(r => r.json());
+  init(data);
+})();
+
+// Passing globals safely (old jQuery style)
+(function($, window, undefined) {
+  // $ = jQuery, guaranteed
+})(jQuery, window);`,
+  },
+  {
+    id: 616,
+    level: "Advanced" as const,
+    tags: ["patterns", "functional"],
+    question: "Currying kya hai? Memoization kya hai?",
+    answer: `**Currying:** Function jo multiple arguments lete hai use ek chain of functions mein convert karo — ek ek argument lete hain.
+f(a, b, c) → f(a)(b)(c)
+
+**Fayde:**
+- Partial application (kuch arguments pehle fix karo)
+- Reusable functions banana
+- Functional composition
+
+**Memoization:** Function results cache karo — same arguments pe dobara compute mat karo.
+
+**Fayde:**
+- Expensive calculations optimize karo
+- Pure functions ke liye perfect (same input → same output)
+- Fibonacci, DP problems`,
+    code: `// Currying
+function curry(fn) {
+  return function curried(...args) {
+    if (args.length >= fn.length) {
+      return fn(...args);
+    }
+    return (...more) => curried(...args, ...more);
+  };
+}
+
+const add = curry((a, b, c) => a + b + c);
+add(1)(2)(3);     // 6
+add(1, 2)(3);     // 6
+const add5 = add(5);  // partial application
+add5(3)(2);       // 10
+
+// Practical: reusable filter
+const filterBy = curry((key, value, arr) =>
+  arr.filter(item => item[key] === value)
+);
+const getAdmins = filterBy('role', 'admin');
+getAdmins(users);  // filter users where role='admin'
+
+// Memoization
+function memoize(fn) {
+  const cache = new Map();
+  return function (...args) {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) return cache.get(key);
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+const fib = memoize(function(n) {
+  if (n <= 1) return n;
+  return fib(n - 1) + fib(n - 2);
+});
+fib(40);  // instant after first call!`,
+  },
+  {
+    id: 617,
+    level: "Intermediate" as const,
+    tags: ["es2020", "syntax"],
+    question: "Optional chaining (?.) aur Nullish coalescing (??) kya hain?",
+    answer: `**Optional chaining (?.):** Property access ya method call karo bina explicit null check ke. Agar intermediate value null/undefined hai toh undefined return karo instead of throwing error.
+
+**Nullish coalescing (??):** Left side null ya undefined hai toh right side return karo. (|| se fark: || falsy check karta hai — 0, "", false bhi)
+
+**?.() — optional method call**
+**?.[] — optional computed property**`,
+    code: `const user = null;
+
+// Without optional chaining
+const city = user && user.address && user.address.city; // tedious!
+
+// With optional chaining
+const city = user?.address?.city;     // undefined (no error!)
+const len = user?.name?.length;       // undefined
+
+// Optional method call
+user?.sendEmail();                    // no error if user is null
+
+// Optional array access
+const first = arr?.[0];              // undefined if arr is null
+
+// Nullish coalescing
+const name = user?.name ?? "Guest";  // "Guest" if null/undefined
+const count = data?.count ?? 0;      // 0 if null/undefined
+
+// ?? vs ||
+const a = 0 || "default";   // "default" (0 is falsy — BAD!)
+const b = 0 ?? "default";   // 0 (0 is not null/undefined — GOOD!)
+
+const score = user?.score ?? 0;      // 0 if not set
+const port = process.env.PORT ?? 3000;`,
+  },
+  {
+    id: 618,
+    level: "Intermediate" as const,
+    tags: ["arrays", "functional"],
+    question: "Array methods: map, filter, reduce deeply explain karo.",
+    answer: `Yeh teen methods functional programming ka core hain — original array modify nahi karte, new value return karte hain.
+
+**map():** Har element transform karo → same length ka new array
+**filter():** Condition ke basis pe elements rakho → same ya chhota array
+**reduce():** Array ko single value mein fold karo → any type
+
+**Combination:** Chaining karo — filter → map → reduce
+**Performance tip:** reduce() ek hi pass mein sab kuch kar sakta hai`,
+    code: `const users = [
+  { name: "Ali", age: 25, active: true },
+  { name: "Sara", age: 17, active: false },
+  { name: "Raza", age: 30, active: true },
+];
+
+// map — transform
+const names = users.map(u => u.name);
+// ["Ali", "Sara", "Raza"]
+
+const doubled = [1,2,3].map(x => x * 2);
+// [2, 4, 6]
+
+// filter — select
+const adults = users.filter(u => u.age >= 18);
+// [Ali, Raza]
+
+const actives = users.filter(u => u.active);
+
+// reduce — aggregate
+const totalAge = users.reduce((sum, u) => sum + u.age, 0);
+// 72
+
+// Group by (reduce advanced)
+const grouped = users.reduce((acc, u) => {
+  const key = u.active ? 'active' : 'inactive';
+  acc[key] = acc[key] || [];
+  acc[key].push(u.name);
+  return acc;
+}, {});
+// { active: ["Ali", "Raza"], inactive: ["Sara"] }
+
+// Chaining
+const result = users
+  .filter(u => u.active)    // sirf active
+  .map(u => u.name)         // sirf names
+  .join(", ");              // "Ali, Raza"`,
+  },
+  {
+    id: 619,
+    level: "Beginner" as const,
+    tags: ["es6", "syntax"],
+    question: "Template literals kya hain? Tagged templates kya hain?",
+    answer: `**Template literals:** Backticks (\`) use karte hain. String interpolation, multiline strings aur expressions embed karne ke liye.
+
+**Tagged templates:** Template literal ke pehle function naam likho — function string parts aur interpolated values receive karta hai. Advanced use case.`,
+    code: `// Basic interpolation
+const name = "Ali";
+const age = 25;
+const msg = \`Hello \${name}, you are \${age} years old!\`;
+
+// Expression embed
+const total = \`Total: \${2 + 3 * 4}\`;   // "Total: 14"
+const status = \`User is \${user.active ? "active" : "inactive"}\`;
+
+// Multiline (no \\n needed!)
+const html = \`
+  <div class="card">
+    <h1>\${title}</h1>
+    <p>\${description}</p>
+  </div>
+\`;
+
+// Nested templates
+const list = items.map(i => \`<li>\${i.name}</li>\`).join('');
+const ul = \`<ul>\${list}</ul>\`;
+
+// Tagged templates
+function highlight(strings, ...values) {
+  return strings.reduce((result, str, i) =>
+    result + str + (values[i] !== undefined
+      ? \`<mark>\${values[i]}</mark>\`
+      : ''), '');
+}
+
+const output = highlight\`Hello \${name}, age \${age}!\`;
+// "Hello <mark>Ali</mark>, age <mark>25</mark>!"`,
+  },
+  {
+    id: 620,
+    level: "Intermediate" as const,
+    tags: ["es6", "modules"],
+    question: "ES6 Modules (import/export) kya hain? CommonJS se kya fark hai?",
+    answer: `**ES6 Modules (ESM):**
+- import/export syntax
+- Static — compile time pe resolve hote hain
+- Top-level await support
+- Browser aur Node.js (with .mjs ya "type":"module") mein kaam karta hai
+- Tree-shakeable (bundlers unused code remove kar sakte hain)
+
+**CommonJS (CJS):**
+- require()/module.exports syntax
+- Dynamic — runtime pe resolve hote hain
+- Node.js ka original module system
+- Synchronous
+
+**Named vs Default exports:**
+- Named: multiple exports per file
+- Default: ek per file, import karte waqt koi bhi naam de sakte ho`,
+    code: `// ES6 named exports
+export const PI = 3.14;
+export function add(a, b) { return a + b; }
+export class User { ... }
+
+// ES6 default export
+export default class AuthService { ... }
+
+// Import named
+import { PI, add } from './math.js';
+import { User as UserModel } from './models.js';
+
+// Import default
+import AuthService from './auth.js';
+
+// Import all
+import * as MathUtils from './math.js';
+MathUtils.add(1, 2);
+
+// CommonJS (Node.js old style)
+const express = require('express');
+module.exports = { add, PI };
+module.exports = AuthService;  // default-like
+
+// Dynamic import (code splitting)
+const module = await import('./heavyModule.js');
+const { process } = await import(\`./handlers/\${type}.js\`);`,
+  },
+  {
+    id: 621,
+    level: "Advanced" as const,
+    tags: ["advanced", "generators"],
+    question: "Generator functions kya hain? Kab use karte hain?",
+    answer: `Generator = function* jo pause aur resume ho sakta hai. yield keyword se value return karta hai aur pause hota hai.
+
+**Iterator protocol implement karta hai:**
+- next() call karo → { value, done }
+- yield expression se value return karo
+- Caller control karta hai execution
+
+**Uses:**
+- Infinite sequences (lazy evaluation)
+- Custom iterators
+- Async flow control (Redux-saga)
+- Pagination`,
+    code: `// Basic generator
+function* counter(start = 0) {
+  while (true) {
+    yield start++;    // pause, return value
+  }
+}
+
+const gen = counter(1);
+gen.next();  // { value: 1, done: false }
+gen.next();  // { value: 2, done: false }
+
+// Finite generator
+function* range(from, to) {
+  for (let i = from; i <= to; i++) yield i;
+}
+
+for (const n of range(1, 5)) console.log(n);  // 1,2,3,4,5
+const arr = [...range(1, 5)];  // [1,2,3,4,5]
+
+// Fibonacci (infinite)
+function* fibonacci() {
+  let [a, b] = [0, 1];
+  while (true) {
+    yield a;
+    [a, b] = [b, a + b];
+  }
+}
+
+const fib = fibonacci();
+Array.from({ length: 8 }, () => fib.next().value);
+// [0, 1, 1, 2, 3, 5, 8, 13]
+
+// Two-way communication
+function* calculator() {
+  let result = 0;
+  while (true) {
+    const input = yield result;
+    result += input;
+  }
+}`,
+  },
+  {
+    id: 622,
+    level: "Beginner" as const,
+    tags: ["basics", "types"],
+    question: "typeof, instanceof, aur Object.is() mein kya fark hai?",
+    answer: `**typeof:** Value ka primitive type string mein return karta hai. Gotchas: typeof null = "object" (bug!), typeof function = "function".
+
+**instanceof:** Object prototype chain check karta hai — "kya yeh is class ka instance hai?"
+
+**Object.is():** Strict equality like === lekin 2 edge cases sahi handle karta hai:
+- NaN === NaN → false, Object.is(NaN, NaN) → true
+- -0 === +0 → true, Object.is(-0, +0) → false`,
+    code: `// typeof
+typeof 42;          // "number"
+typeof "hello";     // "string"
+typeof true;        // "boolean"
+typeof undefined;   // "undefined"
+typeof null;        // "object" ← famous bug!
+typeof {};          // "object"
+typeof [];          // "object" (array bhi object hai!)
+typeof function(){}; // "function"
+typeof Symbol();    // "symbol"
+
+// Array check
+Array.isArray([]);  // true ✅
+
+// instanceof
+class Animal {}
+class Dog extends Animal {}
+
+const d = new Dog();
+d instanceof Dog;     // true
+d instanceof Animal;  // true (prototype chain!)
+d instanceof Object;  // true (sab object hain!)
+
+[] instanceof Array;   // true
+[] instanceof Object;  // true
+
+// Object.is() edge cases
+NaN === NaN;            // false (unexpected!)
+Object.is(NaN, NaN);    // true ✅
+
+-0 === +0;              // true
+Object.is(-0, +0);      // false ✅`,
+  },
+  {
+    id: 623,
+    level: "Advanced" as const,
+    tags: ["advanced", "proxy"],
+    question: "Proxy aur Reflect kya hain? Real use case do.",
+    answer: `**Proxy:** Object operations ko intercept aur customize karo — get, set, delete, etc.
+
+**Reflect:** Built-in object operations ke liye methods — Proxy handlers mein use karo default behavior ke liye.
+
+**Proxy traps:** get, set, has, deleteProperty, apply, construct, etc.
+
+**Real use cases:**
+- Validation (set trap mein type check)
+- Logging/debugging (get/set track karo)
+- Default values (get trap mein undefined handle)
+- Reactive systems (Vue 3 reactivity Proxy pe based hai!)
+- API mocking`,
+    code: `// Validation proxy
+function createValidatedUser(data) {
+  return new Proxy(data, {
+    set(target, prop, value) {
+      if (prop === 'age' && typeof value !== 'number') {
+        throw new TypeError('age must be a number');
+      }
+      if (prop === 'email' && !value.includes('@')) {
+        throw new Error('Invalid email');
+      }
+      target[prop] = value;
+      return true;  // success signal
+    },
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      return \`Property '\${prop}' not found\`;  // default
+    }
+  });
+}
+
+const user = createValidatedUser({ name: "Ali" });
+user.age = 25;     // ✅
+user.age = "old";  // ❌ TypeError
+
+// Reactive proxy (simplified Vue-like)
+function reactive(obj, onChange) {
+  return new Proxy(obj, {
+    set(target, prop, value) {
+      target[prop] = value;
+      onChange(prop, value);  // notify!
+      return true;
+    }
+  });
+}
+
+const state = reactive({ count: 0 }, (key, val) => {
+  console.log(\`\${key} changed to \${val}\`);
+  render();
+});
+state.count++;  // logs: "count changed to 1"`,
+  },
+  {
+    id: 624,
+    level: "Intermediate" as const,
+    tags: ["errors", "basics"],
+    question: "JavaScript mein error types kya hain? Custom errors kaise banate hain?",
+    answer: `**Built-in Error types:**
+- **Error** — base class
+- **TypeError** — wrong type pe operation (null.property)
+- **ReferenceError** — undefined variable use karo
+- **SyntaxError** — invalid syntax
+- **RangeError** — value range se bahar (new Array(-1))
+- **URIError** — malformed URI
+
+**Custom Errors:** Error class extend karo — better error handling, instanceof check, extra properties add karo.`,
+    code: `// Built-in errors
+try {
+  null.property;       // TypeError
+} catch (e) {
+  console.log(e instanceof TypeError); // true
+  console.log(e.name);    // "TypeError"
+  console.log(e.message); // "Cannot read properties..."
+  console.log(e.stack);   // stack trace
+}
+
+// Custom error
+class ValidationError extends Error {
+  constructor(message, field) {
+    super(message);
+    this.name = 'ValidationError';
+    this.field = field;
+  }
+}
+
+class NotFoundError extends Error {
+  constructor(resource, id) {
+    super(\`\${resource} with id \${id} not found\`);
+    this.name = 'NotFoundError';
+    this.statusCode = 404;
+  }
+}
+
+// Usage
+function validateAge(age) {
+  if (typeof age !== 'number') {
+    throw new ValidationError('Age must be a number', 'age');
+  }
+  if (age < 0) throw new RangeError('Age cannot be negative');
+}
+
+try {
+  validateAge("old");
+} catch (e) {
+  if (e instanceof ValidationError) {
+    console.log(e.field);    // "age"
+  }
+}`,
+  },
+  {
+    id: 625,
+    level: "Intermediate" as const,
+    tags: ["async", "advanced"],
+    question: "WeakMap aur WeakRef kya hain? Garbage collection se kya connection hai?",
+    answer: `**WeakMap:**
+- Keys sirf objects ho sakti hain
+- Keys weakly held — agar object ka koi reference nahi, garbage collect ho jaata hai
+- Non-iterable (keys enumerate nahi kar sakte)
+- Size property nahi
+
+**Use case:** Private data store karo object ke saath bina memory leak ke — object destroy hone pe automatically cleanup.
+
+**WeakRef:**
+- Object ka weak reference rakho
+- deref() se access karo — null aa sakta hai agar GC ne collect kar liya
+- Caching ke liye useful (cache object GC se protected nahi hoga)`,
+    code: `// WeakMap — private data pattern
+const _private = new WeakMap();
+
+class BankAccount {
+  constructor(balance) {
+    _private.set(this, { balance });  // private!
+  }
+  
+  deposit(amount) {
+    const data = _private.get(this);
+    data.balance += amount;
+  }
+  
+  getBalance() {
+    return _private.get(this).balance;
+  }
+}
+
+const acc = new BankAccount(1000);
+acc.deposit(500);
+acc.getBalance();  // 1500
+// acc.balance → undefined (truly private!)
+
+// When 'acc' is garbage collected, WeakMap entry auto-removed!
+
+// WeakRef
+let bigObject = { data: new Array(10000).fill('x') };
+const ref = new WeakRef(bigObject);
+
+bigObject = null;  // allow GC
+
+// Later...
+const obj = ref.deref();
+if (obj) {
+  console.log(obj.data.length);  // still alive
+} else {
+  console.log("GC ne collect kar liya!");
+}`,
+  },
+  {
+    id: 626,
+    level: "Intermediate" as const,
+    tags: ["patterns", "oop"],
+    question: "Class fields, private fields (#), aur static class features kya hain?",
+    answer: `**Public class fields:** Class body mein declare karo — constructor mein this.x = y ki zaroorat nahi.
+
+**Private fields (#):** # prefix se genuinely private — class ke bahar access nahi, prototype chain mein nahi.
+
+**Static fields/methods:** Class level pe — instance nahi chahiye. Utility methods, constants, factory patterns.
+
+**Static private:** # aur static dono — class ke andar sirf.`,
+    code: `class User {
+  // Public field (default value)
+  role = 'user';
+  isActive = true;
+  
+  // Private field (# prefix)
+  #password;
+  #loginAttempts = 0;
+  
+  // Static field
+  static userCount = 0;
+  static #maxAttempts = 3;  // static private
+  
+  constructor(name, password) {
+    this.name = name;
+    this.#password = password;
+    User.userCount++;
+  }
+  
+  // Private method
+  #validatePassword(pass) {
+    return this.#password === pass;
+  }
+  
+  login(pass) {
+    if (this.#loginAttempts >= User.#maxAttempts) {
+      throw new Error('Account locked');
+    }
+    if (!this.#validatePassword(pass)) {
+      this.#loginAttempts++;
+      return false;
+    }
+    return true;
+  }
+  
+  // Static factory method
+  static createAdmin(name) {
+    const user = new User(name, Math.random().toString());
+    user.role = 'admin';
+    return user;
+  }
+}
+
+const admin = User.createAdmin("Ali");
+admin.#password;  // ❌ SyntaxError (truly private!)
+User.userCount;   // 1 (static)`,
+  },
+  {
+    id: 627,
+    level: "Advanced" as const,
+    tags: ["advanced", "async"],
+    question: "AbortController kya hai? Fetch request cancel kaise karein?",
+    answer: `AbortController = fetch requests ya koi bhi AbortSignal support karne wali async operation cancel karne ka standard way.
+
+**Problem without it:**
+- User page change kare → stale response aaye → state update kare → bug!
+- Component unmount → memory leak
+
+**Use cases:**
+- React useEffect cleanup mein fetch cancel karo
+- User ne naya search kiya → pehla cancel karo
+- Timeout implement karo`,
+    code: `// Basic cancellation
+const controller = new AbortController();
+const { signal } = controller;
+
+fetch('/api/slow-data', { signal })
+  .then(r => r.json())
+  .then(data => console.log(data))
+  .catch(err => {
+    if (err.name === 'AbortError') {
+      console.log('Request cancelled!');
+    } else {
+      throw err;
+    }
+  });
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+
+// React useEffect pattern
+useEffect(() => {
+  const controller = new AbortController();
+  
+  async function fetchData() {
+    try {
+      const res = await fetch('/api/data', { 
+        signal: controller.signal 
+      });
+      const data = await res.json();
+      setData(data);  // safe — won't run if aborted
+    } catch (err) {
+      if (err.name !== 'AbortError') setError(err);
+    }
+  }
+  
+  fetchData();
+  return () => controller.abort();  // cleanup!
+}, [userId]);
+
+// Search with debounce + abort
+let searchController;
+async function search(query) {
+  searchController?.abort();  // cancel previous
+  searchController = new AbortController();
+  const data = await fetch(\`/search?q=\${query}\`, {
+    signal: searchController.signal
+  }).then(r => r.json());
+  return data;
+}`,
+  },
+  {
     id: 606,
     level: "Advanced" as const,
     tags: ["patterns", "advanced"],

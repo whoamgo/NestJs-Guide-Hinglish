@@ -767,6 +767,801 @@ Bade interface mat banao. Swimmable, Flyable alag alag — Dog sirf Swimmable im
 Concrete pe nahi, abstraction pe depend karo. Service constructor mein Database interface inject karo, not MySQLDatabase directly.`,
   },
   {
+    id: 205,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Singleton Pattern kya hai? Thread-safety kaise ensure karein?",
+    answer: `Singleton = ek class ka sirf ek instance — global access point ke saath.
+
+**Implementation requirements:**
+1. Private constructor — direct instantiation band
+2. Private static instance variable
+3. Public static getInstance() method
+
+**Use cases:** Database connection, Logger, Config manager, Cache
+
+**Problems:**
+- Global state → tight coupling
+- Testing mein mock karna mushkil
+- Multi-threading mein race condition (language-specific)
+
+**Modern approach:** Dependency injection prefer karo — testability better`,
+    code: `// Basic Singleton (JavaScript)
+class Logger {
+  private static instance: Logger;
+  private logs: string[] = [];
+  
+  private constructor() {}  // prevent direct instantiation
+  
+  static getInstance(): Logger {
+    if (!Logger.instance) {
+      Logger.instance = new Logger();
+    }
+    return Logger.instance;
+  }
+  
+  log(message: string): void {
+    const entry = \`[\${new Date().toISOString()}] \${message}\`;
+    this.logs.push(entry);
+    console.log(entry);
+  }
+  
+  getLogs(): string[] {
+    return [...this.logs];
+  }
+}
+
+// Usage
+const logger1 = Logger.getInstance();
+const logger2 = Logger.getInstance();
+console.log(logger1 === logger2);  // true — same instance!
+
+logger1.log("App started");
+logger2.log("User logged in");
+Logger.getInstance().getLogs();  // both logs here`,
+  },
+  {
+    id: 206,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Factory Pattern kya hai? Abstract Factory se kya fark hai?",
+    answer: `**Factory Method Pattern:**
+Subclasses decide karein kaun sa object create karna hai — parent class mein creation logic define karo, subclass mein implement karo.
+
+**Simple Factory:** (Factory Method ka simplified version) — ek static method jo type ke basis pe object return kare.
+
+**Abstract Factory:** Related objects ki family create karo bina concrete classes specify kiye. "Factory of factories."
+
+**Kab use karein:**
+- Object creation complex ho
+- Different environments (dev/prod)
+- Plugin systems`,
+    code: `// Simple Factory
+class ShapeFactory {
+  static create(type: 'circle' | 'square' | 'triangle', size: number): Shape {
+    switch (type) {
+      case 'circle':   return new Circle(size);
+      case 'square':   return new Square(size);
+      case 'triangle': return new Triangle(size);
+      default: throw new Error(\`Unknown shape: \${type}\`);
+    }
+  }
+}
+
+const shape = ShapeFactory.create('circle', 5);
+
+// Factory Method Pattern
+abstract class Notification {
+  abstract createSender(): Sender;  // factory method
+  
+  send(msg: string): void {
+    const sender = this.createSender();  // subclass decides
+    sender.send(msg);
+  }
+}
+
+class EmailNotification extends Notification {
+  createSender(): Sender { return new EmailSender(); }
+}
+
+class SMSNotification extends Notification {
+  createSender(): Sender { return new SMSSender(); }
+}
+
+// Abstract Factory
+interface UIFactory {
+  createButton(): Button;
+  createInput(): Input;
+  createModal(): Modal;
+}
+
+class MaterialUIFactory implements UIFactory {
+  createButton() { return new MaterialButton(); }
+  createInput()  { return new MaterialInput(); }
+  createModal()  { return new MaterialModal(); }
+}
+
+class BootstrapFactory implements UIFactory {
+  createButton() { return new BootstrapButton(); }
+  createInput()  { return new BootstrapInput(); }
+  createModal()  { return new BootstrapModal(); }
+}`,
+  },
+  {
+    id: 207,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Observer Pattern kya hai? Real-world examples do.",
+    answer: `Observer = Subject (publisher) apni state changes ke baare mein Observers (subscribers) ko notify karta hai.
+
+**Components:**
+- **Subject/Observable:** State rakhta hai, observers ka list, notify karta hai
+- **Observer:** update() method implement karta hai
+
+**Fayde:**
+- Loose coupling — Subject observers ki details nahi jaanta
+- Multiple observers ek subject pe
+- Runtime mein observers add/remove karo
+
+**Real examples:**
+- Event listeners (click, input)
+- Vue/React reactivity
+- Redux store subscriptions
+- Stock price alerts`,
+    code: `// Observer Pattern
+interface Observer {
+  update(event: string, data: any): void;
+}
+
+class EventEmitter {
+  private listeners = new Map<string, Set<Observer>>();
+  
+  subscribe(event: string, observer: Observer): () => void {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event)!.add(observer);
+    
+    // Unsubscribe function return karo
+    return () => this.listeners.get(event)?.delete(observer);
+  }
+  
+  emit(event: string, data?: any): void {
+    this.listeners.get(event)?.forEach(obs => obs.update(event, data));
+  }
+}
+
+// Real example: Shopping Cart
+class Cart extends EventEmitter {
+  private items: CartItem[] = [];
+  
+  addItem(item: CartItem): void {
+    this.items.push(item);
+    this.emit('item:added', item);
+    this.emit('cart:updated', this.getTotal());
+  }
+  
+  getTotal(): number {
+    return this.items.reduce((sum, i) => sum + i.price, 0);
+  }
+}
+
+// Observers
+const priceDisplay: Observer = {
+  update: (event, total) => {
+    if (event === 'cart:updated') updateUI(total);
+  }
+};
+
+const analyticsTracker: Observer = {
+  update: (event, item) => {
+    if (event === 'item:added') trackEvent('add_to_cart', item);
+  }
+};
+
+const cart = new Cart();
+const unsubPrice = cart.subscribe('cart:updated', priceDisplay);
+cart.subscribe('item:added', analyticsTracker);
+
+cart.addItem({ name: "Book", price: 500 });  // both observers notified!`,
+  },
+  {
+    id: 208,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Strategy Pattern kya hai? Example do.",
+    answer: `Strategy = algorithms ko interchangeable banao — runtime mein swap karo bina client code change kiye.
+
+**Problem:** Ek function mein bahut saare if/else ya switch — hard to extend.
+
+**Solution:** Har algorithm ko alag class mein encapsulate karo (Strategy). Context class strategy use karta hai.
+
+**SOLID violation fix:** Open/Closed Principle — new strategy add karo bina existing code change kiye.
+
+**Real uses:**
+- Payment methods (Stripe, PayPal, Cash)
+- Sorting algorithms
+- Discount calculation
+- Authentication strategies`,
+    code: `// Without Strategy (bad — lots of if/else)
+function calculateDiscount(type: string, price: number) {
+  if (type === 'regular') return price * 0.05;
+  if (type === 'premium') return price * 0.15;
+  if (type === 'vip') return price * 0.25;
+  if (type === 'employee') return price * 0.40;
+  return 0;
+}
+
+// With Strategy Pattern (good — extensible)
+interface DiscountStrategy {
+  calculate(price: number): number;
+}
+
+class RegularDiscount implements DiscountStrategy {
+  calculate(price: number) { return price * 0.05; }
+}
+
+class PremiumDiscount implements DiscountStrategy {
+  calculate(price: number) { return price * 0.15; }
+}
+
+class VIPDiscount implements DiscountStrategy {
+  calculate(price: number) { return price * 0.25; }
+}
+
+class Order {
+  private discount: DiscountStrategy;
+  
+  constructor(private price: number, userType: string) {
+    // Strategy map — no if/else!
+    const strategies: Record<string, DiscountStrategy> = {
+      regular: new RegularDiscount(),
+      premium: new PremiumDiscount(),
+      vip: new VIPDiscount(),
+    };
+    this.discount = strategies[userType] || new RegularDiscount();
+  }
+  
+  getFinalPrice(): number {
+    return this.price - this.discount.calculate(this.price);
+  }
+  
+  // Runtime swap
+  setDiscount(strategy: DiscountStrategy): void {
+    this.discount = strategy;
+  }
+}`,
+  },
+  {
+    id: 209,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Builder Pattern kya hai? Kab use karein?",
+    answer: `Builder = Complex object step-by-step construct karo — ek ek part set karo, phir build karo.
+
+**Problem it solves:**
+- Telescope constructor problem: constructor(a, b, c, d, e, f) — confusing!
+- Optional fields ke saath complex objects
+- Same construction process, different representations
+
+**Benefits:**
+- Readable code — method chaining
+- Optional fields handle
+- Immutable objects create karo
+- Validation build step mein`,
+    code: `// Without Builder (ugly!)
+const request = new HttpRequest(
+  'GET', 'https://api.example.com', null, 
+  { Authorization: 'Bearer token' }, 
+  5000, true, 'json', null
+);
+
+// With Builder (readable!)
+class HttpRequestBuilder {
+  private method = 'GET';
+  private url = '';
+  private headers: Record<string, string> = {};
+  private body: any = null;
+  private timeout = 30000;
+  private withCredentials = false;
+  
+  setMethod(method: string): this {
+    this.method = method;
+    return this;  // chaining!
+  }
+  
+  setUrl(url: string): this {
+    this.url = url;
+    return this;
+  }
+  
+  addHeader(key: string, value: string): this {
+    this.headers[key] = value;
+    return this;
+  }
+  
+  withAuth(token: string): this {
+    return this.addHeader('Authorization', \`Bearer \${token}\`);
+  }
+  
+  setBody(body: any): this {
+    this.body = body;
+    return this;
+  }
+  
+  setTimeout(ms: number): this {
+    this.timeout = ms;
+    return this;
+  }
+  
+  build(): HttpRequest {
+    if (!this.url) throw new Error('URL is required');
+    return new HttpRequest(this);
+  }
+}
+
+// Usage — much cleaner!
+const request = new HttpRequestBuilder()
+  .setMethod('POST')
+  .setUrl('https://api.example.com/users')
+  .withAuth(token)
+  .addHeader('Content-Type', 'application/json')
+  .setBody({ name: 'Ali', email: 'ali@test.com' })
+  .setTimeout(5000)
+  .build();`,
+  },
+  {
+    id: 210,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Decorator Pattern kya hai? HOF se kaise relate karta hai?",
+    answer: `Decorator = Existing object ya function mein dynamically behavior add karo — original modify kiye bina.
+
+**Types:**
+1. **Class Decorator:** Object wrap karo same interface ke saath
+2. **Function Decorator:** Higher-order function (wrap karo)
+3. **TypeScript/Python Decorators:** Syntax sugar (@decorator)
+
+**Fayde:**
+- Single Responsibility — concerns separate karo
+- Open/Closed — original class change mat karo
+- Stackable — multiple decorators chain karo
+
+**Real uses:** Logging, caching, auth, retry, rate limiting`,
+    code: `// Function Decorator
+function withLogging<T extends (...args: any[]) => any>(fn: T): T {
+  return ((...args: any[]) => {
+    console.log(\`Calling \${fn.name} with\`, args);
+    const result = fn(...args);
+    console.log(\`\${fn.name} returned\`, result);
+    return result;
+  }) as T;
+}
+
+const add = (a: number, b: number) => a + b;
+const loggedAdd = withLogging(add);
+loggedAdd(2, 3);  // logs input and output
+
+// Caching decorator
+function withCache<T extends (...args: any[]) => any>(fn: T): T {
+  const cache = new Map();
+  return ((...args: any[]) => {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) {
+      console.log('Cache hit!');
+      return cache.get(key);
+    }
+    const result = fn(...args);
+    cache.set(key, result);
+    return result;
+  }) as T;
+}
+
+// Stack decorators!
+const smartFetch = withLogging(withCache(fetchData));
+
+// Class Decorator Pattern
+interface TextProcessor {
+  process(text: string): string;
+}
+
+class PlainText implements TextProcessor {
+  process(text: string) { return text; }
+}
+
+class BoldDecorator implements TextProcessor {
+  constructor(private wrapped: TextProcessor) {}
+  process(text: string) { return \`**\${this.wrapped.process(text)}**\`; }
+}
+
+class UpperCaseDecorator implements TextProcessor {
+  constructor(private wrapped: TextProcessor) {}
+  process(text: string) { return this.wrapped.process(text).toUpperCase(); }
+}
+
+// Combine decorators
+const processor = new BoldDecorator(new UpperCaseDecorator(new PlainText()));
+processor.process("hello");  // **HELLO**`,
+  },
+  {
+    id: 211,
+    level: "Intermediate" as const,
+    tags: ["patterns"],
+    question: "Repository Pattern kya hai? Service Layer ke saath kaise use karein?",
+    answer: `**Repository Pattern:** Data access logic ko abstract karo — business logic ko database details se alag karo.
+
+**Layers:**
+- **Controller/Route** → request handle karo
+- **Service** → business logic
+- **Repository** → data access (DB queries)
+- **Model/Entity** → data structure
+
+**Fayde:**
+- Database change karo (MySQL → MongoDB) bina service change kiye
+- Testing mein mock repository inject karo
+- Clean separation of concerns
+
+**Interface use karo:** Repository interface define karo → concrete implementations swap ho sakein`,
+    code: `// Repository Interface
+interface UserRepository {
+  findById(id: number): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  findAll(filters?: UserFilters): Promise<User[]>;
+  save(user: Partial<User>): Promise<User>;
+  update(id: number, data: Partial<User>): Promise<User>;
+  delete(id: number): Promise<void>;
+}
+
+// MySQL implementation
+class MySQLUserRepository implements UserRepository {
+  constructor(private db: Database) {}
+  
+  async findById(id: number): Promise<User | null> {
+    const [row] = await this.db.query(
+      'SELECT * FROM users WHERE id = ?', [id]
+    );
+    return row || null;
+  }
+  
+  async save(data: Partial<User>): Promise<User> {
+    const [result] = await this.db.query(
+      'INSERT INTO users SET ?', [data]
+    );
+    return this.findById(result.insertId)!;
+  }
+}
+
+// Service uses repository (not DB directly!)
+class UserService {
+  constructor(private users: UserRepository) {}  // interface inject!
+  
+  async register(data: RegisterDTO): Promise<User> {
+    const existing = await this.users.findByEmail(data.email);
+    if (existing) throw new ConflictError('Email already exists');
+    
+    const hashed = await bcrypt.hash(data.password, 12);
+    return this.users.save({ ...data, password: hashed });
+  }
+}
+
+// Testing with mock!
+class MockUserRepository implements UserRepository {
+  private users: User[] = [];
+  async findById(id: number) { return this.users.find(u => u.id === id) || null; }
+  async save(data: Partial<User>) { ... }
+}
+
+const service = new UserService(new MockUserRepository());  // testable!`,
+  },
+  {
+    id: 212,
+    level: "Advanced" as const,
+    tags: ["patterns"],
+    question: "Command Pattern aur CQRS kya hain?",
+    answer: `**Command Pattern:** Request ko object mein encapsulate karo — undo/redo, queue, logging ke liye.
+
+**Components:**
+- **Command:** Interface with execute() (aur undo())
+- **Invoker:** Command execute karta hai
+- **Receiver:** Actual work karta hai
+
+**CQRS (Command Query Responsibility Segregation):**
+- Commands = writes (state change karo)
+- Queries = reads (data return karo, state change nahi)
+- Different models for reading and writing
+
+**Benefits:** Undo/redo support, audit log, queueing, optimistic concurrency`,
+    code: `// Command Pattern
+interface Command {
+  execute(): void;
+  undo(): void;
+}
+
+class TextEditor {
+  private content = '';
+  private history: Command[] = [];
+  
+  executeCommand(cmd: Command): void {
+    cmd.execute();
+    this.history.push(cmd);
+  }
+  
+  undoLast(): void {
+    this.history.pop()?.undo();
+  }
+}
+
+class InsertTextCommand implements Command {
+  constructor(
+    private editor: TextEditor,
+    private text: string,
+    private position: number
+  ) {}
+  
+  execute(): void {
+    this.editor.insert(this.text, this.position);
+  }
+  
+  undo(): void {
+    this.editor.delete(this.position, this.text.length);
+  }
+}
+
+// CQRS
+class CreateOrderCommand {
+  constructor(
+    public readonly userId: number,
+    public readonly items: OrderItem[],
+    public readonly paymentMethod: string
+  ) {}
+}
+
+class GetOrdersByUserQuery {
+  constructor(
+    public readonly userId: number,
+    public readonly page: number = 1
+  ) {}
+}
+
+// Handlers
+class CreateOrderHandler {
+  async handle(cmd: CreateOrderCommand): Promise<Order> {
+    // validate → save → publish event
+    return this.orderRepo.save(cmd);
+  }
+}
+
+class GetOrdersHandler {
+  async handle(query: GetOrdersByUserQuery): Promise<Order[]> {
+    return this.readModel.getByUser(query.userId, query.page);
+  }
+}`,
+  },
+  {
+    id: 213,
+    level: "Advanced" as const,
+    tags: ["patterns", "solid"],
+    question: "Composition over Inheritance kya hai? Kab prefer karein?",
+    answer: `**Inheritance (IS-A):** Child class parent se sab kuch inherit karta hai — tight coupling, fragile base class problem.
+
+**Composition (HAS-A):** Objects mein doosre objects compose karo — behaviors inject karo.
+
+**Composition fayde:**
+- Loose coupling
+- Runtime behavior change
+- Multiple "behaviors" combine karo (no diamond problem)
+- Testing easy (mock components)
+- Fragile base class problem nahi
+
+**Rule:** "Favor composition over inheritance" — GoF Design Patterns
+
+**Kab inheritance:** True IS-A relationship, code reuse in hierarchy aur overriding makes sense`,
+    code: `// Inheritance problem
+class Animal {
+  eat() { /* eat */ }
+  sleep() { /* sleep */ }
+}
+
+class Dog extends Animal {
+  bark() { /* bark */ }
+  fetch() { /* fetch */ }
+}
+
+class RobotDog extends Dog {
+  // ❌ RobotDog doesn't eat or sleep! Inherits useless methods
+  // ❌ Can't easily add fly() to some animals only
+}
+
+// Composition solution
+const canEat = {
+  eat() { console.log('eating'); }
+};
+
+const canSleep = {
+  sleep() { console.log('sleeping'); }
+};
+
+const canBark = {
+  bark() { console.log('woof!'); }
+};
+
+const canFly = {
+  fly() { console.log('flying!'); }
+};
+
+// Mix behaviors freely!
+function createDog(name: string) {
+  return { name, ...canEat, ...canSleep, ...canBark };
+}
+
+function createRobotDog(name: string) {
+  return { name, ...canBark, ...canFly };  // no eat/sleep!
+}
+
+function createFlyingDog(name: string) {
+  return { name, ...canEat, ...canSleep, ...canBark, ...canFly };
+}
+
+// Real example: React (composition vs inheritance)
+// React explicitly says: use composition, not inheritance!`,
+  },
+  {
+    id: 214,
+    level: "Advanced" as const,
+    tags: ["patterns", "advanced"],
+    question: "Proxy Pattern kya hai? Real-world examples kya hain?",
+    answer: `Proxy = Real object ki jagah koi aur object — same interface, extra functionality.
+
+**Types:**
+- **Virtual Proxy:** Lazy initialization (expensive object tab banao jab actually chahiye)
+- **Protection Proxy:** Access control
+- **Remote Proxy:** Remote object ko local represent karo
+- **Caching Proxy:** Results cache karo
+- **Logging Proxy:** Requests log karo
+
+**JavaScript Proxy object** — language-level proxy
+
+**Examples:** ORM lazy loading, CDN, API gateway, Spring AOP`,
+    code: `// Protection Proxy
+interface UserService {
+  getUser(id: number): User;
+  deleteUser(id: number): void;
+  updateUser(id: number, data: Partial<User>): User;
+}
+
+class RealUserService implements UserService {
+  getUser(id: number) { /* DB query */ }
+  deleteUser(id: number) { /* DB delete */ }
+  updateUser(id: number, data: Partial<User>) { /* DB update */ }
+}
+
+class UserServiceProxy implements UserService {
+  constructor(
+    private real: RealUserService,
+    private currentUser: { role: string }
+  ) {}
+  
+  getUser(id: number) {
+    return this.real.getUser(id);  // everyone can read
+  }
+  
+  deleteUser(id: number) {
+    if (this.currentUser.role !== 'admin') {
+      throw new ForbiddenError('Only admins can delete users');
+    }
+    return this.real.deleteUser(id);
+  }
+  
+  updateUser(id: number, data: Partial<User>) {
+    if (this.currentUser.role === 'admin' || this.currentUser.id === id) {
+      return this.real.updateUser(id, data);
+    }
+    throw new ForbiddenError('Cannot update other users');
+  }
+}
+
+// Caching Proxy
+class CachingUserService implements UserService {
+  private cache = new Map<number, User>();
+  
+  getUser(id: number) {
+    if (!this.cache.has(id)) {
+      this.cache.set(id, this.real.getUser(id));
+    }
+    return this.cache.get(id)!;
+  }
+}`,
+  },
+  {
+    id: 215,
+    level: "Intermediate" as const,
+    tags: ["oop", "advanced"],
+    question: "Value Object vs Entity kya hain? DDD mein kya role hai?",
+    answer: `**Domain-Driven Design (DDD) ke concepts:**
+
+**Entity:**
+- Identity se identify hota hai (ID)
+- Mutable state ho sakta hai
+- Lifecycle hota hai
+- Example: User, Order, Product
+
+**Value Object:**
+- Value se identify hota hai (no ID)
+- Immutable — change karna = naya object
+- Interchangeable — same value = equal
+- Example: Email, Money, Address, Color
+
+**Fayde of Value Objects:**
+- Self-validating
+- Encapsulate business rules
+- Nullify primitive obsession
+- Thread-safe (immutable)`,
+    code: `// Primitive obsession (bad)
+function createUser(email: string, age: number) {
+  if (!email.includes('@')) throw new Error('Invalid email');  // scattered validation!
+  if (age < 0) throw new Error('Invalid age');
+  return { email, age };
+}
+
+// Value Objects (good)
+class Email {
+  readonly value: string;
+  
+  constructor(email: string) {
+    if (!email.includes('@') || !email.includes('.')) {
+      throw new Error(\`Invalid email: \${email}\`);
+    }
+    this.value = email.toLowerCase();
+  }
+  
+  equals(other: Email): boolean {
+    return this.value === other.value;
+  }
+  
+  getDomain(): string {
+    return this.value.split('@')[1];
+  }
+  
+  toString(): string {
+    return this.value;
+  }
+}
+
+class Money {
+  constructor(
+    readonly amount: number,
+    readonly currency: string
+  ) {
+    if (amount < 0) throw new Error('Amount cannot be negative');
+  }
+  
+  add(other: Money): Money {
+    if (this.currency !== other.currency) throw new Error('Currency mismatch');
+    return new Money(this.amount + other.amount, this.currency);  // new object!
+  }
+  
+  equals(other: Money): boolean {
+    return this.amount === other.amount && this.currency === other.currency;
+  }
+}
+
+// Entity
+class Order {
+  readonly id: string;  // identity!
+  private total: Money;
+  
+  constructor(id: string, items: OrderItem[]) {
+    this.id = id;
+    this.total = new Money(0, 'PKR');
+  }
+  
+  addItem(item: OrderItem) {
+    // Entity mutates, Value Object creates new
+    this.total = this.total.add(item.price);
+  }
+}`,
+  },
+  {
     id: 204,
     level: "Intermediate" as const,
     tags: ["patterns"],

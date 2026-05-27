@@ -1247,6 +1247,862 @@ class CheckAge
 Route::get('/adult', fn() => 'adults only')->middleware('check.age');`,
   },
   {
+    id: 305,
+    level: "Beginner" as const,
+    tags: ["artisan"],
+    question: "Laravel Artisan commands kaunse most useful hain?",
+    answer: `Artisan = Laravel ka command-line tool. php artisan se run karte hain.
+
+**Most used commands:**
+- make:model, make:controller, make:migration
+- migrate, migrate:rollback, migrate:fresh
+- make:seeder, db:seed
+- route:list — sab routes dekho
+- cache:clear, config:clear, view:clear
+- tinker — interactive PHP REPL
+- make:middleware, make:request, make:policy
+- queue:work — queue worker shuru karo
+- schedule:run — scheduled tasks run karo`,
+    code: `# Model + migration + controller ek saath
+php artisan make:model Post -mcr
+# -m = migration, -c = controller, -r = resource methods
+
+# Migration
+php artisan migrate
+php artisan migrate:rollback        # last batch undo
+php artisan migrate:fresh           # drop + remigrate
+php artisan migrate:fresh --seed    # remigrate + seed
+
+# Route list (filter by name)
+php artisan route:list --name=user
+php artisan route:list --method=POST
+
+# Tinker — REPL
+php artisan tinker
+>>> User::count()
+>>> User::factory()->create(['name' => 'Ali'])
+>>> User::where('role', 'admin')->get()
+
+# Cache clear
+php artisan cache:clear
+php artisan config:clear
+php artisan view:clear
+php artisan optimize:clear    # all caches clear
+
+# Make commands
+php artisan make:request StoreUserRequest
+php artisan make:policy UserPolicy --model=User
+php artisan make:job ProcessPayment
+php artisan make:event UserRegistered
+php artisan make:listener SendWelcomeEmail --event=UserRegistered
+php artisan make:notification OrderShipped
+php artisan make:mail WelcomeMail`,
+  },
+  {
+    id: 306,
+    level: "Beginner" as const,
+    tags: ["eloquent"],
+    question: "Eloquent relationships kaunse hain? Examples do.",
+    answer: `Eloquent ORM mein 6 types of relationships hain:
+
+**Basic:**
+- **hasOne** — Ek user ka ek profile
+- **belongsTo** — Profile belongs to User
+- **hasMany** — User ke many posts
+- **belongsToMany** — Post ke many tags, tag ke many posts (pivot table)
+
+**Advanced:**
+- **hasOneThrough** — Country → User → Profile
+- **hasManyThrough** — Country → Users → Posts
+- **morphTo/morphMany/morphToMany** — Polymorphic (ek model multiple models se relate)`,
+    code: `<?php
+// HasOne
+class User extends Model {
+    public function profile(): HasOne {
+        return $this->hasOne(Profile::class);
+    }
+}
+
+// BelongsTo
+class Profile extends Model {
+    public function user(): BelongsTo {
+        return $this->belongsTo(User::class);
+    }
+}
+
+// HasMany
+class User extends Model {
+    public function posts(): HasMany {
+        return $this->hasMany(Post::class);
+    }
+}
+
+// BelongsToMany (pivot table: post_tag)
+class Post extends Model {
+    public function tags(): BelongsToMany {
+        return $this->belongsToMany(Tag::class)
+            ->withPivot('order')
+            ->withTimestamps();
+    }
+}
+
+// Polymorphic — Comments on Post AND Video
+class Comment extends Model {
+    public function commentable(): MorphTo {
+        return $this->morphTo();
+    }
+}
+
+class Post extends Model {
+    public function comments(): MorphMany {
+        return $this->morphMany(Comment::class, 'commentable');
+    }
+}
+
+// Usage
+$user->profile;               // HasOne
+$user->posts;                 // HasMany (collection)
+$user->posts()->latest()->limit(5)->get();  // query builder
+$post->tags()->attach($tagId, ['order' => 1]);  // pivot
+$post->comments()->create(['body' => 'Great!']);`,
+  },
+  {
+    id: 307,
+    level: "Intermediate" as const,
+    tags: ["validation"],
+    question: "Laravel mein Request Validation kaise karein? Custom rules kaise banate hain?",
+    answer: `**Validation approaches:**
+1. **Controller mein** — $request->validate([...])
+2. **Form Request class** — make:request se — best practice
+3. **Validator facade** — manual validation
+
+**Form Request fayde:**
+- Controller thin rehta hai
+- Reusable validation logic
+- Authorization bhi yahan kar sakte hain
+- Custom messages
+
+**Custom Rules:** php artisan make:rule`,
+    code: `<?php
+// 1. Controller mein (simple cases)
+public function store(Request $request) {
+    $validated = $request->validate([
+        'name'  => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'age'   => 'required|integer|min:18|max:120',
+        'role'  => 'required|in:admin,user,editor',
+        'photo' => 'nullable|image|mimes:jpg,png|max:2048',
+    ]);
+    
+    User::create($validated);
+}
+
+// 2. Form Request (best practice)
+// php artisan make:request StoreUserRequest
+class StoreUserRequest extends FormRequest {
+    public function authorize(): bool {
+        return auth()->check();  // who can submit?
+    }
+    
+    public function rules(): array {
+        return [
+            'name'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', Rule::unique('users')],
+            'password' => ['required', 'min:8', 'confirmed'],
+        ];
+    }
+    
+    public function messages(): array {
+        return [
+            'email.unique' => 'Yeh email already registered hai!',
+            'password.confirmed' => 'Passwords match nahi hue.',
+        ];
+    }
+}
+
+// Controller (super clean!)
+public function store(StoreUserRequest $request) {
+    // Already validated!
+    User::create($request->validated());
+}
+
+// 3. Custom Rule
+// php artisan make:rule PhoneNumber
+class PhoneNumber implements ValidationRule {
+    public function validate(string $attribute, mixed $value, Closure $fail): void {
+        if (!preg_match('/^03\d{9}$/', $value)) {
+            $fail('Invalid Pakistani phone number (03XXXXXXXXX)');
+        }
+    }
+}
+
+// Use custom rule
+'phone' => ['required', new PhoneNumber],`,
+  },
+  {
+    id: 308,
+    level: "Intermediate" as const,
+    tags: ["auth"],
+    question: "Laravel Policies aur Gates kya hain? Difference kya hai?",
+    answer: `**Gates:** Simple closure-based authorization. Simple checks ke liye.
+**Policies:** Model ke liye organize authorization logic. Ek model → ek policy class.
+
+**Kab kya use karein:**
+- Gate: Global actions (admin check, feature flags)
+- Policy: Model-specific (user can edit this post?)
+
+**Auto-discovery:** Model aur Policy naming convention follow karo → automatic register.
+
+**Eloquent integration:** can() aur cant() helpers, @can Blade directive`,
+    code: `<?php
+// GATES — simple authorization
+// AuthServiceProvider mein:
+Gate::define('view-admin-panel', fn(User $user) => $user->isAdmin());
+Gate::define('publish-post', fn(User $user, Post $post) => $user->id === $post->user_id);
+
+// Use in controller
+if (Gate::allows('view-admin-panel')) { /* admin content */ }
+if (Gate::denies('publish-post', $post)) abort(403);
+
+// POLICY
+// php artisan make:policy PostPolicy --model=Post
+class PostPolicy {
+    // User koi bhi post dekh sakta hai
+    public function view(?User $user, Post $post): bool {
+        return $post->published || $user?->id === $post->user_id;
+    }
+    
+    // Sirf owner edit kar sakta hai
+    public function update(User $user, Post $post): bool {
+        return $user->id === $post->user_id;
+    }
+    
+    // Sirf admins delete kar sakte hain
+    public function delete(User $user, Post $post): bool {
+        return $user->isAdmin() || $user->id === $post->user_id;
+    }
+    
+    // Global admin bypass
+    public function before(User $user): bool|null {
+        return $user->role === 'superadmin' ? true : null;
+    }
+}
+
+// Controller mein
+$this->authorize('update', $post);  // 403 if denied
+
+// Blade mein
+@can('update', $post)
+    <a href="{{ route('posts.edit', $post) }}">Edit</a>
+@endcan
+
+// User model pe
+$user->can('delete', $post);    // true/false
+$user->cannot('update', $post); // true/false`,
+  },
+  {
+    id: 309,
+    level: "Intermediate" as const,
+    tags: ["eloquent"],
+    question: "Eloquent Scopes (local aur global) kya hain?",
+    answer: `**Local Scopes:** Reusable query constraints jo manually call karni padti hain. scope prefix + method naam.
+
+**Global Scopes:** Automatically apply hoti hain sab queries pe us model ke liye. SoftDeletes ek built-in global scope hai.
+
+**Kab use karein:**
+- Local: Frequently used filter conditions (active, published, recent)
+- Global: Hamesha apply hone wali conditions (tenant isolation, soft deletes, published-only)`,
+    code: `<?php
+// LOCAL SCOPES
+class Post extends Model {
+    // "scope" prefix, call mein mat likho
+    public function scopePublished(Builder $query): Builder {
+        return $query->where('status', 'published');
+    }
+    
+    public function scopeRecent(Builder $query, int $days = 30): Builder {
+        return $query->where('created_at', '>=', now()->subDays($days));
+    }
+    
+    public function scopeByCategory(Builder $query, string $cat): Builder {
+        return $query->where('category', $cat);
+    }
+    
+    public function scopePopular(Builder $query): Builder {
+        return $query->where('views', '>', 1000)->orderBy('views', 'desc');
+    }
+}
+
+// Usage — method chain karo!
+Post::published()->recent()->get();
+Post::published()->byCategory('tech')->popular()->paginate(10);
+
+// GLOBAL SCOPE
+class ActiveScope implements Scope {
+    public function apply(Builder $builder, Model $model): void {
+        $builder->where('active', true);
+    }
+}
+
+class User extends Model {
+    protected static function booted(): void {
+        static::addGlobalScope(new ActiveScope());
+        // Ya closure style:
+        static::addGlobalScope('active', fn(Builder $b) => $b->where('active', 1));
+    }
+}
+
+// Automatic! Sab queries pe active=1 filter lagega
+User::all();          // WHERE active = 1 automatically!
+User::find(1);        // WHERE id = 1 AND active = 1
+
+// Global scope remove karo (ek specific query ke liye)
+User::withoutGlobalScope('active')->where('role', 'admin')->get();`,
+  },
+  {
+    id: 310,
+    level: "Intermediate" as const,
+    tags: ["eloquent"],
+    question: "Eloquent Mutators, Accessors, aur Casts kya hain?",
+    answer: `**Accessor (get):** Model attribute read karte waqt transform karo.
+**Mutator (set):** Model attribute set karte waqt transform karo.
+**Casts:** Attribute ko automatically specific type mein convert karo.
+
+**PHP 8 style (Laravel 9+):** Attribute class use karo — getter aur setter ek saath.
+
+**Common Casts:** integer, float, boolean, array, collection, datetime, encrypted, AsStringable`,
+    code: `<?php
+// NEW STYLE (Laravel 9+ / PHP 8)
+class User extends Model {
+    protected function fullName(): Attribute {
+        return Attribute::make(
+            // Accessor — read karte waqt
+            get: fn() => "{$this->first_name} {$this->last_name}",
+        );
+    }
+    
+    protected function password(): Attribute {
+        return Attribute::make(
+            // Mutator — write karte waqt
+            set: fn(string $value) => bcrypt($value),
+        );
+    }
+    
+    protected function firstName(): Attribute {
+        return Attribute::make(
+            get: fn($value) => ucfirst($value),
+            set: fn($value) => strtolower($value),
+        );
+    }
+    
+    // CASTS — automatic type conversion
+    protected $casts = [
+        'email_verified_at' => 'datetime',  // Carbon instance
+        'is_active'         => 'boolean',
+        'preferences'       => 'array',     // JSON → PHP array
+        'balance'           => 'decimal:2', // 2 decimal places
+        'metadata'          => 'collection',
+        'role'              => UserRole::class,  // Enum (PHP 8.1)
+    ];
+}
+
+// Usage
+$user = User::create([
+    'first_name' => 'ALI',           // stored as 'ali'
+    'last_name'  => 'KHAN',
+    'password'   => 'secret123',     // automatically hashed!
+    'is_active'  => true,
+    'preferences' => ['theme' => 'dark', 'lang' => 'ur'],
+]);
+
+$user->full_name;           // "Ali Khan" (accessor)
+$user->email_verified_at;  // Carbon instance
+$user->preferences;         // PHP array (from JSON)
+$user->is_active;           // true (boolean, not "1")`,
+  },
+  {
+    id: 311,
+    level: "Intermediate" as const,
+    tags: ["caching"],
+    question: "Laravel caching kaise kaam karta hai? Drivers aur strategies kya hain?",
+    answer: `Laravel Cache facade unified API deta hai multiple cache backends ke liye.
+
+**Cache Drivers:** file, database, redis, memcached, array, dynamodb
+
+**Best practices:**
+- Redis = production (fast, persistent, atomic)
+- file = development
+- array = testing
+
+**Cache strategies:**
+- Cache-aside (lazy loading) — miss pe fetch + cache
+- Write-through — write pe cache update
+- TTL properly set karo (stale data vs performance tradeoff)`,
+    code: `<?php
+// Basic operations
+Cache::put('key', 'value', now()->addHours(1));  // TTL
+Cache::get('key');              // null if not found
+Cache::get('key', 'default');   // default if not found
+Cache::has('key');              // boolean
+Cache::forget('key');           // delete
+Cache::flush();                 // all cache clear!
+
+// Remember — most common pattern!
+$users = Cache::remember('active_users', 3600, function() {
+    return User::active()->with('profile')->get();
+});
+// If cache miss → callback run karo → cache save karo → return
+
+// Remember forever
+$config = Cache::rememberForever('app_config', fn() => AppConfig::all());
+
+// Atomic operations
+Cache::increment('page_views');
+Cache::increment('page_views', 5);  // by 5
+Cache::decrement('stock', 1);
+
+// Tags (Redis/Memcached only)
+Cache::tags(['users', 'profiles'])->put("user_$id", $user, 3600);
+Cache::tags(['users'])->flush();  // all user caches clear!
+
+// Cache keys with variables
+$cacheKey = "user_{$userId}_posts_page_{$page}";
+$posts = Cache::remember($cacheKey, 1800, fn() => 
+    Post::where('user_id', $userId)->paginate(15, page: $page)
+);
+
+// Lock (prevent race conditions)
+$lock = Cache::lock('process_payment_' . $orderId, 10);
+if ($lock->get()) {
+    try {
+        processPayment($order);
+    } finally {
+        $lock->release();
+    }
+}`,
+  },
+  {
+    id: 312,
+    level: "Intermediate" as const,
+    tags: ["queues"],
+    question: "Laravel Jobs aur Queues kaise kaam karte hain?",
+    answer: `Queue = time-consuming tasks background mein process karo — user ko wait nahi karna padta.
+
+**Flow:**
+1. Job dispatch karo → queue mein add hota hai
+2. Queue worker job uthaata hai
+3. Background mein execute karta hai
+
+**Drivers:** sync, database, redis, sqs, beanstalkd
+
+**Job features:**
+- Retry attempts
+- Timeout
+- Delay
+- Priority chains
+- Batches (Laravel 8+)`,
+    code: `<?php
+// 1. Job create karo
+// php artisan make:job SendWelcomeEmail
+
+class SendWelcomeEmail implements ShouldQueue {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    
+    public int $tries = 3;         // 3 baar try karo
+    public int $timeout = 60;      // 60 seconds max
+    public int $backoff = 30;      // retry ke beech 30s wait
+    
+    public function __construct(
+        private User $user  // automatically serialized!
+    ) {}
+    
+    public function handle(Mailer $mailer): void {
+        $mailer->to($this->user->email)
+               ->send(new WelcomeEmail($this->user));
+    }
+    
+    public function failed(Throwable $e): void {
+        // Job fail hone pe — log ya notify
+        Log::error("Welcome email failed", ['user' => $this->user->id]);
+    }
+}
+
+// 2. Dispatch karo
+SendWelcomeEmail::dispatch($user);                 // immediately
+SendWelcomeEmail::dispatch($user)->delay(now()->addMinutes(5));  // delayed
+SendWelcomeEmail::dispatch($user)->onQueue('emails');  // specific queue
+
+// 3. Worker chalao
+// php artisan queue:work
+// php artisan queue:work --queue=emails,default
+// php artisan queue:work --tries=3 --timeout=90
+
+// 4. Job chains
+Bus::chain([
+    new ValidateOrder($order),
+    new ProcessPayment($order),
+    new SendConfirmation($order),
+    new UpdateInventory($order),
+])->dispatch();
+
+// 5. Job batches
+Bus::batch([
+    new SendEmail($user1),
+    new SendEmail($user2),
+    new SendEmail($user3),
+])->then(fn(Batch $batch) => Log::info('All sent!'))
+  ->catch(fn(Batch $batch, Throwable $e) => Log::error('Batch failed'))
+  ->dispatch();`,
+  },
+  {
+    id: 313,
+    level: "Intermediate" as const,
+    tags: ["eloquent"],
+    question: "Laravel Model Observers kya hain? Kab use karein?",
+    answer: `Observer = Model events (creating, created, updating, updated, deleting, deleted, restored, forceDeleted) pe automatically code run karo.
+
+**Model Events:** creating, created, updating, updated, saving, saved, deleting, deleted
+
+**Kab use karein:**
+- Audit logs (kaun ne kya change kiya)
+- Cache invalidation
+- Related data update
+- Notifications trigger karna
+
+**Alternative:** Model lifecycle hooks (boot()) — simpler cases ke liye`,
+    code: `<?php
+// php artisan make:observer UserObserver --model=User
+class UserObserver {
+    public function created(User $user): void {
+        // User create hone pe
+        Cache::tags(['users'])->flush();
+        $user->notify(new WelcomeNotification());
+        AuditLog::create([
+            'action'    => 'user_created',
+            'model_id'  => $user->id,
+            'performed_by' => auth()->id(),
+        ]);
+    }
+    
+    public function updated(User $user): void {
+        // Sirf relevant changes pe react karo
+        if ($user->wasChanged('email')) {
+            $user->update(['email_verified_at' => null]);
+            $user->sendEmailVerificationNotification();
+        }
+        
+        if ($user->wasChanged('role')) {
+            Cache::forget("user_{$user->id}_permissions");
+        }
+    }
+    
+    public function deleting(User $user): void {
+        // Before delete — cleanup
+        $user->posts()->delete();
+        $user->comments()->delete();
+        Storage::deleteDirectory("users/{$user->id}");
+    }
+}
+
+// Register karo (AppServiceProvider ya model mein)
+class AppServiceProvider extends ServiceProvider {
+    public function boot(): void {
+        User::observe(UserObserver::class);
+    }
+}
+
+// Model mein boot() — simple cases
+class Post extends Model {
+    protected static function booted(): void {
+        static::creating(function (Post $post) {
+            $post->slug = Str::slug($post->title);
+        });
+        
+        static::updating(function (Post $post) {
+            if ($post->isDirty('title')) {
+                $post->slug = Str::slug($post->title);
+            }
+        });
+    }
+}`,
+  },
+  {
+    id: 314,
+    level: "Intermediate" as const,
+    tags: ["eloquent"],
+    question: "Laravel Collections kya hain? Useful methods kaunse hain?",
+    answer: `Collection = array ka powerful wrapper — 100+ methods, chainable, lazy evaluation support.
+
+**Eloquent returns Collections automatically.**
+
+**Most useful methods:**
+- filter, map, reduce, each
+- groupBy, keyBy, pluck
+- first, last, find
+- sortBy, sortByDesc
+- unique, flatten, chunk
+- contains, doesntContain
+- when, unless (conditional)
+- tap (debugging)
+
+**Lazy Collections:** Huge datasets ke liye memory efficient`,
+    code: `<?php
+$users = User::with('posts')->get();  // Collection
+
+// filter — select
+$admins = $users->filter(fn($u) => $u->role === 'admin');
+
+// map — transform
+$names = $users->map(fn($u) => $u->name);
+$emails = $users->pluck('email');          // shorthand
+$emailById = $users->pluck('email', 'id'); // [id => email]
+
+// groupBy
+$byRole = $users->groupBy('role');
+// ['admin' => Collection, 'user' => Collection]
+
+// first/last
+$youngest = $users->sortBy('age')->first();
+$oldest = $users->sortByDesc('age')->first();
+
+// unique
+$uniqueEmails = $users->unique('email');
+
+// sum, avg, min, max
+$totalAge = $users->sum('age');
+$avgAge = $users->avg('age');
+
+// contains
+$hasAdmin = $users->contains(fn($u) => $u->role === 'admin');
+$hasUser = $users->contains('role', 'admin');
+
+// chunk (batches)
+$users->chunk(100)->each(function($batch) {
+    // process 100 at a time
+});
+
+// when (conditional)
+$query = User::query();
+$query->when($request->role, fn($q, $role) => $q->where('role', $role));
+$query->when($request->search, fn($q, $s) => $q->where('name', 'like', "%$s%"));
+
+// tap — debugging
+$users->tap(fn($u) => dump("Count: " . $u->count()))
+      ->filter(fn($u) => $u->active)
+      ->map(fn($u) => $u->name)
+      ->all();`,
+  },
+  {
+    id: 315,
+    level: "Advanced" as const,
+    tags: ["auth"],
+    question: "Laravel Sanctum aur Passport mein kya fark hai? API authentication kaise karein?",
+    answer: `**Sanctum:**
+- Simple token-based auth (API tokens)
+- SPA (cookie-based) + Mobile (token-based) dono support
+- Laravel ka recommended choice for most apps
+- Simple setup, lightweight
+
+**Passport:**
+- Full OAuth2 server implementation
+- Authorization codes, client credentials, password grant
+- Third-party apps ko access dene ke liye (jaise GitHub OAuth)
+- Complex, heavyweight
+
+**Kab kya use karein:**
+- Mobile app / SPA → Sanctum (token)
+- Third-party OAuth server banana → Passport`,
+    code: `<?php
+// SANCTUM SETUP
+// php artisan install:api (Laravel 11)
+// composer require laravel/sanctum
+
+// Migration ke baad:
+// User model mein HasApiTokens trait
+
+class User extends Authenticatable {
+    use HasApiTokens, HasFactory, Notifiable;
+}
+
+// Login endpoint
+public function login(Request $request): JsonResponse {
+    $request->validate([
+        'email'    => 'required|email',
+        'password' => 'required',
+    ]);
+    
+    $user = User::where('email', $request->email)->first();
+    
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Invalid credentials'], 401);
+    }
+    
+    // Token create karo (with abilities)
+    $token = $user->createToken('api-token', ['read', 'write'])->plainTextToken;
+    
+    return response()->json([
+        'user'  => $user,
+        'token' => $token,
+    ]);
+}
+
+// Logout
+public function logout(Request $request): JsonResponse {
+    $request->user()->currentAccessToken()->delete();  // current token
+    // $request->user()->tokens()->delete();  // all tokens
+    return response()->json(['message' => 'Logged out']);
+}
+
+// Protected route
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/user', fn(Request $r) => $r->user());
+    Route::get('/dashboard', [DashboardController::class, 'index']);
+});
+
+// API request mein header:
+// Authorization: Bearer 1|your-token-here`,
+  },
+  {
+    id: 316,
+    level: "Intermediate" as const,
+    tags: ["eloquent"],
+    question: "SoftDelete kya hai? Laravel mein kaise implement karein?",
+    answer: `SoftDelete = Record DB se delete nahi hota — deleted_at timestamp set hoti hai. Data "hidden" hota hai normal queries se.
+
+**Fayde:**
+- Data recovery possible
+- Audit trail
+- Foreign key issues nahi
+- Cascade delete without actually deleting
+
+**Bhi zaroor jano:** withTrashed(), onlyTrashed(), restore(), forceDelete()`,
+    code: `<?php
+// Migration
+Schema::table('users', function (Blueprint $table) {
+    $table->softDeletes();  // adds deleted_at column
+});
+
+// Model
+class User extends Model {
+    use SoftDeletes;  // bas itna!
+}
+
+// Usage
+$user->delete();    // soft delete — deleted_at set hoti hai
+
+// Normal queries automatically exclude soft-deleted!
+User::all();        // only active users
+User::find(1);      // null if soft-deleted!
+
+// Soft-deleted bhi include karo
+User::withTrashed()->get();
+User::withTrashed()->find(1);
+
+// Sirf soft-deleted
+User::onlyTrashed()->get();
+
+// Restore
+$user = User::onlyTrashed()->find(1);
+$user->restore();
+
+// Permanently delete
+$user->forceDelete();
+
+// Relation with soft deletes
+class Post extends Model {
+    use SoftDeletes;
+    
+    public function user(): BelongsTo {
+        return $this->belongsTo(User::class)->withTrashed();
+        // Show post even if user is soft-deleted
+    }
+}
+
+// Global scope check
+User::onlyTrashed()
+    ->where('deleted_at', '<', now()->subDays(30))
+    ->forceDelete();  // 30 din purane permanently delete karo`,
+  },
+  {
+    id: 317,
+    level: "Intermediate" as const,
+    tags: ["eloquent"],
+    question: "Laravel API Resources kya hain? Response transformation kaise karein?",
+    answer: `API Resources = Eloquent models/collections ko JSON response mein transform karo — consistent API output.
+
+**Problem without resources:**
+- Direct model return → sensitive fields expose
+- Inconsistent response structure
+- Relationship data control nahi
+
+**Resource features:**
+- Fields select karo
+- Relationships include/exclude
+- Conditional attributes
+- Meta data add karo
+- Pagination automatic
+
+**php artisan make:resource UserResource**`,
+    code: `<?php
+// php artisan make:resource UserResource
+class UserResource extends JsonResource {
+    public function toArray(Request $request): array {
+        return [
+            'id'         => $this->id,
+            'name'       => $this->name,
+            'email'      => $this->email,
+            
+            // Sirf logged-in admin ko password_changed_at
+            'last_password_change' => $this->when(
+                $request->user()?->isAdmin(),
+                $this->password_changed_at
+            ),
+            
+            // Relationship — sirf agar loaded
+            'posts' => PostResource::collection($this->whenLoaded('posts')),
+            'profile' => new ProfileResource($this->whenLoaded('profile')),
+            
+            // Computed
+            'full_name' => "{$this->first_name} {$this->last_name}",
+            'member_since' => $this->created_at->format('Y'),
+            
+            // Never expose!
+            // 'password' => ... (mat karo!)
+        ];
+    }
+    
+    // Extra meta
+    public function with(Request $request): array {
+        return ['meta' => ['version' => '1.0']];
+    }
+}
+
+// Collection Resource
+class UserCollection extends ResourceCollection {
+    public function toArray(Request $request): array {
+        return [
+            'data' => $this->collection,
+            'summary' => [
+                'total' => $this->collection->count(),
+                'admins' => $this->collection->where('role', 'admin')->count(),
+            ],
+        ];
+    }
+}
+
+// Controller
+class UserController {
+    public function show(User $user): UserResource {
+        return new UserResource($user->load('posts', 'profile'));
+    }
+    
+    public function index(): AnonymousResourceCollection {
+        return UserResource::collection(User::paginate(15));
+        // Automatic pagination meta!
+    }
+}`,
+  },
+  {
     id: 304,
     level: "Advanced" as const,
     tags: ["advanced"],

@@ -4275,6 +4275,877 @@ print(f"Accuracy: {accuracy_score(y_test, model.predict(X_test)):.2%}")`,
       "Preprocessing: scaling, encoding, handling missing values",
     ],
   },
+  {
+    id: "py-regex",
+    title: "Regular Expressions — Regex",
+    titleEn: "Regular Expressions — Regex",
+    emoji: "🔍",
+    category: "Intermediate",
+    description: "Python mein re module — patterns, groups, replace, aur practical use cases",
+    descriptionEn: "Python re module — patterns, groups, replace, and practical use cases",
+    sections: [
+      {
+        heading: "Regex kya hai aur kyun use karein?",
+        content: `**Regular Expression (Regex)** = patterns define karne ka ek powerful way — text search, validate, aur replace karne ke liye.
+
+**Kab use karein:**
+- Email/phone validation
+- Text se data extract karna
+- String replace with patterns
+- Log file parsing
+- Form input sanitization
+
+**Python mein:** \`import re\` — Standard library mein hai, koi install nahi.
+
+**Raw strings use karo:** r"pattern" — backslash escape avoid hoti hai.
+
+\`\`\`python
+import re
+
+# Basic search
+text = "My phone is 03001234567 and email is ali@example.com"
+
+# Phone dhundo
+phone = re.search(r'0\d{10}', text)
+print(phone.group())  # "03001234567"
+\`\`\``,
+      },
+      {
+        heading: "Regex patterns — cheat sheet",
+        content: `**Character classes:**
+- \`.\` — koi bhi character (newline ke siwa)
+- \`\\d\` — digit (0-9)
+- \`\\D\` — non-digit
+- \`\\w\` — word character (a-z, A-Z, 0-9, _)
+- \`\\W\` — non-word
+- \`\\s\` — whitespace (space, tab, newline)
+- \`\\S\` — non-whitespace
+- \`[aeiou]\` — character set (any of these)
+- \`[^aeiou]\` — negated set (none of these)
+- \`[a-z]\` — range
+
+**Quantifiers:**
+- \`*\` — 0 ya zyada
+- \`+\` — 1 ya zyada  
+- \`?\` — 0 ya 1 (optional)
+- \`{n}\` — exactly n times
+- \`{n,m}\` — n to m times
+- \`{n,}\` — n ya zyada
+
+**Anchors:**
+- \`^\` — string/line start
+- \`$\` — string/line end
+- \`\\b\` — word boundary
+
+**Groups:**
+- \`(abc)\` — capturing group
+- \`(?:abc)\` — non-capturing group
+- \`(?P<name>abc)\` — named group
+- \`a|b\` — alternation (a ya b)`,
+        code: `import re
+
+# Email validation
+email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+re.match(email_pattern, "ali@example.com")  # match!
+re.match(email_pattern, "not-an-email")     # None
+
+# Pakistani phone
+phone_pattern = r'^(?:0|\+92)3[0-9]{9}$'
+re.match(phone_pattern, "03001234567")  # match!
+re.match(phone_pattern, "+923001234567")  # match!
+
+# URL extraction
+url_pattern = r'https?://(?:www\.)?[\w.-]+\.[a-z]{2,}(?:/\S*)?'
+text = "Visit https://python.org and http://www.example.com/path"
+urls = re.findall(url_pattern, text)
+# ['https://python.org', 'http://www.example.com/path']
+
+# Date extraction with groups
+date_pattern = r'(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})'
+matches = re.findall(date_pattern, "Born 15/01/2000, married 20-06-2022")
+# [('15', '01', '2000'), ('20', '06', '2022')]`,
+      },
+      {
+        heading: "re module functions",
+        content: `**Main functions:**
+
+| Function | Use |
+|----------|-----|
+| \`re.match()\` | Start se match karo |
+| \`re.search()\` | Anywhere match dhundo |
+| \`re.findall()\` | Sab matches list mein |
+| \`re.finditer()\` | Matches as iterator |
+| \`re.sub()\` | Replace karo |
+| \`re.split()\` | Pattern se split karo |
+| \`re.compile()\` | Pattern pre-compile |
+
+**Flags:**
+- \`re.IGNORECASE\` / \`re.I\` — case-insensitive
+- \`re.MULTILINE\` / \`re.M\` — ^ $ har line ke liye
+- \`re.DOTALL\` / \`re.S\` — dot newline bhi match kare`,
+        code: `import re
+
+text = "Python is great. PYTHON is powerful. python rocks!"
+
+# findall — all matches
+re.findall(r'python', text, re.IGNORECASE)
+# ['Python', 'PYTHON', 'python']
+
+# sub — replace
+clean = re.sub(r'\s+', ' ', "too   many    spaces")
+# "too many spaces"
+
+# Censoring
+censored = re.sub(r'\b(bad|ugly|mean)\b', '***', text, flags=re.I)
+
+# Replace with function
+def double_number(match):
+    return str(int(match.group()) * 2)
+
+result = re.sub(r'\d+', double_number, "I have 5 cats and 3 dogs")
+# "I have 10 cats and 6 dogs"
+
+# split
+parts = re.split(r'[,;|]+', "a,b;;c|d")
+# ['a', 'b', 'c', 'd']
+
+# Named groups
+pattern = r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})'
+match = re.search(pattern, "Today is 2024-01-15")
+if match:
+    print(match.group('year'))   # '2024'
+    print(match.groupdict())     # {'year': '2024', 'month': '01', 'day': '15'}
+
+# compile for performance (reuse karo)
+EMAIL_RE = re.compile(
+    r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+    re.IGNORECASE
+)
+emails = EMAIL_RE.findall(big_text)`,
+      },
+    ],
+    cheatsheet: [
+      "re.search(r'\\d+', text) — digit find karo",
+      "re.findall(r'\\w+', text) — sab words",
+      "re.sub(r'\\s+', ' ', text) — whitespace normalize",
+      "re.compile(pattern, re.I) — case-insensitive",
+      "match.group() — matched string",
+      "match.groups() — capturing groups tuple",
+      "(?P<name>...) — named group",
+    ],
+    revision: [
+      "re.match() = start se, re.search() = anywhere",
+      "findall = list, finditer = iterator (memory efficient)",
+      "Raw strings r'' use karo — \\d \\w \\s etc.",
+      "re.compile() = performance, reuse ke liye",
+      "Flags: re.I (case), re.M (multiline), re.S (dotall)",
+    ],
+    revisionEn: [
+      "re.match() = from start, re.search() = anywhere in string",
+      "findall = list, finditer = iterator (memory efficient)",
+      "Use raw strings r'' to avoid backslash escaping issues",
+      "re.compile() = better performance when reusing patterns",
+      "Flags: re.I (case-insensitive), re.M (multiline), re.S (dotall)",
+    ],
+  },
+  {
+    id: "py-requests",
+    title: "Web APIs — requests Library",
+    titleEn: "Web APIs — requests Library",
+    emoji: "🌐",
+    category: "Intermediate",
+    description: "Python mein HTTP requests karna — GET, POST, headers, authentication, JSON",
+    descriptionEn: "Making HTTP requests in Python — GET, POST, headers, authentication, JSON",
+    sections: [
+      {
+        heading: "requests library kya hai?",
+        content: `**requests** = Python ki most popular HTTP library — simple, human-friendly API.
+
+**Install:**
+\`\`\`bash
+pip install requests
+\`\`\`
+
+**Kab use karein:**
+- REST APIs consume karna
+- Web scraping
+- File download
+- Webhook testing
+- Microservices communication
+
+**requests vs urllib:** requests much simpler — urllib Python standard library mein hai lekin verbose.`,
+      },
+      {
+        heading: "GET aur POST requests",
+        content: `**GET:** Data fetch karna — query parameters ke saath.
+**POST:** Data bhejnna — JSON, form data, files.
+**response object:** status_code, text, json(), headers, content.
+
+**Always check:** response.raise_for_status() — 4xx/5xx pe exception throw karta hai.`,
+        code: `import requests
+
+# GET request
+response = requests.get('https://api.github.com/users/python')
+print(response.status_code)   # 200
+data = response.json()        # dict
+print(data['name'])           # "Python"
+
+# Query parameters
+params = {'q': 'python tutorial', 'language': 'python', 'per_page': 10}
+response = requests.get('https://api.github.com/search/repositories', params=params)
+# URL: .../search/repositories?q=python+tutorial&language=python&per_page=10
+
+# POST request — JSON
+payload = {'username': 'ali', 'password': 'secret123'}
+response = requests.post(
+    'https://api.example.com/auth/login',
+    json=payload   # automatically sets Content-Type: application/json
+)
+token = response.json()['access_token']
+
+# POST — form data
+response = requests.post(
+    'https://api.example.com/form',
+    data={'name': 'Ali', 'email': 'ali@example.com'}
+)
+
+# Error handling
+try:
+    response = requests.get('https://api.example.com/users', timeout=10)
+    response.raise_for_status()  # 4xx/5xx pe exception!
+    data = response.json()
+except requests.exceptions.Timeout:
+    print("Request timed out!")
+except requests.exceptions.HTTPError as e:
+    print(f"HTTP Error: {e.response.status_code}")
+except requests.exceptions.ConnectionError:
+    print("Network error!")`,
+      },
+      {
+        heading: "Headers, Authentication, aur Sessions",
+        content: `**Headers:** Authorization, Content-Type, Accept, etc.
+**Session:** Multiple requests ke liye — cookies aur headers share karta hai — efficient (connection reuse).
+**Authentication:** Basic Auth, Bearer Token, API Key, OAuth.`,
+        code: `import requests
+
+# Custom headers
+headers = {
+    'Authorization': 'Bearer your-jwt-token-here',
+    'Accept': 'application/json',
+    'User-Agent': 'MyApp/1.0',
+}
+response = requests.get('https://api.example.com/profile', headers=headers)
+
+# Basic Auth
+response = requests.get(
+    'https://api.example.com/protected',
+    auth=('username', 'password')
+)
+
+# Session — multiple requests, shared config
+session = requests.Session()
+session.headers.update({'Authorization': 'Bearer ' + token})
+session.headers.update({'Accept': 'application/json'})
+
+# Ab sab requests pe yeh headers automatically jaayenge
+user = session.get('https://api.example.com/user').json()
+posts = session.get('https://api.example.com/user/posts').json()
+session.post('https://api.example.com/posts', json={'title': 'New'})
+
+session.close()  # cleanup
+
+# File upload
+with open('document.pdf', 'rb') as f:
+    response = requests.post(
+        'https://api.example.com/upload',
+        files={'file': ('document.pdf', f, 'application/pdf')},
+        headers={'Authorization': 'Bearer ' + token}
+    )
+
+# Download file
+response = requests.get('https://example.com/large-file.zip', stream=True)
+with open('downloaded.zip', 'wb') as f:
+    for chunk in response.iter_content(chunk_size=8192):
+        f.write(chunk)`,
+      },
+    ],
+    cheatsheet: [
+      "requests.get(url, params={...}, headers={...})",
+      "requests.post(url, json={...}) — JSON body",
+      "response.status_code — 200, 404, 500 etc.",
+      "response.json() — parse JSON response",
+      "response.raise_for_status() — exception on error",
+      "requests.Session() — shared headers/cookies",
+      "timeout=10 — connection timeout seconds",
+    ],
+    revision: [
+      "params= → query string, json= → request body",
+      "response.json() = dict, response.text = string",
+      "raise_for_status() hamesha call karo production mein",
+      "Session = connection reuse + shared state",
+      "stream=True = large file download efficiently",
+    ],
+    revisionEn: [
+      "params= → query string, json= → request body",
+      "response.json() = dict, response.text = string",
+      "Always call raise_for_status() in production",
+      "Session = connection reuse + shared state/headers",
+      "stream=True = efficient large file download",
+    ],
+  },
+  {
+    id: "py-testing",
+    title: "Testing with pytest",
+    titleEn: "Testing with pytest",
+    emoji: "🧪",
+    category: "Advanced",
+    description: "Python mein automated testing — pytest, fixtures, mocking, coverage",
+    descriptionEn: "Automated testing in Python — pytest, fixtures, mocking, coverage",
+    sections: [
+      {
+        heading: "pytest kya hai? Kyon use karein?",
+        content: `**pytest** = Python ka most popular testing framework — simple syntax, powerful features.
+
+**Install:**
+\`\`\`bash
+pip install pytest pytest-cov
+\`\`\`
+
+**Test discovery:** pytest automatically dhundhta hai:
+- \`test_*.py\` ya \`*_test.py\` files
+- \`test_\` se shuru hone wale functions
+- \`Test\` se shuru hone wali classes
+
+**Kyon testing zaroori hai:**
+- Bugs early pakro
+- Code confidently refactor karo
+- Documentation as code
+- Regression prevent karo`,
+      },
+      {
+        heading: "Basic tests aur assertions",
+        content: `**assert** statement use karo — pytest descriptive error messages deta hai agar fail ho.
+
+**Test types:**
+- **Unit tests:** Individual function test karo
+- **Integration tests:** Multiple components ek saath
+- **Parametrized:** Same test multiple inputs ke saath
+
+**pytest.raises():** Exception check karo.`,
+        code: `# math_utils.py
+def add(a: int, b: int) -> int:
+    return a + b
+
+def divide(a: float, b: float) -> float:
+    if b == 0:
+        raise ZeroDivisionError("Cannot divide by zero")
+    return a / b
+
+def get_grade(score: int) -> str:
+    if score >= 90: return "A"
+    if score >= 80: return "B"
+    if score >= 70: return "C"
+    return "F"
+
+# test_math_utils.py
+import pytest
+from math_utils import add, divide, get_grade
+
+# Basic test
+def test_add_positive_numbers():
+    assert add(2, 3) == 5
+
+def test_add_negative():
+    assert add(-1, -1) == -2
+
+def test_add_zero():
+    assert add(5, 0) == 5
+
+# Exception test
+def test_divide_by_zero():
+    with pytest.raises(ZeroDivisionError) as exc_info:
+        divide(10, 0)
+    assert "Cannot divide by zero" in str(exc_info.value)
+
+# Parametrized — multiple inputs
+@pytest.mark.parametrize("score,expected", [
+    (95, "A"),
+    (85, "B"),
+    (75, "C"),
+    (50, "F"),
+    (90, "A"),   # boundary!
+    (80, "B"),   # boundary!
+])
+def test_get_grade(score, expected):
+    assert get_grade(score) == expected
+
+# Run: pytest test_math_utils.py -v`,
+      },
+      {
+        heading: "Fixtures aur Mocking",
+        content: `**Fixtures:** Reusable test setup — @pytest.fixture decorator. Setup aur teardown automatic.
+
+**yield fixture:** Setup → yield → teardown (finally block).
+
+**Mocking:** unittest.mock — external dependencies replace karo (DB, API, email, etc.) — tests fast aur isolated rahein.`,
+        code: `import pytest
+from unittest.mock import MagicMock, patch, AsyncMock
+
+# Fixture — reusable setup
+@pytest.fixture
+def sample_user():
+    return {"id": 1, "name": "Ali", "email": "ali@test.com", "age": 25}
+
+@pytest.fixture
+def db_connection():
+    # Setup
+    conn = connect_test_db()
+    conn.execute("CREATE TABLE users ...")
+    
+    yield conn  # test yahan run hota hai
+    
+    # Teardown (hamesha run hota hai — even if test fails)
+    conn.execute("DROP TABLE users")
+    conn.close()
+
+def test_user_service(sample_user, db_connection):
+    service = UserService(db_connection)
+    result = service.create(sample_user)
+    assert result['id'] is not None
+
+# Mocking — external API mock karo
+class UserService:
+    def __init__(self, email_client):
+        self.email = email_client
+    
+    def register(self, user_data):
+        user = save_to_db(user_data)
+        self.email.send_welcome(user['email'])  # external!
+        return user
+
+def test_register_sends_welcome_email():
+    mock_email = MagicMock()
+    service = UserService(mock_email)
+    
+    user = service.register({"name": "Ali", "email": "ali@test.com"})
+    
+    # Verify email was sent
+    mock_email.send_welcome.assert_called_once_with("ali@test.com")
+
+# patch decorator
+@patch('myapp.requests.get')
+def test_fetch_user(mock_get):
+    mock_get.return_value.json.return_value = {"id": 1, "name": "Ali"}
+    mock_get.return_value.status_code = 200
+    
+    result = fetch_user_from_api(1)
+    assert result['name'] == "Ali"
+    mock_get.assert_called_once()`,
+      },
+    ],
+    cheatsheet: [
+      "pytest — run all tests",
+      "pytest -v — verbose output",
+      "pytest test_file.py::test_function — specific test",
+      "pytest --cov=myapp — coverage report",
+      "@pytest.fixture — reusable setup/teardown",
+      "@pytest.mark.parametrize — multiple inputs",
+      "unittest.mock.MagicMock() — mock objects",
+    ],
+    revision: [
+      "Test files: test_*.py, functions: test_",
+      "assert use karo — pytest detailed errors deta hai",
+      "Fixtures = reusable setup, yield = teardown",
+      "Mock = external dependencies replace karo",
+      "parametrize = same test, multiple data sets",
+    ],
+    revisionEn: [
+      "Test files: test_*.py, functions start with test_",
+      "Use assert — pytest gives detailed failure messages",
+      "Fixtures = reusable setup, yield = teardown point",
+      "Mock = replace external dependencies for isolation",
+      "parametrize = same test logic with multiple data sets",
+    ],
+  },
+  {
+    id: "py-fastapi",
+    title: "FastAPI — Modern Python APIs",
+    titleEn: "FastAPI — Modern Python APIs",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "Python se fast, modern REST APIs banao — FastAPI, Pydantic, async support",
+    descriptionEn: "Build fast, modern REST APIs with Python — FastAPI, Pydantic, async support",
+    sections: [
+      {
+        heading: "FastAPI kya hai?",
+        content: `**FastAPI** = Modern, fast Python web framework — APIs banana ke liye. Django/Flask se fast (performance mein NodeJS aur Go ke barabar).
+
+**Kyun FastAPI:**
+- **Automatic docs** — Swagger UI aur ReDoc built-in
+- **Type hints** = validation automatic (Pydantic)
+- **Async support** — asyncio native support
+- **Fast performance** — Starlette + Pydantic ka combination
+- **Python 3.7+**
+
+**Install:**
+\`\`\`bash
+pip install fastapi uvicorn[standard]
+\`\`\`
+
+**Run:**
+\`\`\`bash
+uvicorn main:app --reload
+\`\`\``,
+      },
+      {
+        heading: "Routes, Path Parameters, aur Request Body",
+        content: `**Path parameters:** URL mein {param} — type hints se automatic validation.
+**Query parameters:** Function parameters jo path mein nahi — automatic query string se.
+**Request body:** Pydantic model — JSON body automatic parse aur validate.
+
+**Pydantic models:** Type hints + validation + serialization.`,
+        code: `from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+
+app = FastAPI(title="My API", version="1.0.0")
+
+# Pydantic model — request body aur response
+class User(BaseModel):
+    id: Optional[int] = None
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    age: int = Field(..., ge=0, le=150)
+    tags: list[str] = []
+
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str = Field(..., min_length=8)
+
+# GET — simple route
+@app.get("/")
+async def root():
+    return {"message": "Hello World!"}
+
+# Path parameter
+@app.get("/users/{user_id}", response_model=User)
+async def get_user(user_id: int):   # int = automatic validation
+    user = db.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+# Query parameters
+@app.get("/users/")
+async def list_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1, le=100),
+    search: Optional[str] = None,
+    active: bool = True,
+):
+    return db.get_users(page=page, limit=limit, search=search, active=active)
+
+# POST — request body
+@app.post("/users/", response_model=User, status_code=201)
+async def create_user(user_data: UserCreate):
+    existing = db.find_by_email(user_data.email)
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already exists")
+    return db.create_user(user_data.dict())
+
+# PUT — update
+@app.put("/users/{user_id}", response_model=User)
+async def update_user(user_id: int, user_data: UserCreate):
+    user = db.update_user(user_id, user_data.dict())
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+# DELETE
+@app.delete("/users/{user_id}", status_code=204)
+async def delete_user(user_id: int):
+    if not db.delete_user(user_id):
+        raise HTTPException(status_code=404, detail="User not found")`,
+      },
+      {
+        heading: "Dependency Injection aur Middleware",
+        content: `**Dependencies:** Reusable logic — authentication, DB connection, rate limiting.
+**Middleware:** Har request pe run — logging, CORS, timing.
+**Background tasks:** Response bhejne ke baad run karo.
+
+**Auto-generated docs:** /docs (Swagger UI), /redoc visit karo!`,
+        code: `from fastapi import Depends, Security, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "https://myapp.com"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Database dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db    # route use karta hai
+    finally:
+        db.close()  # cleanup
+
+# Auth dependency
+security = HTTPBearer()
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db = Depends(get_db)
+):
+    token = credentials.credentials
+    user = verify_jwt_token(token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user
+
+# Protected route
+@app.get("/profile", response_model=User)
+async def get_profile(current_user = Depends(get_current_user)):
+    return current_user
+
+# Background task
+def send_notification_task(email: str, message: str):
+    # Background mein — response wait nahi karta
+    email_client.send(email, message)
+
+@app.post("/orders/")
+async def create_order(
+    order_data: OrderCreate,
+    background_tasks: BackgroundTasks,
+    current_user = Depends(get_current_user),
+    db = Depends(get_db),
+):
+    order = db.create_order(order_data)
+    background_tasks.add_task(
+        send_notification_task,
+        current_user.email,
+        f"Order #{order.id} placed!"
+    )
+    return order`,
+      },
+    ],
+    cheatsheet: [
+      "uvicorn main:app --reload — dev server",
+      "@app.get/post/put/delete('/path') — route define",
+      "Path param: /users/{id}, func param: id: int",
+      "Query param: def route(q: str = None)",
+      "Body: def route(data: PydanticModel)",
+      "raise HTTPException(status_code=404, detail='...')",
+      "Depends(func) — dependency injection",
+      "/docs — Swagger UI auto-generated",
+    ],
+    revision: [
+      "Type hints = automatic validation + Swagger docs",
+      "Pydantic = request/response schema + validation",
+      "Depends() = reusable logic (auth, DB)",
+      "async def = non-blocking routes",
+      "HTTPException = proper API error responses",
+    ],
+    revisionEn: [
+      "Type hints = automatic validation + Swagger docs",
+      "Pydantic = request/response schema + validation",
+      "Depends() = reusable logic (auth, DB connection)",
+      "async def = non-blocking routes for better performance",
+      "HTTPException = proper API error responses with status codes",
+    ],
+  },
+  {
+    id: "py-decorators-advanced",
+    title: "Decorators — Deep Dive",
+    titleEn: "Decorators — Deep Dive",
+    emoji: "🎨",
+    category: "Advanced",
+    description: "Python decorators deeply — function, class decorators, parameters, stacking",
+    descriptionEn: "Python decorators in depth — function, class decorators, parameters, stacking",
+    sections: [
+      {
+        heading: "Decorator kya hai? Kaise kaam karta hai?",
+        content: `**Decorator** = Higher-order function jo doosre function ko wrap karta hai — behavior add karo bina original modify kiye.
+
+**@syntax** = syntactic sugar:
+\`\`\`python
+@decorator
+def func(): pass
+# Same as: func = decorator(func)
+\`\`\`
+
+**Kab use karein:**
+- Logging / debugging
+- Authentication / authorization
+- Caching / memoization
+- Timing / profiling
+- Retry logic
+- Input validation`,
+      },
+      {
+        heading: "Function decorators banana",
+        content: `**Basic structure:** Outer function (decorator) → inner function (wrapper) → return wrapper.
+
+**@functools.wraps:** Zaroori! Original function ka naam, docstring, signature preserve karta hai. Bina iske __name__ "wrapper" hoga.
+
+**Decorator stacking:** Multiple decorators — bottom se top execute hote hain (order matters!).`,
+        code: `import functools
+import time
+
+# Basic decorator
+def timer(func):
+    @functools.wraps(func)   # metadata preserve!
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)   # original call!
+        elapsed = time.perf_counter() - start
+        print(f"{func.__name__} took {elapsed:.4f}s")
+        return result
+    return wrapper
+
+@timer
+def slow_function(n: int) -> int:
+    return sum(range(n))
+
+slow_function(1_000_000)
+# slow_function took 0.0234s
+
+# Decorator with arguments
+def retry(max_attempts: int = 3, exceptions=(Exception,)):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    return func(*args, **kwargs)
+                except exceptions as e:
+                    if attempt == max_attempts:
+                        raise
+                    print(f"Attempt {attempt} failed: {e}. Retrying...")
+        return wrapper
+    return decorator
+
+@retry(max_attempts=3, exceptions=(ConnectionError,))
+def fetch_data(url: str) -> dict:
+    return requests.get(url).json()
+
+# Stacking decorators
+def log_calls(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        print(f"Calling {func.__name__}")
+        return func(*args, **kwargs)
+    return wrapper
+
+def validate_positive(func):
+    @functools.wraps(func)
+    def wrapper(n: int, *args, **kwargs):
+        if n < 0:
+            raise ValueError(f"n must be positive, got {n}")
+        return func(n, *args, **kwargs)
+    return wrapper
+
+@timer           # 3rd: outermost
+@log_calls       # 2nd
+@validate_positive  # 1st: runs first
+def compute(n: int) -> int:
+    return sum(range(n))`,
+      },
+      {
+        heading: "Class decorators aur Real-world patterns",
+        content: `**Class as decorator:** __call__ method define karo — object function ki tarah callable.
+**Real patterns:** Authentication, rate limiting, caching, event registration.`,
+        code: `# Class decorator
+class RateLimit:
+    def __init__(self, max_calls: int, period: float):
+        self.max_calls = max_calls
+        self.period = period
+        self.calls = []
+    
+    def __call__(self, func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            now = time.time()
+            # Purani calls remove karo
+            self.calls = [t for t in self.calls if now - t < self.period]
+            
+            if len(self.calls) >= self.max_calls:
+                raise Exception(f"Rate limit exceeded: {self.max_calls} calls per {self.period}s")
+            
+            self.calls.append(now)
+            return func(*args, **kwargs)
+        return wrapper
+
+# 5 calls per minute allow
+@RateLimit(max_calls=5, period=60)
+def call_api(endpoint: str) -> dict:
+    return requests.get(endpoint).json()
+
+# Authorization decorator
+def require_auth(roles=None):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(request, *args, **kwargs):
+            if not request.user:
+                raise PermissionError("Authentication required")
+            if roles and request.user.role not in roles:
+                raise PermissionError(f"Role required: {roles}")
+            return func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+@require_auth(roles=['admin', 'superadmin'])
+def delete_user(request, user_id: int):
+    db.delete_user(user_id)
+
+# Property decorator (built-in)
+class Circle:
+    def __init__(self, radius: float):
+        self._radius = radius
+    
+    @property
+    def radius(self) -> float:
+        return self._radius
+    
+    @radius.setter
+    def radius(self, value: float):
+        if value < 0:
+            raise ValueError("Radius cannot be negative")
+        self._radius = value
+    
+    @property
+    def area(self) -> float:
+        return 3.14159 * self._radius ** 2`,
+      },
+    ],
+    cheatsheet: [
+      "@functools.wraps(func) — hamesha use karo in decorators",
+      "@decorator = func = decorator(func)",
+      "wrapper(*args, **kwargs) — sab arguments forward karo",
+      "Decorator with args = 3-level nesting",
+      "@timer @log → timer wraps log-wrapped function",
+      "@property — getter, @x.setter — setter",
+    ],
+    revision: [
+      "Decorator = function jo function wrap kare",
+      "@wraps preserve karta hai __name__, __doc__",
+      "Args wala decorator = extra outer function",
+      "Stacking: bottom decorator pehle apply hota hai",
+      "Class decorator = __call__ method",
+    ],
+    revisionEn: [
+      "Decorator = function that wraps another function",
+      "@wraps preserves __name__, __doc__, signature",
+      "Decorator with arguments needs an extra outer function",
+      "Stacking: bottom decorator is applied first",
+      "Class decorator = implement __call__ method",
+    ],
+  },
 ];
 
 export const pythonInterviews = [
@@ -4320,4 +5191,1104 @@ export const pythonInterviews = [
     answer: "GIL CPython ka mutex hai jo ek time pe sirf ek thread ko Python bytecode execute karne deta hai. CPU-bound tasks ke liye multiprocessing use karo (multi-core). I/O-bound ke liye threading/asyncio theek hai.",
     tags: ["advanced", "concurrency"],
   },
+  {
+    id: 7,
+    level: "Intermediate" as const,
+    question: "Python mein OOP — class, inheritance, super() kaise kaam karta hai?",
+    answer: `Python mein OOP fully supported hai. **class** keyword se class banao. **__init__** constructor hai. **super()** parent class ke methods call karne ke liye. **self** = current instance.
+
+**Inheritance:** class Child(Parent): — Child parent ke sab methods aur properties inherit karta hai.
+**Multiple inheritance:** class C(A, B): — Python MRO (Method Resolution Order) use karta hai — C3 linearization.
+**@property:** getter/setter banana bina property access style mein.`,
+    code: `class Animal:
+    def __init__(self, name: str, sound: str):
+        self.name = name
+        self._sound = sound   # _ = protected convention
+    
+    def speak(self) -> str:
+        return f"{self.name} says {self._sound}"
+    
+    @property
+    def info(self) -> str:
+        return f"Animal: {self.name}"
+
+class Dog(Animal):
+    def __init__(self, name: str, breed: str):
+        super().__init__(name, "Woof!")   # parent constructor call
+        self.breed = breed
+    
+    def speak(self) -> str:   # override
+        return f"{super().speak()} (I'm a {self.breed})"
+    
+    def fetch(self) -> str:
+        return f"{self.name} fetches the ball!"
+
+dog = Dog("Max", "Labrador")
+dog.speak()   # "Max says Woof! (I'm a Labrador)"
+dog.info      # "Animal: Max" (inherited property)
+isinstance(dog, Dog)     # True
+isinstance(dog, Animal)  # True (inheritance chain)`,
+  },
+  {
+    id: 8,
+    level: "Intermediate" as const,
+    question: "Python mein dunder (magic) methods kya hain?",
+    answer: `Dunder = double underscore se shuru aur khatam hone wale methods. Python internally call karta hai certain operations pe.
+
+**Important dunders:**
+- **__init__** — constructor
+- **__str__** — str(obj) ya print ke liye (user-friendly)
+- **__repr__** — repr(obj) — developer ke liye, eval-able ideally
+- **__len__** — len(obj)
+- **__eq__**, **__lt__**, **__gt__** — comparison operators
+- **__add__**, **__mul__** — arithmetic operators
+- **__getitem__**, **__setitem__** — obj[key] access
+- **__iter__**, **__next__** — iteration protocol
+- **__enter__**, **__exit__** — context manager (with statement)
+- **__call__** — obj() jaise call karo`,
+    code: `class Vector:
+    def __init__(self, x: float, y: float):
+        self.x = x
+        self.y = y
+    
+    def __repr__(self) -> str:
+        return f"Vector({self.x}, {self.y})"
+    
+    def __str__(self) -> str:
+        return f"({self.x}, {self.y})"
+    
+    def __add__(self, other: 'Vector') -> 'Vector':
+        return Vector(self.x + other.x, self.y + other.y)
+    
+    def __mul__(self, scalar: float) -> 'Vector':
+        return Vector(self.x * scalar, self.y * scalar)
+    
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Vector): return NotImplemented
+        return self.x == other.x and self.y == other.y
+    
+    def __len__(self) -> int:
+        return 2   # 2D vector
+    
+    def __abs__(self) -> float:
+        return (self.x**2 + self.y**2) ** 0.5
+
+v1 = Vector(1, 2)
+v2 = Vector(3, 4)
+print(v1 + v2)   # (4, 6)
+print(v1 * 3)    # (3, 6)
+abs(v1)          # 2.236...
+repr(v1)         # "Vector(1, 2)"`,
+  },
+  {
+    id: 9,
+    level: "Intermediate" as const,
+    question: "Python mein @classmethod aur @staticmethod mein kya fark hai?",
+    answer: `**Instance method:** self receive karta hai — specific instance pe operate karta hai.
+**@classmethod:** cls receive karta hai — class pe operate karta hai, alternative constructors banana.
+**@staticmethod:** Na self, na cls — utility function — sirf logically class se related.
+
+**Kab kya use karein:**
+- Instance method: instance state access/modify karna ho
+- @classmethod: alternative constructor (factory), class-level state
+- @staticmethod: helper function jo class se logically related ho lekin state nahi chahiye`,
+    code: `class Date:
+    def __init__(self, year: int, month: int, day: int):
+        self.year = year
+        self.month = month
+        self.day = day
+    
+    def __str__(self) -> str:
+        return f"{self.year}-{self.month:02d}-{self.day:02d}"
+    
+    # @classmethod — alternative constructor
+    @classmethod
+    def from_string(cls, date_string: str) -> 'Date':
+        year, month, day = map(int, date_string.split('-'))
+        return cls(year, month, day)   # cls = Date
+    
+    @classmethod
+    def today(cls) -> 'Date':
+        from datetime import date
+        d = date.today()
+        return cls(d.year, d.month, d.day)
+    
+    # @staticmethod — pure utility
+    @staticmethod
+    def is_valid_date(year: int, month: int, day: int) -> bool:
+        return 1 <= month <= 12 and 1 <= day <= 31
+    
+    # Instance method
+    def is_leap_year(self) -> bool:
+        return self.year % 4 == 0 and (self.year % 100 != 0 or self.year % 400 == 0)
+
+d1 = Date.from_string("2024-01-15")   # classmethod
+d2 = Date.today()                      # classmethod
+Date.is_valid_date(2024, 13, 1)        # staticmethod — False`,
+  },
+  {
+    id: 10,
+    level: "Intermediate" as const,
+    question: "Python mein context managers kya hain? __enter__ aur __exit__ kaise kaam karte hain?",
+    answer: `Context manager = **with** statement ke saath use hone wala object. Resource management ke liye — guaranteed cleanup.
+
+**__enter__:** with block shuru hone pe call hota hai, as ke baad variable ko assign hota hai.
+**__exit__:** with block khatam hone pe call hota hai — even exception pe! Return True = exception suppress karo.
+
+**@contextmanager:** Generator se context manager banana — yield = __enter__ point.
+
+**Common uses:** File handling, DB transactions, locks, timers, mocking`,
+    code: `# Custom context manager (class-based)
+class Timer:
+    def __enter__(self):
+        import time
+        self.start = time.perf_counter()
+        return self   # 'as' variable
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        import time
+        self.elapsed = time.perf_counter() - self.start
+        print(f"Took: {self.elapsed:.4f}s")
+        return False   # don't suppress exceptions
+
+with Timer() as t:
+    result = sum(range(1_000_000))
+# Prints: "Took: 0.0234s"
+
+# @contextmanager decorator (simpler)
+from contextlib import contextmanager
+
+@contextmanager
+def managed_db_transaction(conn):
+    try:
+        yield conn.cursor()    # __enter__ = give cursor
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        pass   # connection close by caller
+
+with managed_db_transaction(conn) as cursor:
+    cursor.execute("INSERT INTO users ...")
+
+# Multiple context managers
+with open('in.txt') as fin, open('out.txt', 'w') as fout:
+    fout.write(fin.read())`,
+  },
+  {
+    id: 11,
+    level: "Beginner" as const,
+    question: "Python mein exception handling kaise karein? Custom exceptions kaise banate hain?",
+    answer: `**try-except:** Exception handle karo gracefully. **else:** Koi exception nahi toh. **finally:** Hamesha run karo (cleanup).
+
+**Exception hierarchy:** BaseException → Exception → various subclasses.
+**raise:** Exception throw karo. **raise from:** Original exception chain rakho.
+
+**Custom exceptions:** Exception class extend karo — better error messages aur extra data.`,
+    code: `# Basic exception handling
+try:
+    result = 10 / 0
+except ZeroDivisionError:
+    print("Division by zero!")
+except (TypeError, ValueError) as e:
+    print(f"Type/Value error: {e}")
+except Exception as e:
+    print(f"Unexpected error: {type(e).__name__}: {e}")
+else:
+    print("No exception!")   # try succeed hone pe
+finally:
+    print("Always runs!")    # cleanup
+
+# Multiple exceptions
+def safe_parse(text: str) -> float:
+    try:
+        return float(text)
+    except ValueError:
+        raise ValueError(f"'{text}' valid number nahi hai")
+    except TypeError:
+        raise TypeError("Input string hona chahiye")
+
+# Custom exception hierarchy
+class AppError(Exception):
+    """Base exception for our app"""
+    pass
+
+class ValidationError(AppError):
+    def __init__(self, field: str, message: str):
+        self.field = field
+        self.message = message
+        super().__init__(f"Validation failed on '{field}': {message}")
+
+class NotFoundError(AppError):
+    def __init__(self, resource: str, id: int):
+        super().__init__(f"{resource} with id {id} not found")
+        self.resource = resource
+        self.id = id
+
+# Re-raise with context
+try:
+    user = get_user(id)
+except DatabaseError as e:
+    raise NotFoundError("User", id) from e   # chain preserved`,
+  },
+  {
+    id: 12,
+    level: "Intermediate" as const,
+    question: "Python mein lambda, map, filter, zip kya hain?",
+    answer: `**lambda:** Anonymous function — ek expression. Long functions ke liye def prefer karo.
+**map():** Har element pe function apply karo — lazy iterator return karta hai.
+**filter():** Condition se elements select karo — lazy iterator.
+**zip():** Multiple iterables ko pair karo — shortest pe stop karta hai.
+
+**Modern Python:** List comprehensions zyada readable hain map/filter se. zip_longest bhi available hai.`,
+    code: `# lambda
+square = lambda x: x ** 2
+add = lambda x, y: x + y
+square(5)   # 25
+
+# Practical lambda use
+students = [{"name": "Ali", "grade": 85}, {"name": "Sara", "grade": 92}]
+sorted_students = sorted(students, key=lambda s: s['grade'], reverse=True)
+
+# map — transform each element
+nums = [1, 2, 3, 4, 5]
+squared = list(map(lambda x: x**2, nums))   # [1, 4, 9, 16, 25]
+# Better with comprehension:
+squared = [x**2 for x in nums]
+
+# map with multiple iterables
+a = [1, 2, 3]
+b = [10, 20, 30]
+sums = list(map(lambda x, y: x + y, a, b))   # [11, 22, 33]
+
+# filter — select elements
+evens = list(filter(lambda x: x % 2 == 0, range(10)))   # [0,2,4,6,8]
+# Better with comprehension:
+evens = [x for x in range(10) if x % 2 == 0]
+
+# zip — pair elements
+names = ["Ali", "Sara", "Raza"]
+scores = [85, 92, 78]
+paired = list(zip(names, scores))   # [("Ali",85), ("Sara",92), ("Raza",78)]
+
+for name, score in zip(names, scores):
+    print(f"{name}: {score}")
+
+# unzip
+unzipped_names, unzipped_scores = zip(*paired)`,
+  },
+  {
+    id: 13,
+    level: "Intermediate" as const,
+    question: "Python mein iterators aur generators mein kya fark hai?",
+    answer: `**Iterable:** Iterate kiya ja sakta hai — __iter__ method hota hai (list, tuple, str, dict).
+**Iterator:** Ek ek value deta hai — __iter__ + __next__ methods. StopIteration raise karta hai end pe.
+**Generator:** Iterator banane ka easy way — yield keyword use karo. Memory efficient.
+
+**Generator expressions:** (x for x in range) — list comprehension ki tarah lekin lazy.
+
+**Fayde generators ke:**
+- Memory efficient — sab values ek saath store nahi
+- Infinite sequences possible
+- Pipeline create karo`,
+    code: `# Custom iterator (class-based)
+class CountUp:
+    def __init__(self, start: int, end: int):
+        self.current = start
+        self.end = end
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self) -> int:
+        if self.current > self.end:
+            raise StopIteration
+        val = self.current
+        self.current += 1
+        return val
+
+for n in CountUp(1, 5):
+    print(n)   # 1, 2, 3, 4, 5
+
+# Generator (much simpler!)
+def count_up(start: int, end: int):
+    for i in range(start, end + 1):
+        yield i   # pause, return value
+
+gen = count_up(1, 5)
+next(gen)   # 1
+next(gen)   # 2
+
+# Infinite generator
+def fibonacci():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+fib = fibonacci()
+[next(fib) for _ in range(8)]   # [0,1,1,2,3,5,8,13]
+
+# Generator pipeline (memory efficient!)
+def read_large_file(path):
+    with open(path) as f:
+        for line in f:
+            yield line.strip()
+
+def filter_empty(lines):
+    for line in lines:
+        if line:
+            yield line
+
+# Chain karo — no intermediate list!
+lines = filter_empty(read_large_file('huge.txt'))`,
+  },
+  {
+    id: 14,
+    level: "Intermediate" as const,
+    question: "Python mein type hints aur dataclasses kya hain?",
+    answer: `**Type hints (PEP 484):** Code documentation + IDE support + static analysis (mypy). Runtime pe enforce nahi hote (by default).
+
+**from __future__ import annotations** — string annotations, forward references allow.
+
+**typing module:** List, Dict, Optional, Union, Tuple, Any, Callable, TypeVar, Generic.
+
+**Python 3.10+:** X | Y = Union[X, Y], better syntax.
+
+**@dataclass:** Boilerplate reduce karo — __init__, __repr__, __eq__ automatically generate hote hain.`,
+    code: `# Type hints
+from typing import Optional, Union, List, Dict, Callable, TypeVar
+
+def greet(name: str, times: int = 1) -> str:
+    return f"Hello, {name}! " * times
+
+def process(data: list[int]) -> dict[str, float]:   # Python 3.9+
+    return {"sum": sum(data), "avg": sum(data) / len(data)}
+
+# Optional (can be None)
+def find_user(id: int) -> Optional[dict]:   # Optional[X] = X | None
+    ...
+
+# Union types
+def format_value(val: int | str | float) -> str:   # Python 3.10+
+    return str(val)
+
+# Callable
+def apply(func: Callable[[int, int], int], a: int, b: int) -> int:
+    return func(a, b)
+
+# @dataclass
+from dataclasses import dataclass, field
+
+@dataclass
+class User:
+    name: str
+    email: str
+    age: int = 0
+    tags: list[str] = field(default_factory=list)  # mutable default!
+    
+    def is_adult(self) -> bool:
+        return self.age >= 18
+
+@dataclass(frozen=True)  # immutable!
+class Point:
+    x: float
+    y: float
+    
+    def distance(self) -> float:
+        return (self.x**2 + self.y**2) ** 0.5
+
+user = User("Ali", "ali@test.com", age=25)
+print(user)   # User(name='Ali', email='ali@test.com', age=25, tags=[])
+p = Point(3.0, 4.0)
+p.distance()  # 5.0`,
+  },
+  {
+    id: 15,
+    level: "Advanced" as const,
+    question: "Python mein async/await aur asyncio kya hai?",
+    answer: `Python mein asyncio = single thread mein concurrent I/O operations. Thread se alag — cooperative multitasking (coroutines).
+
+**Coroutine:** async def se banao — await pe suspend hota hai, doosra coroutine run karta hai.
+**Event loop:** Coroutines schedule aur run karta hai.
+**asyncio.gather():** Multiple coroutines parallel run karo.
+**asyncio.create_task():** Background task banao.
+
+**Kab use karein:** Network requests, file I/O, database queries — I/O-bound tasks.
+**Kab nahi:** CPU-bound (multiprocessing use karo).`,
+    code: `import asyncio
+import aiohttp   # async HTTP client
+
+# Basic coroutine
+async def greet(name: str, delay: float) -> str:
+    await asyncio.sleep(delay)   # non-blocking!
+    return f"Hello, {name}!"
+
+# Run
+result = asyncio.run(greet("Ali", 1.0))
+
+# Parallel execution (gather)
+async def fetch_data(session, url: str) -> dict:
+    async with session.get(url) as response:
+        return await response.json()
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        # Sab ek saath fetch karo! (not sequential)
+        results = await asyncio.gather(
+            fetch_data(session, 'https://api.example.com/users'),
+            fetch_data(session, 'https://api.example.com/posts'),
+            fetch_data(session, 'https://api.example.com/comments'),
+        )
+        users, posts, comments = results
+
+asyncio.run(main())
+
+# Tasks (background)
+async def background_job():
+    while True:
+        await asyncio.sleep(60)
+        await cleanup_old_records()
+
+async def app():
+    task = asyncio.create_task(background_job())   # background!
+    await serve_requests()   # main work
+    task.cancel()
+
+# Async context manager
+class AsyncDB:
+    async def __aenter__(self):
+        self.conn = await connect_db()
+        return self.conn
+    
+    async def __aexit__(self, *args):
+        await self.conn.close()
+
+async with AsyncDB() as conn:
+    await conn.execute("SELECT ...")`,
+  },
+  {
+    id: 16,
+    level: "Intermediate" as const,
+    question: "Python mein file handling modes aur JSON processing kaise karein?",
+    answer: `**File modes:** r (read), w (write, truncate), a (append), r+ (read+write), b (binary), x (exclusive create).
+
+**with statement:** File automatically close hoti hai — hamesha use karo.
+**pathlib.Path:** Modern file path handling (Python 3.4+).
+
+**JSON:** json module — dumps() = dict→string, loads() = string→dict, dump() = file write, load() = file read.
+
+**CSV:** csv module — DictReader/DictWriter headers ke saath.`,
+    code: `import json
+from pathlib import Path
+
+# File reading
+with open('data.txt', 'r', encoding='utf-8') as f:
+    content = f.read()          # whole file
+    # ya
+    lines = f.readlines()       # list of lines
+    # ya
+    for line in f:              # line by line (memory efficient)
+        process(line.strip())
+
+# File writing
+with open('output.txt', 'w', encoding='utf-8') as f:
+    f.write("Hello, World!\n")
+    f.writelines(["line1\n", "line2\n"])
+
+# Append
+with open('log.txt', 'a') as f:
+    f.write(f"[{datetime.now()}] Event occurred\n")
+
+# pathlib (modern, recommended)
+path = Path('data') / 'users' / 'config.json'
+path.exists()           # True/False
+path.suffix             # '.json'
+path.stem               # 'config'
+path.read_text()        # read as string
+path.write_text("content")
+
+# JSON
+data = {"name": "Ali", "age": 25, "tags": ["python", "dev"]}
+
+# dict → JSON string
+json_str = json.dumps(data, indent=2, ensure_ascii=False)
+
+# JSON string → dict
+parsed = json.loads(json_str)
+
+# File read/write
+with open('data.json', 'w') as f:
+    json.dump(data, f, indent=2)
+
+with open('data.json') as f:
+    loaded = json.load(f)
+
+# CSV
+import csv
+with open('users.csv', 'r') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        print(row['name'], row['email'])`,
+  },
+  {
+    id: 17,
+    level: "Intermediate" as const,
+    question: "Python mein regular expressions (regex) kaise use karein?",
+    answer: `**re module:** Python mein regex ke liye. r"" = raw string (backslash escape nahi hota).
+
+**Common functions:**
+- **re.match()** — string ke shuru se match karo
+- **re.search()** — kahi bhi match dhundo
+- **re.findall()** — sab matches list mein
+- **re.sub()** — replace karo
+- **re.compile()** — pattern compile karo (reuse ke liye)
+
+**Common patterns:**
+- \\d = digit, \\w = word char, \\s = whitespace
+- . = any char, * = 0+, + = 1+, ? = 0 or 1
+- ^ = start, $ = end, [] = character class
+- () = group, | = or, {n,m} = repetition`,
+    code: `import re
+
+# Basic search
+text = "Contact us at ali@example.com or sara@test.pk"
+email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+
+# search — pehla match
+match = re.search(email_pattern, text)
+if match:
+    print(match.group())   # "ali@example.com"
+    print(match.start())   # position
+
+# findall — sab matches
+emails = re.findall(email_pattern, text)
+# ['ali@example.com', 'sara@test.pk']
+
+# Pakistani phone number
+phone_pattern = r'^(?:0|\+92)3[0-9]{9}$'
+re.match(phone_pattern, "03001234567")   # match object (truthy)
+re.match(phone_pattern, "12345")         # None (falsy)
+
+# sub — replace
+result = re.sub(r'\s+', ' ', "hello    world  python")
+# "hello world python"
+
+result = re.sub(r'(https?://\\S+)', r'<a href="\\1">\\1</a>', text)
+
+# Groups
+date_pattern = r'(\d{4})-(\d{2})-(\d{2})'
+match = re.search(date_pattern, "Born on 2000-01-15")
+if match:
+    year, month, day = match.groups()   # ('2000', '01', '15')
+
+# Named groups
+pattern = r'(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})'
+match = re.search(pattern, "2000-01-15")
+match.group('year')    # '2000'
+match.groupdict()      # {'year': '2000', 'month': '01', 'day': '15'}
+
+# compile — reuse ke liye (performance)
+EMAIL_RE = re.compile(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', re.IGNORECASE)
+EMAIL_RE.findall(big_text)`,
+  },
+  {
+    id: 18,
+    level: "Intermediate" as const,
+    question: "Python mein sorting kaise karte hain? key parameter aur custom sort?",
+    answer: `Python mein **sorted()** (new list) aur **list.sort()** (in-place) dono Timsort algorithm use karte hain — O(n log n), stable.
+
+**key parameter:** Sorting ke liye key function — element ko transform karo comparison ke liye.
+**reverse=True:** Descending order.
+**operator.attrgetter/itemgetter:** Common key functions.
+**functools.cmp_to_key:** Old-style comparison function ko key mein convert karo.
+
+**Multi-level sort:** Tuple key use karo.`,
+    code: `from operator import itemgetter, attrgetter
+from dataclasses import dataclass
+
+# Basic sorting
+nums = [3, 1, 4, 1, 5, 9, 2, 6]
+sorted_nums = sorted(nums)            # [1,1,2,3,4,5,6,9] — new list
+nums.sort()                           # in-place, same result
+sorted(nums, reverse=True)            # descending
+
+# Sorting strings (case-insensitive)
+words = ["Banana", "apple", "Cherry"]
+sorted(words, key=str.lower)          # ['apple', 'Banana', 'Cherry']
+
+# Sorting by length
+sorted(words, key=len)                # shortest first
+
+# Sorting dicts/objects
+students = [
+    {"name": "Ali", "grade": 85, "age": 20},
+    {"name": "Sara", "grade": 92, "age": 19},
+    {"name": "Raza", "grade": 85, "age": 21},
+]
+
+# By grade descending
+sorted(students, key=lambda s: s['grade'], reverse=True)
+
+# itemgetter (faster than lambda)
+sorted(students, key=itemgetter('grade'))
+
+# Multi-level sort — by grade DESC, then name ASC
+sorted(students, key=lambda s: (-s['grade'], s['name']))
+
+# @dataclass objects
+@dataclass
+class Student:
+    name: str
+    grade: int
+
+students = [Student("Ali", 85), Student("Sara", 92)]
+sorted(students, key=attrgetter('grade'))
+
+# Stable sort — same key → original order preserved
+# Python's sort is always stable!`,
+  },
+  {
+    id: 19,
+    level: "Intermediate" as const,
+    question: "Python mein enumerate, zip, aur unpacking kya hain?",
+    answer: `**enumerate():** Index aur value dono chahiye — range(len(list)) se better.
+**zip():** Multiple iterables simultaneously iterate karo.
+*** unpacking:** Sequence ko arguments mein unpack karo.
+**** unpacking:** Dict ko keyword arguments mein.
+**Walrus operator (:=):** Assignment expression (Python 3.8+) — assign karo aur use karo ek expression mein.`,
+    code: `# enumerate — index + value
+fruits = ["apple", "banana", "cherry"]
+
+# Bad (avoid)
+for i in range(len(fruits)):
+    print(i, fruits[i])
+
+# Good
+for i, fruit in enumerate(fruits):
+    print(i, fruit)
+
+enumerate(fruits, start=1)   # 1-based index
+
+# zip — pair multiple lists
+names = ["Ali", "Sara", "Raza"]
+scores = [85, 92, 78]
+grades = ["B", "A", "C"]
+
+for name, score, grade in zip(names, scores, grades):
+    print(f"{name}: {score} ({grade})")
+
+# dict from two lists
+mapping = dict(zip(names, scores))   # {"Ali": 85, "Sara": 92, "Raza": 78}
+
+# zip_longest — unequal lengths
+from itertools import zip_longest
+for a, b in zip_longest([1,2,3], [10,20], fillvalue=0):
+    print(a, b)   # (1,10), (2,20), (3,0)
+
+# Unpacking
+first, *rest = [1, 2, 3, 4, 5]
+# first=1, rest=[2,3,4,5]
+
+*init, last = [1, 2, 3, 4, 5]
+# init=[1,2,3,4], last=5
+
+a, b, *_ = [1, 2, 3, 4, 5]   # ignore rest
+
+# Walrus operator (:=) Python 3.8+
+# Assign and use in same expression
+if (n := len(names)) > 5:
+    print(f"Too many names: {n}")
+
+# Useful in while loops
+while chunk := file.read(1024):   # read + check in one step
+    process(chunk)`,
+  },
+  {
+    id: 20,
+    level: "Advanced" as const,
+    question: "Python mein metaclasses aur __init_subclass__ kya hain?",
+    answer: `**Metaclass:** Class ka class — jaise objects instances of classes, classes instances of metaclasses. type default metaclass hai.
+
+**Kab use karein:**
+- ORM (Django Models metaclass use karta hai)
+- API enforcement — subclasses pe constraints
+- Automatic registration
+- Singleton
+
+**__init_subclass__:** Metaclass se simpler alternative — jab class subclassed ho.
+
+**abc.ABC aur @abstractmethod:** Abstract base classes — methods define karo jo subclasses ko implement karne hain.`,
+    code: `from abc import ABC, abstractmethod
+
+# Abstract base class
+class Shape(ABC):
+    @abstractmethod
+    def area(self) -> float:
+        """Calculate area"""
+    
+    @abstractmethod
+    def perimeter(self) -> float:
+        """Calculate perimeter"""
+    
+    def describe(self) -> str:
+        return f"{self.__class__.__name__}: area={self.area():.2f}"
+
+class Circle(Shape):
+    def __init__(self, radius: float):
+        self.radius = radius
+    
+    def area(self) -> float:
+        return 3.14159 * self.radius ** 2
+    
+    def perimeter(self) -> float:
+        return 2 * 3.14159 * self.radius
+
+# Shape()  # ❌ TypeError: Can't instantiate abstract class
+Circle(5).area()   # ✅ 78.54
+
+# __init_subclass__ — plugin registration
+class Plugin:
+    _registry: dict = {}
+    
+    def __init_subclass__(cls, plugin_name: str = "", **kwargs):
+        super().__init_subclass__(**kwargs)
+        if plugin_name:
+            Plugin._registry[plugin_name] = cls
+            print(f"Registered: {plugin_name}")
+
+class EmailPlugin(Plugin, plugin_name="email"):
+    def send(self, msg): ...
+
+class SMSPlugin(Plugin, plugin_name="sms"):
+    def send(self, msg): ...
+
+Plugin._registry   # {'email': EmailPlugin, 'sms': SMSPlugin}
+
+# Metaclass — custom type
+class SingletonMeta(type):
+    _instances = {}
+    
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class Database(metaclass=SingletonMeta):
+    def __init__(self):
+        self.connected = False
+
+db1 = Database()
+db2 = Database()
+db1 is db2   # True — same instance!`,
+  },
+  {
+    id: 21,
+    level: "Advanced" as const,
+    question: "Python mein functools module ke important functions kya hain?",
+    answer: `**functools** = higher-order functions aur callables pe operations.
+
+**Important:**
+- **@lru_cache** — memoization with LRU eviction
+- **@cache** — unbounded cache (Python 3.9+)
+- **partial()** — function ke kuch arguments fix karo
+- **reduce()** — sequence ko single value mein fold karo
+- **@total_ordering** — comparison methods automatically derive karo
+- **@wraps** — decorator mein metadata preserve karo`,
+    code: `from functools import lru_cache, partial, reduce, total_ordering, wraps, cache
+
+# @lru_cache — automatic memoization
+@lru_cache(maxsize=128)
+def fibonacci(n: int) -> int:
+    if n < 2: return n
+    return fibonacci(n-1) + fibonacci(n-2)
+
+fibonacci(50)   # instant (cached!)
+fibonacci.cache_info()   # CacheInfo(hits=48, misses=51, ...)
+fibonacci.cache_clear()  # cache saaf karo
+
+# @cache (Python 3.9+ — unbounded)
+@cache
+def expensive_calc(n: int) -> int:
+    return sum(range(n))
+
+# partial — fix arguments
+def power(base: float, exp: float) -> float:
+    return base ** exp
+
+square = partial(power, exp=2)    # exp fixed!
+cube   = partial(power, exp=3)
+square(4)   # 16
+cube(3)     # 27
+
+# Real use: configure functions
+import requests
+from functools import partial
+
+get_json = partial(requests.get, headers={"Accept": "application/json"})
+
+# reduce — fold
+from functools import reduce
+product = reduce(lambda x, y: x * y, [1, 2, 3, 4, 5])   # 120
+flatten = reduce(lambda a, b: a + b, [[1,2],[3,4],[5]])   # [1,2,3,4,5]
+
+# @wraps — preserve function metadata
+def my_decorator(func):
+    @wraps(func)   # preserves name, docstring, etc.
+    def wrapper(*args, **kwargs):
+        print("Before!")
+        result = func(*args, **kwargs)
+        print("After!")
+        return result
+    return wrapper
+
+@my_decorator
+def greet(name: str) -> str:
+    """Greet someone"""
+    return f"Hello, {name}!"
+
+greet.__name__   # "greet" (not "wrapper"!)
+greet.__doc__    # "Greet someone"`,
+  },
+  {
+    id: 22,
+    level: "Beginner" as const,
+    question: "Python mein string formatting methods kaunse hain? f-strings vs format()?",
+    answer: `**String formatting methods:**
+1. **% formatting** (old style) — C-style, avoid
+2. **.format()** — more powerful, Python 2/3
+3. **f-strings (f"")** — fastest, most readable, Python 3.6+
+4. **Template strings** — safe substitution (user input ke liye)
+
+**f-strings features:**
+- Expressions embed karo
+- Format specifiers
+- Debugging with =
+- Multiline`,
+    code: `name = "Ali"
+score = 85.567
+pi = 3.14159265
+
+# Old % style (avoid)
+"Hello, %s! Score: %.2f" % (name, score)
+
+# .format()
+"Hello, {}! Score: {:.2f}".format(name, score)
+"{name} scored {score}".format(name=name, score=score)
+
+# f-strings (best!)
+f"Hello, {name}! Score: {score:.2f}"    # "Hello, Ali! Score: 85.57"
+
+# Expressions in f-strings
+f"2 + 2 = {2 + 2}"                      # "2 + 2 = 4"
+f"Upper: {name.upper()}"                # "Upper: ALI"
+f"{'Yes' if score > 90 else 'No'}"      # "No"
+
+# Format specifiers
+f"{pi:.4f}"        # "3.1416" — 4 decimal
+f"{score:.0f}"     # "86" — no decimal
+f"{1234567:,}"     # "1,234,567" — thousands sep
+f"{0.875:.1%}"     # "87.5%" — percentage
+f"{42:05d}"        # "00042" — zero-pad
+f"{42:>10}"        # "        42" — right align (10 wide)
+f"{42:<10}"        # "42        " — left align
+f"{42:^10}"        # "    42    " — center
+
+# Debug with = (Python 3.8+)
+x = 42
+f"{x=}"            # "x=42"
+f"{name=}"         # "name='Ali'"
+
+# Multiline f-string
+query = (
+    f"SELECT * FROM users "
+    f"WHERE id = {user_id} "
+    f"AND active = {1}"
+)`,
+  },
+  {
+    id: 23,
+    level: "Advanced" as const,
+    question: "Python mein multiprocessing aur threading mein kya fark hai?",
+    answer: `**GIL ki wajah se:**
+- **Threading:** I/O-bound tasks ke liye — waiting ke waqt doosri threads run karti hain
+- **Multiprocessing:** CPU-bound tasks ke liye — alag processes, alag memory, GIL affect nahi karta
+
+**asyncio vs threading vs multiprocessing:**
+- asyncio = I/O-bound, single thread, cooperative
+- threading = I/O-bound, multiple threads, preemptive
+- multiprocessing = CPU-bound, multiple processes, true parallelism
+
+**concurrent.futures:** High-level API — ThreadPoolExecutor aur ProcessPoolExecutor.`,
+    code: `from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import threading
+import multiprocessing
+
+# Threading — I/O-bound
+def download(url: str) -> bytes:
+    import urllib.request
+    with urllib.request.urlopen(url) as r:
+        return r.read()
+
+urls = ["http://example.com/1", "http://example.com/2", ...]
+
+# Sequential (slow)
+results = [download(url) for url in urls]
+
+# Parallel with threads (fast for I/O!)
+with ThreadPoolExecutor(max_workers=10) as executor:
+    results = list(executor.map(download, urls))
+
+# Multiprocessing — CPU-bound
+def is_prime(n: int) -> bool:
+    if n < 2: return False
+    for i in range(2, int(n**0.5) + 1):
+        if n % i == 0: return False
+    return True
+
+numbers = list(range(1, 100_000))
+
+# Sequential (uses 1 CPU core)
+primes = list(filter(is_prime, numbers))
+
+# Multiprocessing (uses all cores!)
+with ProcessPoolExecutor() as executor:
+    results = list(executor.map(is_prime, numbers))
+primes = [n for n, is_p in zip(numbers, results) if is_p]
+
+# Manual threading with shared state
+counter = 0
+lock = threading.Lock()
+
+def increment():
+    global counter
+    with lock:   # thread-safe!
+        counter += 1
+
+threads = [threading.Thread(target=increment) for _ in range(1000)]
+for t in threads: t.start()
+for t in threads: t.join()
+print(counter)   # 1000 (safe with lock)`,
+  },
+  {
+    id: 24,
+    level: "Beginner" as const,
+    question: "Python mein dictionary aur set operations kya hain?",
+    answer: `**Dictionary:** Key-value pairs. Python 3.7+ mein insertion order preserved.
+
+**Important dict operations:** get(), items(), keys(), values(), update(), pop(), setdefault(), dict comprehension.
+
+**defaultdict:** Missing key pe default value — KeyError nahi.
+**Counter:** Frequency counting — collections module.
+
+**Set:** Unique values. Mathematical set operations support karta hai.`,
+    code: `from collections import defaultdict, Counter, OrderedDict
+
+# Dictionary operations
+user = {"name": "Ali", "age": 25, "city": "Lahore"}
+
+user.get("phone", "N/A")        # "N/A" (KeyError nahi)
+user.setdefault("email", "")    # set agar missing ho
+
+# Update (merge)
+user.update({"age": 26, "phone": "03001234567"})
+
+# Dict comprehension
+squares = {x: x**2 for x in range(1, 6)}
+# {1:1, 2:4, 3:9, 4:16, 5:25}
+
+filtered = {k: v for k, v in user.items() if v is not None}
+
+# Iterate
+for key, val in user.items():
+    print(f"{key}: {val}")
+
+# defaultdict — missing key pe default
+word_count = defaultdict(int)
+for word in "the cat sat on the mat".split():
+    word_count[word] += 1   # no KeyError!
+
+graph = defaultdict(list)
+graph["A"].append("B")   # no need to initialize
+
+# Counter — frequency counting
+counter = Counter("mississippi")
+# Counter({'i': 4, 's': 4, 'p': 2, 'm': 1})
+counter.most_common(3)   # [('i',4), ('s',4), ('p',2)]
+
+Counter([1,2,2,3,3,3]).most_common()
+
+# SET operations
+a = {1, 2, 3, 4, 5}
+b = {4, 5, 6, 7, 8}
+
+a | b    # union: {1,2,3,4,5,6,7,8}
+a & b    # intersection: {4, 5}
+a - b    # difference: {1, 2, 3}
+a ^ b    # symmetric difference: {1,2,3,6,7,8}
+a <= b   # subset check
+
+# Remove duplicates
+unique = list(set([1, 2, 2, 3, 3, 3]))   # [1, 2, 3]`,
+  },
+  {
+    id: 25,
+    level: "Beginner" as const,
+    question: "Python package management — pip, venv, aur requirements.txt kya hain?",
+    answer: `**pip:** Python ka package installer — PyPI se packages install karo.
+**venv:** Virtual environment — project-specific packages, system se isolated.
+**requirements.txt:** Project dependencies list.
+
+**Modern alternatives:**
+- **poetry:** Dependency management + packaging
+- **pipenv:** pip + virtualenv combined
+- **conda:** Scientific computing ke liye (Anaconda)
+- **uv:** Blazing fast (Rust-based) — modern choice
+
+**Best practice:** Hamesha virtual environment use karo — global Python pollute mat karo.`,
+    code: `# Virtual environment create karo
+python -m venv myenv
+
+# Activate (Windows)
+myenv\\Scripts\\activate
+
+# Activate (Mac/Linux)
+source myenv/bin/activate
+
+# Deactivate
+deactivate
+
+# pip commands
+pip install requests              # install
+pip install requests==2.31.0     # specific version
+pip install "requests>=2.28"     # minimum version
+pip install -r requirements.txt  # from file
+
+pip list                          # installed packages
+pip show requests                 # package info
+pip freeze                        # all with versions
+pip freeze > requirements.txt    # save dependencies
+
+pip uninstall requests
+pip install --upgrade requests
+
+# requirements.txt example
+# requests==2.31.0
+# fastapi>=0.100.0
+# pydantic~=2.0  # compatible release
+
+# Development dependencies (separate file)
+pip install -r requirements-dev.txt
+
+# pyproject.toml (modern)
+# [tool.poetry.dependencies]
+# python = "^3.11"
+# requests = "^2.31"
+#
+# [tool.poetry.dev-dependencies]
+# pytest = "^7.4"
+# black = "^23.0"`,
+  },
 ];
+

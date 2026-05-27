@@ -40,7 +40,7 @@ export const courses: CourseInfo[] = [
     level: "Beginner",
     topics: ["Variables", "Functions", "DOM", "Events", "Promises", "ES6+", "Classes", "Closures", "Prototypes", "Generators"],
     totalChapters: 16,
-    totalInterviews: 6,
+    totalInterviews: 27,
   },
   {
     id: "php",
@@ -68,7 +68,7 @@ export const courses: CourseInfo[] = [
     level: "Beginner",
     topics: ["Classes", "Inheritance", "Polymorphism", "SOLID", "Design Patterns"],
     totalChapters: 8,
-    totalInterviews: 20,
+    totalInterviews: 15,
   },
   {
     id: "laravel",
@@ -82,7 +82,7 @@ export const courses: CourseInfo[] = [
     level: "Intermediate",
     topics: ["Routing", "Eloquent ORM", "Migrations", "Auth", "Middleware", "Queues", "API"],
     totalChapters: 10,
-    totalInterviews: 20,
+    totalInterviews: 17,
   },
   {
     id: "nodejs",
@@ -150,9 +150,9 @@ export const courses: CourseInfo[] = [
     badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
     description: "Python A to Z — basics se ML tak, data science, automation aur bahut kuch",
     level: "Beginner",
-    topics: ["Basics", "OOP", "File Handling", "NumPy", "Pandas", "ML", "Automation", "Web Scraping"],
-    totalChapters: 20,
-    totalInterviews: 6,
+    topics: ["Basics", "OOP", "File Handling", "NumPy", "Pandas", "ML", "Automation", "Web Scraping", "Regex", "Testing", "FastAPI", "Async"],
+    totalChapters: 25,
+    totalInterviews: 25,
   },
   {
     id: "dsa",
@@ -166,7 +166,7 @@ export const courses: CourseInfo[] = [
     level: "Intermediate",
     topics: ["Arrays", "Linked List", "Stack/Queue", "Trees", "Graphs", "Trie", "Union-Find", "Monotonic Stack", "Bit Manipulation", "Advanced DP"],
     totalChapters: 17,
-    totalInterviews: 6,
+    totalInterviews: 10,
   },
 ];
 

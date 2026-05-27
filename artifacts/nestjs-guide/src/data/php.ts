@@ -1419,6 +1419,841 @@ enum Status: string {
 }`,
   },
   {
+    id: 106,
+    level: "Beginner" as const,
+    tags: ["oop"],
+    question: "PHP mein Trait kya hai? Abstract class se kya fark hai?",
+    answer: `**Trait:** PHP mein multiple inheritance nahi hai — Traits ka solution hai. Ek ya zyada traits use karo ek class mein.
+
+**Trait vs Abstract class:**
+- Trait: code reuse ka mechanism, instantiate nahi ho sakta, state bhi rakh sakta hai
+- Abstract class: class hierarchy, single inheritance
+- Class multiple traits use kar sakti hai, lekin sirf ek class extend kar sakti hai
+
+**Conflict resolution:** Agar do traits same method define karein → insteadof ya as se resolve karo`,
+    code: `<?php
+trait Loggable {
+    public function log(string $message): void {
+        echo "[LOG] " . get_class($this) . ": $message\n";
+    }
+}
+
+trait Cacheable {
+    private array $cache = [];
+    
+    public function remember(string $key, callable $fn): mixed {
+        if (!isset($this->cache[$key])) {
+            $this->cache[$key] = $fn();
+        }
+        return $this->cache[$key];
+    }
+}
+
+class UserService {
+    use Loggable, Cacheable;  // multiple traits!
+    
+    public function getUser(int $id): array {
+        return $this->remember("user_$id", function() use ($id) {
+            $this->log("Fetching user $id");
+            return ['id' => $id, 'name' => 'Ali'];
+        });
+    }
+}`,
+  },
+  {
+    id: 107,
+    level: "Intermediate" as const,
+    tags: ["oop"],
+    question: "PHP mein magic methods kya hain? Important ones explain karo.",
+    answer: `Magic methods __ (double underscore) se shuru hote hain — PHP automatically call karta hai certain situations mein.
+
+**Important magic methods:**
+- **__construct()** — object create hone pe
+- **__destruct()** — object destroy hone pe
+- **__get($name)** — inaccessible property read pe
+- **__set($name, $value)** — inaccessible property write pe
+- **__isset($name)** — isset()/empty() inaccessible property pe
+- **__toString()** — object ko string mein convert karne pe
+- **__invoke()** — object function ki tarah call karne pe
+- **__clone()** — clone karne pe
+- **__call($name, $args)** — undefined method call pe`,
+    code: `<?php
+class MagicClass {
+    private array $data = [];
+    
+    // Dynamic property access
+    public function __get(string $name): mixed {
+        return $this->data[$name] ?? null;
+    }
+    
+    public function __set(string $name, mixed $value): void {
+        $this->data[$name] = $value;
+    }
+    
+    public function __isset(string $name): bool {
+        return isset($this->data[$name]);
+    }
+    
+    // Object as string
+    public function __toString(): string {
+        return json_encode($this->data);
+    }
+    
+    // Object as function
+    public function __invoke(int $x): int {
+        return $x * 2;
+    }
+}
+
+$obj = new MagicClass();
+$obj->name = "Ali";     // __set called
+echo $obj->name;        // __get called → "Ali"
+echo $obj;              // __toString → {"name":"Ali"}
+echo $obj(5);           // __invoke → 10
+isset($obj->name);      // __isset → true`,
+  },
+  {
+    id: 108,
+    level: "Intermediate" as const,
+    tags: ["oop"],
+    question: "PHP mein late static binding (static::) kya hai?",
+    answer: `Late Static Binding = static:: ka use karo parent class mein, lekin runtime pe calling class resolve ho — self:: hamesha defining class return karta hai.
+
+**Problem with self::**
+Parent class mein self:: use karo → hamesha parent class refer karega, child class nahi.
+
+**static:: solution:**
+Runtime pe actual called class use karta hai — polymorphism ke saath kaam karta hai.
+
+**Use case:** Factory methods, Fluent interfaces, Singleton pattern`,
+    code: `<?php
+class Model {
+    // self:: — always Model (wrong for children!)
+    public static function createSelf(): static {
+        return new self();  // always Model
+    }
+    
+    // static:: — runtime pe correct class!
+    public static function create(): static {
+        return new static();  // User, Post, etc.
+    }
+    
+    public static function getClass(): string {
+        return static::class;  // late binding
+    }
+}
+
+class User extends Model {
+    public string $type = 'user';
+}
+
+class Post extends Model {}
+
+$model = Model::create();  // Model instance
+$user = User::create();    // User instance ✅ (not Model!)
+$post = Post::create();    // Post instance ✅
+
+User::getClass();   // "User" (not "Model"!)
+Model::getClass();  // "Model"
+
+// Fluent interface / Method chaining
+class QueryBuilder {
+    protected array $wheres = [];
+    
+    public static function query(): static {
+        return new static();  // returns correct child class
+    }
+    
+    public function where(string $condition): static {
+        $this->wheres[] = $condition;
+        return $this;  // returns same type
+    }
+}`,
+  },
+  {
+    id: 109,
+    level: "Intermediate" as const,
+    tags: ["oop", "interfaces"],
+    question: "PHP mein Interface aur Abstract Class ka practical difference kya hai?",
+    answer: `**Interface:**
+- Contract define karta hai — koi implementation nahi (PHP 8+ mein default methods allowed)
+- Multiple implement kar sakte hain
+- Properties nahi rakh sakta
+- Sab methods public hote hain
+- "Can-do" relationship
+
+**Abstract Class:**
+- Partial implementation ho sakta hai
+- Single extend kar sakte hain
+- Properties rakh sakta hai (state)
+- Methods koi bhi access modifier
+- "Is-a" relationship
+
+**Rule of thumb:** Interface = behavior contract, Abstract = shared implementation`,
+    code: `<?php
+interface Payable {
+    public function pay(float $amount): bool;
+    public function refund(float $amount): bool;
+}
+
+interface Notifiable {
+    public function notify(string $message): void;
+}
+
+// Multiple interfaces implement kar sakte hain!
+abstract class BaseGateway implements Payable, Notifiable {
+    protected string $apiKey;
+    protected array $logs = [];
+    
+    public function __construct(string $apiKey) {
+        $this->apiKey = $apiKey;
+    }
+    
+    // Common implementation
+    public function notify(string $message): void {
+        $this->logs[] = date('Y-m-d') . ": $message";
+    }
+    
+    // Must implement in children
+    abstract protected function buildRequest(float $amount): array;
+}
+
+class StripeGateway extends BaseGateway {
+    public function pay(float $amount): bool {
+        $request = $this->buildRequest($amount);
+        $this->notify("Stripe payment: $amount");
+        return true;  // simplified
+    }
+    
+    public function refund(float $amount): bool { ... }
+    protected function buildRequest(float $amount): array { ... }
+}`,
+  },
+  {
+    id: 110,
+    level: "Intermediate" as const,
+    tags: ["functions"],
+    question: "PHP mein Closures aur Anonymous Functions kya hain?",
+    answer: `**Anonymous function:** Naam ke bina function — variable mein store ya argument ki tarah pass karo.
+
+**Closure:** Anonymous function jo outer scope ke variables capture kare — use keyword se.
+
+**Arrow functions (PHP 7.4+):** fn() => expr — automatically outer scope capture karta hai (use keyword ki zaroorat nahi)
+
+**Fayde:**
+- Callbacks pass karna
+- Array functions (array_map/filter) ke saath
+- Dependency injection
+- Event handlers`,
+    code: `<?php
+// Anonymous function
+$greet = function(string $name): string {
+    return "Hello, $name!";
+};
+echo $greet("Ali");  // "Hello, Ali!"
+
+// Closure with use (capture variable)
+$multiplier = 3;
+$multiply = function(int $n) use ($multiplier): int {
+    return $n * $multiplier;
+};
+echo $multiply(5);  // 15
+
+// By reference (mutable capture)
+$counter = 0;
+$increment = function() use (&$counter): void {
+    $counter++;  // modifies outer variable!
+};
+$increment(); $increment();
+echo $counter;  // 2
+
+// Arrow function PHP 7.4+ (auto-capture)
+$tax = 0.18;
+$withTax = fn($price) => $price * (1 + $tax);  // no 'use' needed!
+echo $withTax(100);  // 118
+
+// With array functions
+$users = [['name' => 'Ali', 'age' => 25], ['name' => 'Sara', 'age' => 17]];
+
+$adults = array_filter($users, fn($u) => $u['age'] >= 18);
+$names = array_map(fn($u) => strtoupper($u['name']), $users);
+$total = array_reduce($users, fn($sum, $u) => $sum + $u['age'], 0);`,
+  },
+  {
+    id: 111,
+    level: "Intermediate" as const,
+    tags: ["php8", "types"],
+    question: "PHP mein type declarations aur strict_types kya hain?",
+    answer: `**Type declarations:** Function parameters, return types aur properties ke liye types declare karo.
+
+**strict_types=1:** File ke shuru mein — coercion band, exact type match required.
+
+**PHP 8+ types:**
+- **Union types:** int|string
+- **Nullable:** ?int (int ya null)
+- **mixed:** koi bhi type
+- **never:** function kabhi return nahi karta
+- **Intersection types:** A&B (PHP 8.1)
+- **Enum** (PHP 8.1)
+- **readonly** properties (PHP 8.1)`,
+    code: `<?php
+declare(strict_types=1);  // strict mode on!
+
+// Basic type hints
+function add(int $a, int $b): int {
+    return $a + $b;
+}
+
+add(1, 2);     // ✅
+add(1, "2");   // ❌ TypeError in strict mode (would work without)
+
+// Nullable
+function findUser(?int $id): ?array {
+    if ($id === null) return null;
+    return ['id' => $id];
+}
+
+// Union types (PHP 8.0)
+function format(int|float $num): string {
+    return number_format($num, 2);
+}
+
+// Return type void
+function logMessage(string $msg): void {
+    echo $msg;
+    // return; // ok, but no value
+}
+
+// PHP 8.1 readonly
+class Point {
+    public function __construct(
+        public readonly float $x,
+        public readonly float $y,
+    ) {}
+}
+
+$p = new Point(1.5, 2.5);
+$p->x;       // ✅ read ok
+$p->x = 3;  // ❌ Error: readonly property!
+
+// Enums (PHP 8.1)
+enum Status: string {
+    case Active = 'active';
+    case Inactive = 'inactive';
+    case Pending = 'pending';
+}`,
+  },
+  {
+    id: 112,
+    level: "Intermediate" as const,
+    tags: ["database"],
+    question: "PDO aur MySQLi mein kya fark hai? Prepared statements kaise kaam karte hain?",
+    answer: `**PDO (PHP Data Objects):**
+- Multiple databases support (MySQL, PostgreSQL, SQLite, etc.)
+- Object-oriented API
+- Named parameters (:name) support
+- Exception-based error handling
+
+**MySQLi:**
+- Sirf MySQL
+- Procedural aur OO dono APIs
+- ? placeholders sirf
+
+**Prepared Statements (dono mein):**
+Query prepare karo → parameters bind karo → execute karo. SQL injection impossible — parameters database driver handle karta hai.`,
+    code: `<?php
+// PDO
+$pdo = new PDO('mysql:host=localhost;dbname=mydb', 'user', 'pass');
+$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+// Named parameters
+$stmt = $pdo->prepare("SELECT * FROM users WHERE email = :email AND active = :active");
+$stmt->execute([':email' => $email, ':active' => 1]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Positional parameters
+$stmt = $pdo->prepare("INSERT INTO users (name, email) VALUES (?, ?)");
+$stmt->execute([$name, $email]);
+$newId = $pdo->lastInsertId();
+
+// Fetch all
+$users = $pdo->query("SELECT * FROM users")->fetchAll(PDO::FETCH_ASSOC);
+
+// Transaction
+$pdo->beginTransaction();
+try {
+    $pdo->prepare("UPDATE accounts SET balance = balance - ? WHERE id = ?")->execute([$amount, $fromId]);
+    $pdo->prepare("UPDATE accounts SET balance = balance + ? WHERE id = ?")->execute([$amount, $toId]);
+    $pdo->commit();
+} catch (Exception $e) {
+    $pdo->rollBack();
+    throw $e;
+}`,
+  },
+  {
+    id: 113,
+    level: "Intermediate" as const,
+    tags: ["arrays"],
+    question: "PHP mein important array functions kaunse hain?",
+    answer: `PHP mein array manipulation ke liye 70+ functions hain. Important ones:
+
+**Transformation:** array_map, array_filter, array_reduce, array_walk
+**Sorting:** sort, rsort, asort, arsort, ksort, usort
+**Search:** in_array, array_search, array_key_exists
+**Manipulation:** array_merge, array_push/pop/shift/unshift, array_splice
+**Info:** count, array_keys, array_values, array_unique
+**Slice/Split:** array_slice, array_chunk
+**Combine:** array_combine, array_zip_key`,
+    code: `<?php
+$nums = [3, 1, 4, 1, 5, 9, 2, 6];
+
+// map — transform
+$doubled = array_map(fn($n) => $n * 2, $nums);  // [6,2,8,2,10,18,4,12]
+
+// filter — select (keys preserve!)
+$evens = array_filter($nums, fn($n) => $n % 2 === 0);
+$evens = array_values($evens);  // re-index
+
+// reduce — fold
+$sum = array_reduce($nums, fn($carry, $n) => $carry + $n, 0);  // 31
+
+// Sorting
+sort($nums);      // [1,1,2,3,4,5,6,9] — modifies in place
+$sorted = $nums;  // work on copy
+
+// Custom sort
+$users = [['name' => 'Zara', 'age' => 25], ['name' => 'Ali', 'age' => 20]];
+usort($users, fn($a, $b) => $a['age'] <=> $b['age']);  // sort by age
+
+// array_unique — remove duplicates
+$unique = array_unique([1, 2, 2, 3, 3, 3]);  // [1, 2, 3]
+
+// array_column — extract column
+$names = array_column($users, 'name');    // ['Ali', 'Zara']
+$byId = array_column($users, null, 'id'); // index by id
+
+// array_chunk — paginate
+$pages = array_chunk($items, 10);  // split into groups of 10
+
+// in_array
+in_array('Ali', $names);           // true
+in_array('Ali', $names, true);     // strict check`,
+  },
+  {
+    id: 114,
+    level: "Intermediate" as const,
+    tags: ["sessions", "auth"],
+    question: "PHP mein sessions aur cookies kaise kaam karte hain?",
+    answer: `**HTTP stateless hai** — Sessions aur cookies state maintain karne ke liye hain.
+
+**Sessions:**
+- Server pe data store hota hai (file ya database)
+- Browser ko sirf session ID milta hai (cookie mein)
+- Zyada secure — sensitive data server pe
+- session_start() se shuru karo
+
+**Cookies:**
+- Browser mein data store hota hai
+- Har request mein server ko bhejte hain
+- Size limit: ~4KB
+- User modify kar sakta hai — sensitive data mat rakho
+
+**Security:**
+- session_regenerate_id() — login ke baad (session fixation prevent)
+- HttpOnly + Secure cookies
+- SameSite attribute`,
+    code: `<?php
+// SESSION
+session_start();  // always first!
+
+// Store data
+$_SESSION['user_id'] = 123;
+$_SESSION['username'] = 'Ali';
+
+// Read data
+$userId = $_SESSION['user_id'] ?? null;
+
+// Logout — destroy session
+session_destroy();
+session_unset();
+
+// Regenerate ID (security!)
+session_regenerate_id(true);  // login ke baad karo
+
+// COOKIES
+// Set cookie
+setcookie(
+    'theme',
+    'dark',
+    time() + (86400 * 30),  // 30 days
+    '/',                     // path
+    '',                      // domain
+    true,                    // HTTPS only
+    true                     // HttpOnly
+);
+
+// Read cookie
+$theme = $_COOKIE['theme'] ?? 'light';
+
+// Delete cookie (past expiry)
+setcookie('theme', '', time() - 3600);
+
+// JSON in cookie (max ~4KB)
+setcookie('prefs', json_encode(['lang' => 'en', 'theme' => 'dark']));
+$prefs = json_decode($_COOKIE['prefs'] ?? '{}', true);`,
+  },
+  {
+    id: 115,
+    level: "Intermediate" as const,
+    tags: ["security"],
+    question: "PHP mein XSS attack kya hai? Kaise bachein?",
+    answer: `**XSS (Cross-Site Scripting):** Attacker malicious JavaScript inject karta hai jo doosre users ke browser mein execute hota hai.
+
+**Types:**
+- **Stored XSS:** DB mein save hota hai (comments, profiles)
+- **Reflected XSS:** URL/form se directly reflect hota hai
+- **DOM XSS:** Client-side JavaScript mein
+
+**Protection:**
+1. **htmlspecialchars()** — output escape karo
+2. **Content Security Policy (CSP)** header
+3. **Input validation** — expected format check karo
+4. **HttpOnly cookies** — JS se access nahi`,
+    code: `<?php
+// VULNERABLE — NEVER DO THIS!
+echo $_GET['name'];           // <script>alert('XSS')</script>
+echo "<h1>$username</h1>";    // if username has JS
+
+// SAFE — Always escape output!
+echo htmlspecialchars($_GET['name'], ENT_QUOTES, 'UTF-8');
+echo htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+
+// Helper function
+function e(string $str): string {
+    return htmlspecialchars($str, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
+echo "<h1>" . e($username) . "</h1>";
+
+// In template
+?>
+<h1><?= e($title) ?></h1>
+<p><?= e($description) ?></p>
+
+<?php
+// Content Security Policy header
+header("Content-Security-Policy: default-src 'self'; script-src 'self'");
+
+// Input validation (whitelist approach)
+$allowed_sorts = ['name', 'email', 'created_at'];
+$sort = in_array($_GET['sort'], $allowed_sorts) ? $_GET['sort'] : 'name';
+
+// Strip tags (if HTML not needed)
+$clean = strip_tags($_POST['input']);`,
+  },
+  {
+    id: 116,
+    level: "Intermediate" as const,
+    tags: ["strings"],
+    question: "PHP mein important string functions kaunse hain?",
+    answer: `PHP mein 100+ string functions hain. Interview aur daily use ke liye important ones:
+
+**Case:** strtolower, strtoupper, ucfirst, ucwords
+**Search:** strpos, strrpos, str_contains, str_starts_with, str_ends_with (PHP 8)
+**Replace:** str_replace, str_ireplace, preg_replace
+**Split/Join:** explode, implode/join, str_split
+**Trim:** trim, ltrim, rtrim
+**Length:** strlen, mb_strlen (multibyte)
+**Pad:** str_pad, str_repeat
+**Format:** sprintf, number_format, date`,
+    code: `<?php
+$str = "  Hello, World!  ";
+
+// Trim
+trim($str);             // "Hello, World!"
+ltrim($str);            // "Hello, World!  "
+
+// Case
+strtoupper("hello");    // "HELLO"
+strtolower("HELLO");    // "hello"
+ucfirst("hello world"); // "Hello world"
+ucwords("hello world"); // "Hello World"
+
+// Search (PHP 8 preferred)
+str_contains("Hello World", "World");   // true ✅
+str_starts_with("Hello", "He");         // true
+str_ends_with("Hello", "lo");           // true
+
+// Old way (still works)
+strpos("Hello World", "World");  // 6 (or false if not found!)
+strpos("Hello World", "world");  // false (case-sensitive)
+stripos("Hello World", "world"); // 6 (case-insensitive)
+
+// Replace
+str_replace("World", "PHP", "Hello World");  // "Hello PHP"
+str_replace(['a','e','i'], '*', 'apple');     // "*ppl*"
+
+// Split/Join
+$parts = explode(",", "a,b,c,d");   // ["a","b","c","d"]
+implode(" | ", $parts);              // "a | b | c | d"
+
+// sprintf formatting
+sprintf("%.2f", 3.14159);           // "3.14"
+sprintf("%05d", 42);                // "00042"
+sprintf("Name: %s, Age: %d", $name, $age);
+
+// Multibyte (Urdu/Arabic/Chinese safe!)
+mb_strlen("سلام");      // 4 (not 8!)
+mb_strtoupper("ali");   // "ALI"`,
+  },
+  {
+    id: 117,
+    level: "Advanced" as const,
+    tags: ["advanced", "oop"],
+    question: "PHP mein static properties aur late static binding properly kab use karein?",
+    answer: `**Static properties:** Class level pe — sab instances share karte hain. Instance create kiye bina accessible.
+
+**Static variables (function mein):** Function call ke darmiyan value yaad rakhti hai.
+
+**Kab use karein:**
+- Utility/helper functions (instantiation ki zaroorat nahi)
+- Singleton pattern
+- Shared state (counter, config)
+- Factory methods
+
+**Kab avoid karein:**
+- Testing mein problem (state persist hoti hai)
+- Global state create hota hai — coupling badhti hai
+- Dependency injection prefer karo`,
+    code: `<?php
+class Database {
+    private static ?Database $instance = null;
+    private static int $queryCount = 0;
+    
+    private function __construct(private PDO $pdo) {}
+    
+    // Singleton pattern
+    public static function getInstance(): static {
+        if (static::$instance === null) {
+            static::$instance = new static(
+                new PDO('mysql:host=localhost', 'user', 'pass')
+            );
+        }
+        return static::$instance;
+    }
+    
+    public function query(string $sql): array {
+        static::$queryCount++;
+        return $this->pdo->query($sql)->fetchAll();
+    }
+    
+    public static function getQueryCount(): int {
+        return static::$queryCount;
+    }
+}
+
+// Usage
+$db = Database::getInstance();
+$db->query("SELECT * FROM users");
+Database::getQueryCount();  // 1
+
+// Static function variable
+function generateId(): int {
+    static $id = 0;  // persists between calls!
+    return ++$id;
+}
+
+generateId();  // 1
+generateId();  // 2
+generateId();  // 3`,
+  },
+  {
+    id: 118,
+    level: "Advanced" as const,
+    tags: ["advanced", "generators"],
+    question: "PHP mein Generators kya hain? Large data ke saath kaise use karein?",
+    answer: `Generator = function jo yield use karta hai — pause aur resume ho sakta hai. Ek baar mein ek value return karta hai instead of complete array.
+
+**Memory benefit:** 1 million rows process karo without loading sab memory mein!
+
+**yield keyword:** Value return karo aur pause karo. Next() pe resume.
+
+**yield from:** Generator se generator delegate karo.
+
+**Use cases:** Large file reading, database cursor, infinite sequences`,
+    code: `<?php
+// Without generator — memory issue!
+function getAllUsers(): array {
+    return $db->query("SELECT * FROM users")->fetchAll();  // 1M rows in memory!
+}
+
+// With generator — memory efficient!
+function getUsers(PDO $pdo): Generator {
+    $stmt = $pdo->query("SELECT * FROM users");
+    while ($row = $stmt->fetch()) {
+        yield $row;  // ek ek row return karo
+    }
+}
+
+// Sirf ek row memory mein at a time!
+foreach (getUsers($pdo) as $user) {
+    processUser($user);
+}
+
+// Large file reading
+function readLargeFile(string $path): Generator {
+    $file = fopen($path, 'r');
+    while (!feof($file)) {
+        yield fgets($file);  // one line at a time
+    }
+    fclose($file);
+}
+
+foreach (readLargeFile('huge.csv') as $line) {
+    process($line);
+}
+
+// Yield key => value
+function indexedUsers(PDO $pdo): Generator {
+    $stmt = $pdo->query("SELECT id, name FROM users");
+    while ($row = $stmt->fetch()) {
+        yield $row['id'] => $row['name'];  // key => value
+    }
+}
+
+foreach (indexedUsers($pdo) as $id => $name) {
+    echo "$id: $name\n";
+}
+
+// Generator memory comparison
+// Array: 1M items → ~100MB RAM
+// Generator: 1M items → ~1KB RAM`,
+  },
+  {
+    id: 119,
+    level: "Advanced" as const,
+    tags: ["advanced", "oop"],
+    question: "PHP mein SPL (Standard PHP Library) ke useful classes kaunse hain?",
+    answer: `SPL = Standard PHP Library — built-in data structures aur algorithms PHP mein.
+
+**Data Structures:**
+- **SplStack** — LIFO stack
+- **SplQueue** — FIFO queue
+- **SplMinHeap/SplMaxHeap** — priority queue
+- **SplDoublyLinkedList** — doubly linked list
+
+**File Handling:**
+- **SplFileObject** — line-by-line file reading (memory efficient)
+- **DirectoryIterator** — directory listing
+
+**Iterators:**
+- **ArrayIterator** — array ko iterator mein convert
+- **RecursiveDirectoryIterator** — recursive directory walk
+- **LimitIterator** — iterator pe limit/offset`,
+    code: `<?php
+// SplStack (LIFO)
+$stack = new SplStack();
+$stack->push("first");
+$stack->push("second");
+$stack->push("third");
+echo $stack->pop();   // "third"
+echo $stack->top();   // "second"
+
+// SplQueue (FIFO)
+$queue = new SplQueue();
+$queue->enqueue("task1");
+$queue->enqueue("task2");
+echo $queue->dequeue();  // "task1"
+
+// SplMinHeap (priority queue)
+$heap = new SplMinHeap();
+$heap->insert(5);
+$heap->insert(1);
+$heap->insert(3);
+echo $heap->extract();  // 1 (minimum first!)
+
+// SplFileObject — large file handling
+$file = new SplFileObject('large.csv');
+$file->setFlags(SplFileObject::READ_CSV);
+
+foreach ($file as $row) {
+    if ($file->eof()) break;
+    process($row);  // one row at a time
+}
+
+// DirectoryIterator
+$dir = new DirectoryIterator('/path/to/dir');
+foreach ($dir as $file) {
+    if ($file->isFile() && $file->getExtension() === 'php') {
+        echo $file->getFilename() . "\n";
+    }
+}
+
+// RecursiveDirectoryIterator
+$iterator = new RecursiveIteratorIterator(
+    new RecursiveDirectoryIterator('/src')
+);
+foreach ($iterator as $file) {
+    echo $file->getPathname() . "\n";
+}`,
+  },
+  {
+    id: 120,
+    level: "Beginner" as const,
+    tags: ["basics", "oop"],
+    question: "PHP mein constructor property promotion kya hai? (PHP 8.0)",
+    answer: `Constructor property promotion = constructor parameters ko class properties mein automatically declare karo — boilerplate code dramatically reduce hota hai.
+
+**Pehle (PHP 7):** Property declare karo, constructor parameter lo, assign karo — teen steps.
+**Baad (PHP 8):** Constructor mein public/protected/private likho — automatically property ban jaati hai.
+
+**readonly ke saath (PHP 8.1):** Immutable value objects banana bilkul easy.`,
+    code: `<?php
+// PHP 7 style (verbose!)
+class UserOld {
+    public string $name;
+    public string $email;
+    private int $age;
+    
+    public function __construct(string $name, string $email, int $age) {
+        $this->name = $name;
+        $this->email = $email;
+        $this->age = $age;
+    }
+}
+
+// PHP 8.0 — Constructor Promotion (clean!)
+class User {
+    public function __construct(
+        public string $name,
+        public string $email,
+        private int $age,
+        protected ?string $avatar = null,  // default value
+    ) {}
+    
+    public function getAge(): int {
+        return $this->age;
+    }
+}
+
+$user = new User("Ali", "ali@example.com", 25);
+echo $user->name;   // "Ali"
+echo $user->email;  // "ali@example.com"
+
+// PHP 8.1 readonly — immutable DTO!
+class CreateUserRequest {
+    public function __construct(
+        public readonly string $name,
+        public readonly string $email,
+        public readonly string $password,
+    ) {}
+}
+
+$req = new CreateUserRequest("Ali", "ali@test.com", "secret");
+$req->name;        // "Ali" ✅
+$req->name = "X";  // ❌ Error: readonly!`,
+  },
+  {
     id: 105,
     level: "Advanced" as const,
     tags: ["performance"],

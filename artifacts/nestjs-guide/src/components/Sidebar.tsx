@@ -21,11 +21,15 @@ export default function Sidebar({ open, activeView, onNavigate, progress }: Prop
   const isChapterActive = (id: string) =>
     activeView.type === "chapter" && (activeView as any).chapterId === id;
 
-  const categories = ["Basics", "Intermediate", "Advanced"];
-  const grouped = categories.map((cat) => ({
+  const seen = new Set<string>();
+  const uniqueCategories: string[] = [];
+  for (const ch of chapters) {
+    if (!seen.has(ch.category)) { seen.add(ch.category); uniqueCategories.push(ch.category); }
+  }
+  const grouped = uniqueCategories.map((cat) => ({
     cat,
     items: chapters.filter((c) => c.category === cat),
-  })).filter((g) => g.items.length > 0);
+  }));
 
   return (
     <aside
