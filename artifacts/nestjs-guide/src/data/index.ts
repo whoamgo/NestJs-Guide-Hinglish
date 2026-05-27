@@ -30,13 +30,24 @@ import type { InterviewQ } from "./interview";
 
 const nestjsChapters = [...nestjsChaptersBase, ...nestjsExtraChapters];
 
+// Some course files store chapters AND interview questions in the same export.
+// This helper separates them: objects with `sections` = chapters, with `question` = interviews.
+function separateMixed(baseChapters: Chapter[], mixedArr: any[]) {
+  const extraChapters = mixedArr.filter((x) => x && typeof x === "object" && "sections" in x) as Chapter[];
+  const interviews = mixedArr.filter((x) => x && typeof x === "object" && "question" in x) as InterviewQ[];
+  return {
+    chapters: [...baseChapters, ...extraChapters],
+    interviews,
+  };
+}
+
 export const allCourseData: Record<string, { chapters: Chapter[]; interviews: InterviewQ[] }> = {
   nestjs: { chapters: nestjsChapters, interviews: nestjsInterviews },
   php: { chapters: phpChapters, interviews: phpInterviews as InterviewQ[] },
   oop: { chapters: oopChapters, interviews: oopInterviews as InterviewQ[] },
   laravel: { chapters: laravelChapters, interviews: laravelInterviews as InterviewQ[] },
-  nodejs: { chapters: nodeChapters, interviews: nodeInterviews as InterviewQ[] },
-  reactjs: { chapters: reactChapters, interviews: reactInterviews as InterviewQ[] },
+  nodejs: separateMixed(nodeChapters, nodeInterviews as any[]),
+  reactjs: separateMixed(reactChapters, reactInterviews as any[]),
   api: { chapters: apiChapters, interviews: apiInterviews as InterviewQ[] },
   mysql: { chapters: mysqlChapters, interviews: mysqlInterviews as InterviewQ[] },
   javascript: { chapters: jsChapters, interviews: jsInterviews as InterviewQ[] },

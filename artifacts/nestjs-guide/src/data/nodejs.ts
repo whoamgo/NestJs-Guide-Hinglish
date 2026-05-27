@@ -2410,4 +2410,578 @@ router.post('/users', validateBody(createUserSchema), createUserHandler);`,
       "Global error handler = centralized error responses",
     ],
   },
+  // ─── Interview Questions ──────────────────────────────────────────────────
+  {
+    id: 410,
+    level: "Beginner" as const,
+    tags: ["streams"],
+    question: "Node.js Streams kya hain? Regular file read se kaise different hain?",
+    answer: `Regular readFileSync/readFile: Poori file memory mein load hoti hai — 100MB file = 100MB RAM.
+
+Streams: Data ko chunks mein process karo — constant memory (default chunk ~64KB).
+
+4 types:
+1. Readable — source se data (fs.createReadStream)
+2. Writable — destination pe data (fs.createWriteStream)
+3. Duplex — dono directions (TCP socket)
+4. Transform — read + transform + write (zlib.createGzip)
+
+pipe() streams ko connect karta hai. Real-world: File serve karo, CSV parse karo, compress karo — sab streams se efficiently.`,
+    code: `// Without stream: 1GB RAM
+const data = fs.readFileSync('big.log');
+
+// With stream: ~64KB RAM
+fs.createReadStream('big.log')
+  .pipe(zlib.createGzip())
+  .pipe(fs.createWriteStream('big.log.gz'));`,
+  },
+  {
+    id: 411,
+    level: "Intermediate" as const,
+    tags: ["streams"],
+    question: "pipe() aur pipeline() mein kya fark hai? Kab kaunsa use karein?",
+    answer: `pipe(): Streams connect karta hai lekin error handling automatic nahi karta.
+- Error pe stream destroy nahi hota
+- Memory leaks possible hain
+
+pipeline(): Error handling + cleanup automatic hai.
+- Koi bhi stream error pe sab destroy ho jaate hain
+- Callback se completion/error track karo
+- util.promisify se async/await ke saath use karo
+
+Rule: Production mein hamesha pipeline() use karo. pipe() sirf simple cases mein jahan errors ka risk na ho.`,
+    code: `const { pipeline } = require('stream/promises');
+
+// Safe — errors automatically handle + cleanup
+await pipeline(
+  fs.createReadStream('input.txt'),
+  zlib.createGzip(),
+  fs.createWriteStream('output.gz')
+);`,
+  },
+  {
+    id: 412,
+    level: "Beginner" as const,
+    tags: ["events"],
+    question: "EventEmitter mein 'error' event special kyun hai?",
+    answer: `'error' event Node.js mein special hai — agar koi listener registered nahi hai aur 'error' emit hota hai, Node.js process crash kar deta hai (uncaught exception).
+
+Yeh behavior other events se alag hai — other events bina listener ke silently ignore hote hain.
+
+Fix: Hamesha error listener add karo:
+emitter.on('error', (err) => { console.error(err); })
+
+Best practice: EventEmitter extend karo toh apna error handling add karo. Production mein error monitoring service (Sentry) pe bhejo.`,
+    code: `// ❌ DANGEROUS — process crash!
+const emitter = new EventEmitter();
+emitter.emit('error', new Error('crash!'));
+
+// ✅ SAFE
+emitter.on('error', (err) => {
+  console.error('Handled:', err.message);
+  // Sentry.captureException(err);
+});`,
+  },
+  {
+    id: 413,
+    level: "Advanced" as const,
+    tags: ["events", "event-loop"],
+    question: "process.nextTick() aur Promise.resolve().then() mein kya fark hai?",
+    answer: `Dono microtasks hain — I/O callbacks se pehle run hote hain. Lekin order mein fark:
+
+process.nextTick() Promises se PEHLE run hota hai.
+
+Execution order:
+1. Synchronous code
+2. process.nextTick callbacks
+3. Promise callbacks (.then, async/await)
+4. I/O callbacks (fs, network)
+5. setTimeout/setInterval
+6. setImmediate
+
+process.nextTick overuse dangerous hai — infinite recursion se Event Loop starve ho sakta hai (I/O callbacks kabhi run nahi honge).
+
+Use setImmediate agar current phase ke baad chahiye, process.nextTick agar current operation ke immediately baad.`,
+    code: `console.log('1 sync');
+process.nextTick(() => console.log('2 nextTick'));
+Promise.resolve().then(() => console.log('3 promise'));
+setTimeout(() => console.log('4 setTimeout'), 0);
+console.log('5 sync');
+// Output: 1, 5, 2, 3, 4`,
+  },
+  {
+    id: 414,
+    level: "Beginner" as const,
+    tags: ["websocket"],
+    question: "WebSocket aur HTTP mein kya fark hai? Kab WebSocket use karein?",
+    answer: `HTTP: Request-Response — client hamesha pehle bhejta hai, connection close ho jaati hai.
+WebSocket: Ek baar handshake → persistent bidirectional connection — server bhi anytime bhej sakta hai.
+
+WebSocket kab:
+✅ Chat applications
+✅ Live scores/stock prices
+✅ Multiplayer games
+✅ Collaborative editing (Google Docs jaisa)
+✅ Real-time notifications
+
+HTTP kab (HTTP polling ya SSE):
+✅ One-directional server → client updates
+✅ Simple notifications (SSE better hai)
+✅ REST APIs
+
+Socket.io = WebSocket + fallback + rooms + namespaces — most popular choice.`,
+  },
+  {
+    id: 415,
+    level: "Intermediate" as const,
+    tags: ["websocket"],
+    question: "Socket.io mein socket.to() aur io.to() mein kya fark hai?",
+    answer: `socket.to(room).emit() — room ke sab users ko EXCEPT sender
+io.to(room).emit() — room ke sab users ko INCLUDING sender
+socket.emit() — sirf us ek client ko
+io.emit() — sab connected clients ko (global broadcast)
+
+Examples:
+- Chat message: socket.to(roomId).emit() — sender ko apna msg already show hai
+- System announcement: io.to(roomId).emit() — sab users ko
+- Private message: io.to(targetSocketId).emit() — specific user ko
+
+Memory: socket = excluding self, io = including self.`,
+  },
+  {
+    id: 416,
+    level: "Beginner" as const,
+    tags: ["typescript"],
+    question: "Node.js mein TypeScript setup ke liye kya zaruri hai?",
+    answer: `Dependencies:
+npm install typescript ts-node @types/node --save-dev
+
+tsconfig.json key settings:
+- target: "ES2020" — modern JS features
+- module: "commonjs" — Node.js require
+- outDir: "./dist" — compiled output
+- rootDir: "./src" — source files
+- strict: true — type safety
+
+Dev: ts-node-dev --respawn src/index.ts (auto-restart on file change)
+Build: tsc (TypeScript → JavaScript in dist/)
+Production: node dist/index.js
+
+@types/express — Express TypeScript definitions
+@types/node — Node.js built-ins types`,
+  },
+  {
+    id: 417,
+    level: "Intermediate" as const,
+    tags: ["typescript"],
+    question: "Express TypeScript mein Request ka generic type kaise use karte hain?",
+    answer: `Request<Params, ResponseBody, RequestBody, QueryString> — 4 generic type parameters.
+
+Common usage:
+- Request<{ id: string }> — req.params.id typed
+- Request<{}, {}, CreateUserDto> — req.body typed
+- Request<{}, {}, {}, { page: string }> — req.query typed
+
+Custom middleware ke liye interface extend karo:
+interface AuthRequest extends Request { user?: JwtPayload }
+
+Benefits: req.params.id automatically string hai, req.body fields typed hain, TypeScript autocomplete milta hai.`,
+    code: `router.post('/users',
+  async (req: Request<{}, {}, { name: string; email: string }>, res) => {
+    const { name, email } = req.body;  // fully typed!
+    const user = await createUser(name, email);
+    res.status(201).json(user);
+  }
+);`,
+  },
+  {
+    id: 418,
+    level: "Intermediate" as const,
+    tags: ["redis"],
+    question: "Cache-Aside pattern kya hai? Redis mein implement kaise karte hain?",
+    answer: `Cache-Aside (Lazy Loading): Application cache manage karta hai — DB directly cache se communicate nahi karta.
+
+Flow:
+1. Cache check karo (Redis GET)
+2. Cache HIT → return cached value
+3. Cache MISS → DB se fetch karo
+4. DB result Redis mein save karo (setex with TTL)
+5. Return result
+
+TTL kyun: Stale data prevent karo, memory overflow avoid karo.
+Cache invalidation: Data update pe redis.del(key) karo.
+
+Alternative: Write-Through (write pe cache update) — consistency better lekin overhead zyada.`,
+    code: `async function getUser(id) {
+  const cached = await redis.get(\`user:\${id}\`);
+  if (cached) return JSON.parse(cached);  // HIT!
+
+  const user = await db.findById(id);     // MISS
+  await redis.setex(\`user:\${id}\`, 3600, JSON.stringify(user));
+  return user;
+}`,
+  },
+  {
+    id: 419,
+    level: "Beginner" as const,
+    tags: ["redis"],
+    question: "Redis mein TTL (Time-To-Live) kyun set karna chahiye? setex kya karta hai?",
+    answer: `TTL bina: Cache data forever rehta hai — stale/outdated data serve hoga, Redis memory bhar jaayegi.
+
+setex(key, seconds, value) = SET + EXPIRE ek atomic command mein.
+Equivalent to: SET key value + EXPIRE key seconds
+
+TTL ke benefits:
+1. Automatic expiry — fresh data guarantee
+2. Memory management — stale entries clean ho jaate hain
+3. Data consistency — DB change hone pe stale cache expire ho jaata hai
+
+Guideline: Frequently changing data = small TTL (60s). Stable data = larger TTL (1hr, 24hr).`,
+    code: `// setex = set + expire in one command
+await redis.setex('user:1', 3600, JSON.stringify(user));  // 1 hour
+
+// vs (less atomic)
+await redis.set('user:1', JSON.stringify(user));
+await redis.expire('user:1', 3600);`,
+  },
+  {
+    id: 420,
+    level: "Beginner" as const,
+    tags: ["testing"],
+    question: "Node.js mein Jest setup kaise karte hain aur unit test kya hota hai?",
+    answer: `Unit test: Ek function/class isolate karke test karo — baki sab mock karo.
+
+Setup:
+npm install jest @types/jest ts-jest --save-dev
+
+package.json:
+{ "jest": { "preset": "ts-jest", "testEnvironment": "node" } }
+
+Test structure:
+describe('Group') → it/test('case') → expect().toBe/toEqual/...
+
+Mocking:
+jest.fn() — mock function
+jest.mock('./module') — entire module mock
+mockFn.mockResolvedValue(data) — async mock`,
+    code: `describe('UserService', () => {
+  it('should find user by id', async () => {
+    const mockRepo = { findById: jest.fn().mockResolvedValue({ id: 1, name: 'Alice' }) };
+    const service = new UserService(mockRepo as any);
+
+    const user = await service.findById(1);
+
+    expect(user.name).toBe('Alice');
+    expect(mockRepo.findById).toHaveBeenCalledWith(1);
+  });
+});`,
+  },
+  {
+    id: 421,
+    level: "Intermediate" as const,
+    tags: ["testing"],
+    question: "Supertest se API integration tests kaise likhte hain?",
+    answer: `Supertest Express app ko directly inject karta hai — actual HTTP server start karne ki zarurat nahi. Fast, no port conflicts.
+
+Important: app.listen() call mat karo test file mein — app sirf export karo.
+
+Pattern:
+1. request(app) — inject app
+2. .get/.post/.put/.delete — HTTP method
+3. .send(body) — request body (POST/PUT ke liye)
+4. .set('Authorization', token) — headers
+5. .expect(statusCode) — status assert
+6. response.body — response data check karo`,
+    code: `import request from 'supertest';
+import app from '../app';
+
+it('POST /users creates user', async () => {
+  const res = await request(app)
+    .post('/api/users')
+    .send({ name: 'Bob', email: 'bob@test.com', password: 'Pass123!' })
+    .expect(201);
+
+  expect(res.body.id).toBeDefined();
+  expect(res.body.password).toBeUndefined();  // password hidden!
+});`,
+  },
+  {
+    id: 422,
+    level: "Beginner" as const,
+    tags: ["queue"],
+    question: "Job Queue kyun use karte hain? HTTP request mein kya problem hai heavy tasks ke liye?",
+    answer: `HTTP request mein heavy task karo toh:
+- User 5-30 second wait karega
+- Server thread block hoga (multiple requests slow)
+- Timeout ho sakta hai (30s+ operations)
+- Error pe retry mechanism nahi
+
+Queue solution:
+1. HTTP request → Queue mein job daalo → Instant response (200ms)
+2. Background Worker → Job process karo (5 minutes bhi chalega)
+3. Retry automatic on failure
+4. User notify karo webhook/email se jab complete ho
+
+Best for: Email sending, PDF generation, image resize, 3rd party API calls, large exports.`,
+  },
+  {
+    id: 423,
+    level: "Intermediate" as const,
+    tags: ["queue"],
+    question: "BullMQ mein job retry aur backoff kaise configure karte hain?",
+    answer: `attempts: Kitni baar retry karo failure pe (default: 0 = no retry)
+backoff: Retries ke beech delay strategy
+
+Backoff types:
+- fixed: Hamesha same delay (backoff: { type: 'fixed', delay: 5000 })
+- exponential: Delay double hota jaata hai (2s, 4s, 8s, 16s...)
+
+Exponential backoff kyun:
+- Network issues usually temporary hote hain
+- Immediate retry often fails again
+- Increasing delay gives service time to recover
+
+Transient failures handle karo (network timeout, 3rd party rate limit) automatically bina manual intervention ke.`,
+    code: `await queue.add('send-email', data, {
+  attempts: 5,           // 5 baar try karo
+  backoff: {
+    type: 'exponential',
+    delay: 2000          // 2s, 4s, 8s, 16s, 32s
+  },
+  removeOnComplete: 100,
+  removeOnFail: 50,
+});`,
+  },
+  {
+    id: 424,
+    level: "Intermediate" as const,
+    tags: ["graphql"],
+    question: "GraphQL REST se kaise better hai over-fetching aur under-fetching ke liye?",
+    answer: `Over-fetching (REST): GET /users → 50 fields return hote hain, sirf name+email chahiye.
+Under-fetching (REST): GET /user/1 + GET /posts?userId=1 + GET /comments?postId=5 — 3 requests!
+
+GraphQL: Client exactly specify karo kya chahiye.
+
+Benefits:
+1. Ek endpoint (/graphql) — sab operations
+2. Exactly wahi data aata hai jo request kiya
+3. Related data ek query mein (no N+1 calls from client)
+4. Strongly typed schema — self-documenting
+5. GraphQL Playground — built-in docs
+
+Tradeoff: REST se zyada setup, caching complex, file uploads harder.`,
+    code: `query GetUser($id: ID!) {
+  user(id: $id) {
+    name          # sirf yeh 3 fields
+    email
+    posts {
+      title       # nested data — 1 request!
+    }
+  }
+}`,
+  },
+  {
+    id: 425,
+    level: "Advanced" as const,
+    tags: ["graphql"],
+    question: "GraphQL N+1 problem kya hai aur DataLoader se kaise solve karte hain?",
+    answer: `N+1 problem: 10 users ke posts fetch karo → 1 query (users) + 10 queries (posts per user) = 11 DB calls!
+
+Example: User.posts resolver = (parent) => db.posts.findByUserId(parent.id)
+→ 10 users = 10 separate DB calls (N+1!)
+
+DataLoader solution:
+- Requests batch karta hai — 10 findByUserId calls → 1 IN query
+- Results cache karta hai — same ID ke liye ek baar se zyada DB call nahi
+
+Implementation:
+1. DataLoader instance per request banao
+2. batch function = IDs array → data array (same order)
+3. resolver mein loader.load(parent.id) call karo
+
+Result: N+1 → 2 queries (1 users + 1 posts batch).`,
+    code: `const postsLoader = new DataLoader(async (userIds) => {
+  const posts = await db.posts.findAll({ where: { userId: userIds } });
+  return userIds.map(id => posts.filter(p => p.userId === id));
+});
+
+// Resolver — sirf load() call karo, batching automatic!
+User: { posts: (parent) => postsLoader.load(parent.id) }`,
+  },
+  {
+    id: 426,
+    level: "Intermediate" as const,
+    tags: ["microservices"],
+    question: "Synchronous vs Asynchronous microservice communication — kab kaunsa use karein?",
+    answer: `Synchronous (HTTP/REST/gRPC):
+✅ Immediate response chahiye (user ke liye)
+✅ Simple query (data read)
+❌ Tight coupling — dependent service down = failure
+
+Asynchronous (Message Queue: BullMQ, RabbitMQ, Kafka):
+✅ Loose coupling — ek fail ho toh doosre impact nahi
+✅ Retry automatic
+✅ Heavy work background mein
+❌ Debugging complex
+❌ Eventual consistency
+
+Rule of thumb:
+- User-facing real-time → Sync HTTP
+- Background work, notifications, events → Async Queue
+- High throughput, event streaming → Kafka`,
+  },
+  {
+    id: 427,
+    level: "Beginner" as const,
+    tags: ["architecture"],
+    question: "Controller-Service-Repository pattern kyun use karte hain?",
+    answer: `Separation of Concerns — har layer ka ek kaam:
+
+Controller: HTTP layer — req parse, validate, res bhejo. Business logic nahi.
+Service: Business logic — rules, workflows, calculations. DB nahi directly.
+Repository: Data layer — DB queries. Business logic nahi.
+
+Benefits:
+1. Testability: Service test karo bina HTTP, bina real DB
+2. Reusability: Same service use karo HTTP + WebSocket + CLI se
+3. Maintainability: Change chahiye? Sirf us layer ko touch karo
+4. Readability: Har file ka purpose clear hai
+
+Violation: Controller mein direct DB query = bad pattern. Service mein res.json() = bad pattern.`,
+  },
+  {
+    id: 428,
+    level: "Intermediate" as const,
+    tags: ["architecture"],
+    question: "asyncHandler wrapper pattern kya hai aur kyun use karte hain?",
+    answer: `Problem: Async Express routes mein errors manually catch karke next() pass karna padta hai.
+
+asyncHandler = wrapper jo async function ko wrap karta hai:
+(fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next)
+
+Benefits:
+1. No try/catch har route mein
+2. Thrown errors automatically next(err) se jaate hain
+3. DRY code — 1 line vs 5 lines per route
+4. Consistent error handling
+
+Global error handler: 4-parameter middleware (err, req, res, next) sab errors handle karta hai.`,
+    code: `const asyncHandler = fn => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+// Clean route — no try/catch
+router.get('/users/:id', asyncHandler(async (req, res) => {
+  const user = await UserService.findById(req.params.id);
+  if (!user) throw new NotFoundError('User');  // auto → 404!
+  res.json(user);
+}));`,
+  },
+  {
+    id: 429,
+    level: "Intermediate" as const,
+    tags: ["architecture"],
+    question: "Zod se input validation kyun better hai manual check se?",
+    answer: `Manual validation:
+if (!body.name || body.name.length < 2) return res.status(400).json({error: '...'})
+— verbose, error-prone, no TypeScript types, inconsistent
+
+Zod benefits:
+1. Declarative schema — kya chahiye clearly define
+2. TypeScript types automatic — z.infer<typeof schema>
+3. Detailed error messages — exact field + message
+4. Composable — schemas combine kar sakte ho
+5. Transform — parse aur validate ek saath (string to number coercion)
+6. safeParse — throw nahi karta — success/error object return
+
+.parse() throws on invalid, .safeParse() returns { success, data, error } — non-throwing.`,
+    code: `const schema = z.object({
+  name: z.string().min(2).max(50),
+  email: z.string().email(),
+  age: z.number().int().min(13).optional(),
+});
+
+type CreateUser = z.infer<typeof schema>;  // TypeScript type free!
+
+const result = schema.safeParse(req.body);
+if (!result.success) {
+  return res.status(400).json({ errors: result.error.flatten() });
+}
+const user = await createUser(result.data);  // typed!`,
+  },
+  {
+    id: 430,
+    level: "Intermediate" as const,
+    tags: ["redis"],
+    question: "Redis rate limiting kaise implement karte hain?",
+    answer: `Sliding window rate limit with Redis INCR + EXPIRE:
+
+1. Key: rate:{ip} — per IP counter
+2. INCR key — counter badhao (atomic)
+3. First request pe EXPIRE set karo — window start
+4. Counter > limit → 429 Too Many Requests
+5. TTL se remaining window time milta hai
+
+Atomicity: INCR Redis mein atomic hai — concurrent requests safe hain.
+
+Real-world: express-rate-limit + redis-store use karo production mein — battle-tested implementation.
+
+Distributed systems mein Redis rate limiting centralized hai — multiple app instances bhi sahi count karein.`,
+    code: `async function rateLimitMiddleware(req, res, next) {
+  const key = \`rate:\${req.ip}\`;
+  const count = await redis.incr(key);
+  if (count === 1) await redis.expire(key, 60);  // 1 min window
+
+  if (count > 100) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      retryAfter: await redis.ttl(key)
+    });
+  }
+  next();
+}`,
+  },
+  {
+    id: 431,
+    level: "Advanced" as const,
+    tags: ["architecture", "microservices"],
+    question: "Circuit Breaker pattern kya hai? Node.js mein kab zaruri hai?",
+    answer: `Circuit Breaker: Failing service pe calls temporarily stop karo — cascade failures prevent karo.
+
+3 states:
+- CLOSED: Normal operation, requests pass hote hain
+- OPEN: Failures threshold exceed → requests instantly fail (no wait)
+- HALF-OPEN: Kuch requests allow karo — service recover hua? CLOSED. Nahi? OPEN.
+
+Kab zaruri:
+- Microservices architecture
+- External API calls (payment gateway, email service)
+- Database connection issues
+
+Libraries: opossum (Node.js), cockatiel
+
+Without circuit breaker: 1 service slow → sab services slow (thread pool exhaustion).`,
+  },
+  {
+    id: 432,
+    level: "Advanced" as const,
+    tags: ["performance", "cluster"],
+    question: "Node.js cluster module kya hai? PM2 cluster mode se kya fark hai?",
+    answer: `Node.js single-threaded hai — ek process ek CPU core use karta hai.
+
+Cluster module: Multiple child processes (workers) spawn karo — sab same port pe listen karte hain. OS connections distribute karta hai.
+
+PM2 cluster mode: pm2 start app.js -i max
+- 'max' = sab available CPU cores
+- Zero-downtime reload: pm2 reload (rolling restart)
+- Auto restart on crash
+- Memory monitoring + auto-restart on leak
+
+PM2 vs native cluster:
+- PM2 = production-ready, monitoring built-in, logs, startup scripts
+- Native cluster = more control, no extra dependency
+
+Worker threads vs cluster:
+- cluster = separate Node.js processes (memory isolated)
+- worker_threads = same process, shared memory (CPU-intensive tasks)`,
+  },
 ];
