@@ -1,13 +1,19 @@
 export interface Chapter {
   id: string;
   title: string;
+  titleEn?: string;
   emoji: string;
   category: string;
   description: string;
+  descriptionEn?: string;
   sections: Section[];
+  sectionsEn?: Section[];
   mcqs?: MCQ[];
+  mcqsEn?: MCQ[];
   cheatsheet?: string[];
+  cheatsheetEn?: string[];
   revision?: string[];
+  revisionEn?: string[];
 }
 
 export interface Section {

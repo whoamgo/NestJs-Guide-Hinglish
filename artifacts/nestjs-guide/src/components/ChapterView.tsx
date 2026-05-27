@@ -138,8 +138,10 @@ function MCQSection({ mcqs, courseId }: { mcqs: NonNullable<Chapter["mcqs"]>; co
 }
 
 export default function ChapterView({ chapter, allChapters, courseId, onNavigate }: Props) {
-  const { completed, toggleComplete } = useApp();
+  const { completed, toggleComplete, lang } = useApp();
   const [activeTab, setActiveTab] = useState<Tab>("content");
+
+  const isEn = lang === "en";
 
   const courseCompleted = completed[courseId] || new Set<string>();
   const isDone = courseCompleted.has(chapter.id);
@@ -148,11 +150,18 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
   const nextChapter = currentIdx < allChapters.length - 1 ? allChapters[currentIdx + 1] : null;
   const courseInfo = courses.find((c) => c.id === courseId);
 
+  const displayTitle = (isEn && chapter.titleEn) ? chapter.titleEn : chapter.title;
+  const displayDescription = (isEn && chapter.descriptionEn) ? chapter.descriptionEn : chapter.description;
+  const displaySections = (isEn && chapter.sectionsEn?.length) ? chapter.sectionsEn : chapter.sections;
+  const displayMcqs = (isEn && chapter.mcqsEn?.length) ? chapter.mcqsEn : chapter.mcqs;
+  const displayCheatsheet = (isEn && chapter.cheatsheetEn?.length) ? chapter.cheatsheetEn : chapter.cheatsheet;
+  const displayRevision = (isEn && chapter.revisionEn?.length) ? chapter.revisionEn : chapter.revision;
+
   const tabs: { id: Tab; label: string; emoji: string; disabled?: boolean }[] = [
-    { id: "content", label: "Content", emoji: "📖" },
-    { id: "mcq", label: "MCQ Quiz", emoji: "🧠", disabled: !chapter.mcqs?.length },
-    { id: "cheatsheet", label: "Cheat Sheet", emoji: "📌", disabled: !chapter.cheatsheet?.length },
-    { id: "revision", label: "Revision", emoji: "🔁", disabled: !chapter.revision?.length },
+    { id: "content", label: isEn ? "Content" : "Content", emoji: "📖" },
+    { id: "mcq", label: "MCQ Quiz", emoji: "🧠", disabled: !displayMcqs?.length },
+    { id: "cheatsheet", label: isEn ? "Cheat Sheet" : "Cheat Sheet", emoji: "📌", disabled: !displayCheatsheet?.length },
+    { id: "revision", label: isEn ? "Revision" : "Revision", emoji: "🔁", disabled: !displayRevision?.length },
   ];
 
   const categoryColor: Record<string, string> = {
@@ -176,16 +185,16 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground flex items-center gap-3 leading-tight">
             <span className="text-3xl sm:text-4xl">{chapter.emoji}</span>
-            {chapter.title}
+            {displayTitle}
           </h1>
           <button
             onClick={() => toggleComplete(courseId, chapter.id)}
             className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold border transition-all ${isDone ? "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700" : "bg-muted text-muted-foreground border-border hover:border-primary/50"}`}
           >
-            {isDone ? <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>Done</> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Mark Done</>}
+            {isDone ? <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>{isEn ? "Done" : "Done"}</> : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>{isEn ? "Mark Done" : "Mark Done"}</>}
           </button>
         </div>
-        <p className="text-muted-foreground text-sm mt-2">{chapter.description}</p>
+        <p className="text-muted-foreground text-sm mt-2">{displayDescription}</p>
       </div>
 
       {/* Tabs */}
@@ -202,9 +211,9 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
       {/* Content */}
       {activeTab === "content" && (
         <div className="space-y-10">
-          {chapter.sections.map((section, idx) => (
+          {displaySections.map((section, idx) => (
             <div key={idx} className="space-y-3">
-              <h2 className={`text-lg sm:text-xl font-bold text-foreground border-l-4 pl-3 leading-snug ${courseInfo ? "border-primary" : "border-primary"}`}>
+              <h2 className={`text-lg sm:text-xl font-bold text-foreground border-l-4 pl-3 leading-snug border-primary`}>
                 {section.heading}
               </h2>
               {section.content && <div className="space-y-2 text-muted-foreground pl-1">{renderContent(section.content)}</div>}
@@ -231,13 +240,13 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
         </div>
       )}
 
-      {activeTab === "mcq" && chapter.mcqs && <MCQSection mcqs={chapter.mcqs} courseId={courseId} />}
+      {activeTab === "mcq" && displayMcqs && <MCQSection mcqs={displayMcqs} courseId={courseId} />}
 
-      {activeTab === "cheatsheet" && chapter.cheatsheet && (
+      {activeTab === "cheatsheet" && displayCheatsheet && (
         <div className="space-y-3">
           <h3 className="text-lg font-bold text-foreground">📌 Quick Reference</h3>
           <div className="bg-[#0d1117] rounded-xl p-5 space-y-2.5">
-            {chapter.cheatsheet.map((item, i) => {
+            {displayCheatsheet.map((item, i) => {
               const [cmd, ...desc] = item.split(" — ");
               return (
                 <div key={i} className="flex items-start gap-3 text-sm font-mono">
@@ -250,11 +259,11 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
         </div>
       )}
 
-      {activeTab === "revision" && chapter.revision && (
+      {activeTab === "revision" && displayRevision && (
         <div className="space-y-3">
           <h3 className="text-lg font-bold text-foreground">🔁 Key Takeaways</h3>
           <div className="space-y-2">
-            {chapter.revision.map((point, i) => {
+            {displayRevision.map((point, i) => {
               const [bold, ...rest] = point.split(" — ");
               return (
                 <div key={i} className="flex items-start gap-3 bg-card border border-border rounded-xl px-4 py-3">
@@ -277,12 +286,12 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
         {prevChapter ? (
           <button onClick={() => onNavigate({ type: "chapter", courseId, chapterId: prevChapter.id })}
             className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <span>←</span><span className="truncate max-w-[140px]">{prevChapter.emoji} {prevChapter.title}</span>
+            <span>←</span><span className="truncate max-w-[140px]">{prevChapter.emoji} {isEn && prevChapter.titleEn ? prevChapter.titleEn : prevChapter.title}</span>
           </button>
         ) : (
           <button onClick={() => onNavigate({ type: "course", courseId })}
             className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <span>←</span><span>Course Home</span>
+            <span>←</span><span>{isEn ? "Course Home" : "Course Home"}</span>
           </button>
         )}
 
@@ -290,7 +299,7 @@ export default function ChapterView({ chapter, allChapters, courseId, onNavigate
           <button
             onClick={() => { toggleComplete(courseId, chapter.id); onNavigate({ type: "chapter", courseId, chapterId: nextChapter.id }); }}
             className="flex items-center gap-2 text-sm font-semibold bg-primary text-primary-foreground px-4 py-2.5 rounded-xl hover:opacity-90 transition-opacity shadow-md">
-            <span className="truncate max-w-[140px]">{nextChapter.emoji} {nextChapter.title}</span><span>→</span>
+            <span className="truncate max-w-[140px]">{nextChapter.emoji} {isEn && nextChapter.titleEn ? nextChapter.titleEn : nextChapter.title}</span><span>→</span>
           </button>
         ) : (
           <button

@@ -25,7 +25,7 @@ export const courses: CourseInfo[] = [
     description: "Node.js ka enterprise framework — TypeScript ke saath scalable APIs",
     level: "Intermediate",
     topics: ["Modules", "Controllers", "TypeORM", "JWT Auth", "Guards", "Testing"],
-    totalChapters: 15,
+    totalChapters: 27,
     totalInterviews: 30,
   },
   {
