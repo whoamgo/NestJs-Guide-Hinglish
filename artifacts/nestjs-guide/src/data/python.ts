@@ -5146,6 +5146,597 @@ class Circle:
       "Class decorator = implement __call__ method",
     ],
   },
+  {
+    id: "py-async",
+    title: "Async/Await — Asynchronous Python",
+    titleEn: "Async/Await — Asynchronous Python",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "Python mein asyncio — coroutines, event loop, aur concurrent I/O operations",
+    descriptionEn: "Python asyncio — coroutines, event loop, and concurrent I/O operations",
+    sections: [
+      {
+        heading: "Async kya hai? Kyon use karein?",
+        content: `**Synchronous:** Code ek ek karke chalta hai — koi I/O wait karo toh baaki sab ruk jaata hai.
+**Asynchronous:** I/O wait ke waqt doosra kaam karo — same thread mein concurrency!
+
+**Kab async useful hai:**
+- Network requests (APIs, databases)
+- File I/O
+- WebSocket connections
+- Web scraping (concurrent requests)
+
+**Kab helpful NAHI:**
+- CPU-heavy tasks (use multiprocessing instead)
+- Simple scripts with one operation
+
+**3 keywords:** \`async def\` = coroutine define, \`await\` = result wait karo, \`asyncio.run()\` = event loop start.`,
+        code: `import asyncio
+import time
+
+# Synchronous — slow
+def fetch_sync(url):
+    time.sleep(2)  # API call simulate
+    return f"Data from {url}"
+
+# Sync: 3 calls = 6 seconds
+start = time.time()
+fetch_sync("api1"), fetch_sync("api2"), fetch_sync("api3")
+print(f"Sync: {time.time()-start:.1f}s")  # 6.0s
+
+# Asynchronous — fast!
+async def fetch_async(url):
+    await asyncio.sleep(2)  # non-blocking wait
+    return f"Data from {url}"
+
+async def main():
+    start = time.time()
+    # Sab ek saath run hote hain!
+    results = await asyncio.gather(
+        fetch_async("api1"),
+        fetch_async("api2"),
+        fetch_async("api3"),
+    )
+    print(f"Async: {time.time()-start:.1f}s")  # 2.0s
+    print(results)
+
+asyncio.run(main())`,
+      },
+      {
+        heading: "asyncio.gather, Tasks, aur Timeouts",
+        content: `**asyncio.gather():** Multiple coroutines concurrently run karo — sab results wait karo.
+**asyncio.create_task():** Background mein task start karo — await baad mein.
+**asyncio.wait_for():** Timeout add karo — asyncio.TimeoutError raise karta hai.
+**asyncio.as_completed():** Pehle jo complete ho uska result pehle milega.`,
+        code: `import asyncio
+import aiohttp  # async HTTP client (pip install aiohttp)
+
+async def fetch_url(session, url):
+    async with session.get(url) as response:
+        return await response.json()
+
+# Multiple URLs concurrently
+async def fetch_all(urls):
+    async with aiohttp.ClientSession() as session:
+        tasks = [fetch_url(session, url) for url in urls]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    return results
+
+# Timeout
+async def fetch_with_timeout(url):
+    try:
+        async with aiohttp.ClientSession() as session:
+            result = await asyncio.wait_for(
+                fetch_url(session, url),
+                timeout=5.0  # 5 seconds max
+            )
+            return result
+    except asyncio.TimeoutError:
+        print(f"Timeout: {url}")
+        return None
+
+# Create background task
+async def main():
+    task = asyncio.create_task(long_operation())  # background shuru
+    
+    # Meanwhile kuch aur karo
+    await quick_operation()
+    
+    result = await task  # ab wait karo
+
+# as_completed — first result first
+async def race():
+    coros = [fetch_url(url) for url in urls]
+    for coro in asyncio.as_completed(coros):
+        result = await coro   # pehle jo aaya
+        process(result)`,
+      },
+      {
+        heading: "Async Context Managers aur Generators",
+        content: `**async with:** Async resources manage karo (DB connections, HTTP sessions, files).
+**async for:** Async iterators — streaming data, WebSocket messages, async DB queries.
+**asynccontextmanager:** Custom async context manager decorator se banana.`,
+        code: `import asyncio
+from contextlib import asynccontextmanager
+
+# Async context manager
+@asynccontextmanager
+async def db_transaction(db):
+    async with db.begin() as txn:
+        try:
+            yield txn
+            await txn.commit()
+        except Exception:
+            await txn.rollback()
+            raise
+
+async def transfer_money(db, from_id, to_id, amount):
+    async with db_transaction(db) as txn:
+        await txn.execute(
+            "UPDATE accounts SET balance=balance-? WHERE id=?",
+            (amount, from_id)
+        )
+        await txn.execute(
+            "UPDATE accounts SET balance=balance+? WHERE id=?",
+            (amount, to_id)
+        )
+
+# Async generator — streaming
+async def stream_users(db):
+    async with db.execute("SELECT * FROM users") as cursor:
+        async for row in cursor:
+            yield dict(row)
+
+async def process_all():
+    async for user in stream_users(db):
+        await process_user(user)
+
+# asyncio.Queue — producer/consumer pattern
+async def producer(queue):
+    for i in range(10):
+        await queue.put(f"task-{i}")
+        await asyncio.sleep(0.1)
+
+async def consumer(queue):
+    while True:
+        task = await queue.get()
+        await process(task)
+        queue.task_done()`,
+      },
+    ],
+    cheatsheet: [
+      "async def func() — coroutine define karo",
+      "await coroutine() — result wait karo",
+      "asyncio.run(main()) — event loop start",
+      "asyncio.gather(*coros) — concurrent run",
+      "asyncio.create_task(coro) — background task",
+      "asyncio.wait_for(coro, timeout=5) — timeout add karo",
+      "async with, async for — async resources",
+    ],
+    revision: [
+      "Async = I/O wait mein dusra kaam karo",
+      "gather() = concurrent, ek saath sab wait karo",
+      "create_task() = fire and forget (background)",
+      "aiohttp = async HTTP, asyncpg = async PostgreSQL",
+      "CPU-heavy tasks ke liye multiprocessing use karo",
+    ],
+    revisionEn: [
+      "Async = do other work while waiting for I/O",
+      "gather() = run concurrently, wait for all",
+      "create_task() = background task, await later",
+      "aiohttp = async HTTP, asyncpg = async PostgreSQL",
+      "For CPU-heavy work use multiprocessing, not asyncio",
+    ],
+  },
+  {
+    id: "py-type-hints",
+    title: "Type Hints — mypy aur Type Safety",
+    titleEn: "Type Hints — mypy and Type Safety",
+    emoji: "🔒",
+    category: "Intermediate",
+    description: "Python type annotations — mypy, generics, Protocol, TypeVar, runtime validation",
+    descriptionEn: "Python type annotations — mypy, generics, Protocol, TypeVar, runtime validation",
+    sections: [
+      {
+        heading: "Type hints kya hain aur kyun?",
+        content: `**Type hints** = Python variables aur functions pe type declare karo — documentation + IDE support + mypy static checking.
+
+**Install mypy:**
+\`\`\`bash
+pip install mypy
+mypy my_file.py
+\`\`\`
+
+**Kyun use karein:**
+- Bugs compile-time pe pakro (runtime se pehle)
+- IDE autocomplete improve hota hai
+- Code documentation automatically ban jaati hai
+- Large codebases mein refactoring safe ho jaati hai
+
+**Python still dynamic:** Type hints optional hain — runtime pe enforce nahi hoti (jab tak pydantic/beartype use na karo).`,
+        code: `# Basic type hints
+name: str = "Ali"
+age: int = 25
+height: float = 5.9
+active: bool = True
+
+# Function annotations
+def greet(name: str, times: int = 1) -> str:
+    return f"Hello {name}! " * times
+
+def process_users(users: list[dict]) -> None:
+    for user in users:
+        print(user['name'])
+
+# None return
+def log(message: str) -> None:
+    print(f"[LOG] {message}")
+
+# Optional — None ho sakta hai
+from typing import Optional
+def find_user(user_id: int) -> Optional[dict]:
+    return db.get(user_id)  # None ya dict
+
+# Python 3.10+ shorthand
+def find_user(user_id: int) -> dict | None:  # Optional ke barabar
+    return db.get(user_id)`,
+      },
+      {
+        heading: "Collections, Union, Generics, aur TypeVar",
+        content: `**Collection types:** list[str], dict[str, int], tuple[int, str], set[float].
+**Union:** Multiple types allow karo — str | int (Python 3.10+) ya Union[str, int].
+**TypeVar:** Generic functions jo any type ke saath kaam karein.
+**Literal:** Specific values restrict karo.
+**TypedDict:** Dict structure define karo.`,
+        code: `from typing import TypeVar, Generic, Literal, TypedDict, Callable, Any
+
+# TypedDict
+class UserDict(TypedDict):
+    id: int
+    name: str
+    email: str
+    age: int
+
+def create_user(data: UserDict) -> UserDict:
+    return {**data, 'id': generate_id()}
+
+# TypeVar — generic function
+T = TypeVar('T')
+
+def first_item(items: list[T]) -> T | None:
+    return items[0] if items else None
+
+first_item([1, 2, 3])      # returns int
+first_item(["a", "b"])     # returns str
+first_item([])             # returns None
+
+# Generic class
+class Stack(Generic[T]):
+    def __init__(self) -> None:
+        self._items: list[T] = []
+    
+    def push(self, item: T) -> None:
+        self._items.append(item)
+    
+    def pop(self) -> T:
+        return self._items.pop()
+
+stack: Stack[int] = Stack()
+stack.push(42)
+
+# Literal types
+Direction = Literal["north", "south", "east", "west"]
+def move(direction: Direction, steps: int) -> None: ...
+
+# Callable type
+def apply(func: Callable[[int, int], int], a: int, b: int) -> int:
+    return func(a, b)`,
+      },
+      {
+        heading: "Protocol — Structural Subtyping",
+        content: `**Protocol** = Duck typing + type checking — class explicitly inherit karne ki zarurat nahi, bas methods/attributes match karein.
+
+**@runtime_checkable:** isinstance() ke saath check karo.
+
+**Kab Protocol vs ABC:**
+- Protocol = structural (duck typing) — third-party classes bhi fit ho sakti hain
+- ABC = nominal (explicit inheritance) — stricter contract`,
+        code: `from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Drawable(Protocol):
+    def draw(self) -> None: ...
+    def get_area(self) -> float: ...
+
+# Koi bhi class jo yeh methods implement kare — Drawable hai!
+class Circle:
+    def __init__(self, radius: float):
+        self.radius = radius
+    
+    def draw(self) -> None:
+        print(f"Drawing circle r={self.radius}")
+    
+    def get_area(self) -> float:
+        return 3.14 * self.radius ** 2
+
+class Square:
+    def __init__(self, side: float):
+        self.side = side
+    
+    def draw(self) -> None:
+        print(f"Drawing square s={self.side}")
+    
+    def get_area(self) -> float:
+        return self.side ** 2
+
+def render_all(shapes: list[Drawable]) -> None:
+    for shape in shapes:
+        shape.draw()
+        print(f"Area: {shape.get_area()}")
+
+shapes: list[Drawable] = [Circle(5), Square(3)]
+render_all(shapes)  # Works! No inheritance needed
+
+# Runtime check
+print(isinstance(Circle(5), Drawable))  # True`,
+      },
+    ],
+    cheatsheet: [
+      "def f(x: int) -> str — parameter + return type",
+      "Optional[str] = str | None",
+      "list[int], dict[str, int], tuple[int, str]",
+      "TypeVar('T') — generic type variable",
+      "TypedDict — typed dictionary structure",
+      "Protocol — structural subtyping (duck typing)",
+      "mypy file.py — static type check",
+    ],
+    revision: [
+      "Type hints = documentation + mypy + IDE support",
+      "Optional[T] = T ya None",
+      "TypeVar = generic function any type ke saath",
+      "Protocol = structural typing — no inheritance needed",
+      "Python 3.10+: X | Y instead of Union[X, Y]",
+    ],
+    revisionEn: [
+      "Type hints = documentation + mypy + better IDE support",
+      "Optional[T] = T or None",
+      "TypeVar = generic function works with any type",
+      "Protocol = structural typing — no explicit inheritance",
+      "Python 3.10+: X | Y shorthand instead of Union[X, Y]",
+    ],
+  },
+  {
+    id: "py-design-patterns",
+    title: "Design Patterns in Python",
+    titleEn: "Design Patterns in Python",
+    emoji: "🏗️",
+    category: "Advanced",
+    description: "Creational, structural, aur behavioral patterns — Python mein practical implementation",
+    descriptionEn: "Creational, structural, and behavioral patterns — practical Python implementation",
+    sections: [
+      {
+        heading: "Creational Patterns",
+        content: `**Design patterns** = Common problems ke proven solutions — reusable blueprints.
+
+**3 categories:**
+- **Creational:** Object creation — Singleton, Factory, Builder
+- **Structural:** Objects compose karein — Adapter, Decorator, Facade
+- **Behavioral:** Objects communicate — Observer, Strategy, Command
+
+**Singleton:** Ek hi instance throughout program.
+**Factory:** Object creation logic centralize karo.
+**Builder:** Complex objects step by step banao.`,
+        code: `# Singleton — thread-safe
+from threading import Lock
+
+class DatabaseConnection:
+    _instance = None
+    _lock = Lock()
+    
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:  # double-check!
+                    cls._instance = super().__new__(cls)
+                    cls._instance._init_connection()
+        return cls._instance
+    
+    def _init_connection(self):
+        print("Connecting to database...")
+
+db1 = DatabaseConnection()
+db2 = DatabaseConnection()
+print(db1 is db2)  # True — same instance!
+
+# Factory Pattern
+class Animal:
+    def speak(self): ...
+
+class Dog(Animal):
+    def speak(self): return "Woof!"
+
+class Cat(Animal):
+    def speak(self): return "Meow!"
+
+class AnimalFactory:
+    _registry = {"dog": Dog, "cat": Cat}
+    
+    @classmethod
+    def create(cls, animal_type: str) -> Animal:
+        animal_class = cls._registry.get(animal_type.lower())
+        if not animal_class:
+            raise ValueError(f"Unknown animal: {animal_type}")
+        return animal_class()
+
+dog = AnimalFactory.create("dog")
+print(dog.speak())  # "Woof!"
+
+# Builder Pattern
+class QueryBuilder:
+    def __init__(self):
+        self._table = ""
+        self._conditions = []
+        self._limit = None
+    
+    def from_table(self, table: str) -> 'QueryBuilder':
+        self._table = table
+        return self  # method chaining!
+    
+    def where(self, condition: str) -> 'QueryBuilder':
+        self._conditions.append(condition)
+        return self
+    
+    def limit(self, n: int) -> 'QueryBuilder':
+        self._limit = n
+        return self
+    
+    def build(self) -> str:
+        q = f"SELECT * FROM {self._table}"
+        if self._conditions:
+            q += " WHERE " + " AND ".join(self._conditions)
+        if self._limit:
+            q += f" LIMIT {self._limit}"
+        return q
+
+query = (QueryBuilder()
+    .from_table("users")
+    .where("age > 18")
+    .where("active = 1")
+    .limit(10)
+    .build())`,
+      },
+      {
+        heading: "Structural Patterns",
+        content: `**Adapter:** Incompatible interfaces compatible banao.
+**Decorator:** Object ko wrap karke functionality add karo (Python @decorator se alag — design pattern).
+**Facade:** Complex subsystem ke liye simple interface.
+**Proxy:** Real object ke access ke beech logic add karo.`,
+        code: `# Adapter Pattern
+class OldPaymentAPI:
+    def make_payment(self, amount, currency):
+        print(f"Paying {amount} {currency}")
+
+class NewPaymentInterface:
+    def pay(self, amount_usd: float): ...
+
+class PaymentAdapter(NewPaymentInterface):
+    def __init__(self, old_api: OldPaymentAPI):
+        self._api = old_api
+    
+    def pay(self, amount_usd: float):
+        self._api.make_payment(amount_usd * 285, "PKR")  # convert
+
+adapter = PaymentAdapter(OldPaymentAPI())
+adapter.pay(10.0)  # "Paying 2850.0 PKR"
+
+# Facade Pattern
+class EmailService:
+    def send(self, to, subject, body): ...
+
+class SMSService:
+    def send_sms(self, phone, message): ...
+
+class PushService:
+    def push(self, user_id, message): ...
+
+class NotificationFacade:
+    """Complex notification system ka simple interface"""
+    def __init__(self):
+        self._email = EmailService()
+        self._sms = SMSService()
+        self._push = PushService()
+    
+    def notify_user(self, user, message):
+        self._email.send(user.email, "Notification", message)
+        self._sms.send_sms(user.phone, message)
+        self._push.push(user.id, message)
+
+# One call, sab notifications!
+facade = NotificationFacade()
+facade.notify_user(user, "Order shipped!")`,
+      },
+      {
+        heading: "Behavioral Patterns",
+        content: `**Observer:** Event system — subscribers ko notify karo.
+**Strategy:** Algorithm runtime pe swap karo.
+**Command:** Request encapsulate karo — undo/redo possible.`,
+        code: `# Observer Pattern (Event System)
+from typing import Protocol
+
+class EventListener(Protocol):
+    def on_event(self, event: str, data: dict) -> None: ...
+
+class EventBus:
+    def __init__(self):
+        self._listeners: dict[str, list] = {}
+    
+    def subscribe(self, event: str, listener) -> None:
+        self._listeners.setdefault(event, []).append(listener)
+    
+    def publish(self, event: str, data: dict) -> None:
+        for listener in self._listeners.get(event, []):
+            listener.on_event(event, data)
+
+bus = EventBus()
+bus.subscribe("order.placed", email_service)
+bus.subscribe("order.placed", inventory_service)
+bus.publish("order.placed", {"order_id": 123, "amount": 5000})
+
+# Strategy Pattern
+from abc import ABC, abstractmethod
+
+class SortStrategy(ABC):
+    @abstractmethod
+    def sort(self, data: list) -> list: ...
+
+class BubbleSort(SortStrategy):
+    def sort(self, data): return bubble_sort(data)
+
+class MergeSort(SortStrategy):
+    def sort(self, data): return merge_sort(data)
+
+class Sorter:
+    def __init__(self, strategy: SortStrategy):
+        self._strategy = strategy
+    
+    def sort(self, data: list) -> list:
+        return self._strategy.sort(data)
+    
+    def set_strategy(self, strategy: SortStrategy):
+        self._strategy = strategy
+
+sorter = Sorter(BubbleSort())
+sorter.sort([3,1,2])
+
+# Runtime mein strategy change!
+sorter.set_strategy(MergeSort())
+sorter.sort([3,1,2])`,
+      },
+    ],
+    cheatsheet: [
+      "Singleton: _instance class variable + __new__ override",
+      "Factory: create() classmethod + registry dict",
+      "Builder: method chaining, return self",
+      "Observer: subscribe/publish — event-driven",
+      "Strategy: algorithm encapsulate, runtime swap",
+      "Adapter: old interface → new interface wrap",
+      "Facade: complex subsystem → simple interface",
+    ],
+    revision: [
+      "Creational: Singleton, Factory, Builder",
+      "Structural: Adapter, Facade, Proxy, Decorator",
+      "Behavioral: Observer, Strategy, Command",
+      "Builder = method chaining — return self",
+      "Observer = event bus — loose coupling",
+    ],
+    revisionEn: [
+      "Creational: Singleton, Factory, Builder",
+      "Structural: Adapter, Facade, Proxy, Decorator",
+      "Behavioral: Observer, Strategy, Command",
+      "Builder = method chaining — return self each time",
+      "Observer = event bus — loose coupling between components",
+    ],
+  },
 ];
 
 export const pythonInterviews = [
@@ -6290,5 +6881,334 @@ pip install -r requirements-dev.txt
 # pytest = "^7.4"
 # black = "^23.0"`,
   },
+  {
+    id: 26,
+    level: "Intermediate" as const,
+    question: "Python mein *args aur **kwargs kya hain? Real use case explain karo.",
+    answer: `*args = positional arguments tuple mein pack karo — variable number of args.
+**kwargs = keyword arguments dict mein pack karo.
+
+def func(*args, **kwargs):
+    print(args)   # tuple: (1, 2, 3)
+    print(kwargs) # dict: {'name': 'Ali'}
+
+func(1, 2, 3, name='Ali')
+
+Use cases:
+- Decorator wrappers: wrapper(*args, **kwargs) — original function ko sab args forward karo
+- Flexible APIs: config(**settings)
+- Mixin classes: super().__init__(**kwargs)
+
+Unpacking: func(*[1,2,3]) = func(1,2,3), func(**{'a':1}) = func(a=1)`,
+    tags: ["functions", "arguments"],
+  },
+  {
+    id: 27,
+    level: "Intermediate" as const,
+    question: "Python mein shallow copy aur deep copy ka fark kya hai?",
+    answer: `Shallow copy: New object banta hai lekin nested objects same reference share karte hain.
+Deep copy: Poora object tree copy hota hai — completely independent.
+
+import copy
+
+original = [[1, 2], [3, 4]]
+shallow = copy.copy(original)    # ya list(original) ya original[:]
+deep = copy.deepcopy(original)
+
+shallow[0].append(99)
+# original[0] bhi change hoga! → [[1,2,99], [3,4]]
+
+deep[0].append(99)
+# original safe! → [[1,2], [3,4]]
+
+Kab deep copy: Nested dicts/lists/objects jo independent chahiye.
+Kab shallow: Simple objects, ya jab sharing intentional ho.`,
+    tags: ["memory", "objects"],
+  },
+  {
+    id: 28,
+    level: "Intermediate" as const,
+    question: "__init__ aur __new__ mein kya fark hai?",
+    answer: `__new__: Object banata hai — class ka constructor (static method). Singleton pattern mein use hota hai.
+__init__: Object initialize karta hai — __new__ ke baad call hota hai.
+
+class MyClass:
+    def __new__(cls, *args, **kwargs):
+        print("Creating instance")
+        instance = super().__new__(cls)
+        return instance  # zaroori!
+    
+    def __init__(self, value):
+        print("Initializing")
+        self.value = value
+
+# Order: __new__ pehle, phir __init__
+obj = MyClass(42)
+# "Creating instance" → "Initializing"
+
+Practical: Singleton mein __new__ override karo — ek hi instance return karo.`,
+    tags: ["oop", "dunder"],
+  },
+  {
+    id: 29,
+    level: "Intermediate" as const,
+    question: "Python mein list comprehension vs generator expression — kab kya use karein?",
+    answer: `List comprehension: Puri list memory mein — sab values ek baar compute hoti hain.
+Generator: Lazy evaluation — ek ek value demand pe generate hoti hai.
+
+# List comprehension — [] — sab ek baar
+squares_list = [x**2 for x in range(1000000)]  # ~8MB memory!
+
+# Generator expression — () — lazy
+squares_gen = (x**2 for x in range(1000000))   # ~112 bytes!
+
+# Generator use: sum, any, all, for loop
+total = sum(x**2 for x in range(1000000))  # ek baar calculate
+
+# Kab list: multiple times iterate karna ho, index access
+# Kab generator: ek baar iterate, large data, pipeline
+
+# Generator function
+def fibonacci():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b`,
+    tags: ["generators", "memory", "performance"],
+  },
+  {
+    id: 30,
+    level: "Advanced" as const,
+    question: "Python GIL (Global Interpreter Lock) kya hai? Threading ko kaise affect karta hai?",
+    answer: `GIL = Global Interpreter Lock — CPython mein ek mutex jo sirf ek thread ko ek waqt Python bytecode execute karne deta hai.
+
+Impact:
+- CPU-bound tasks: Threading kaam nahi karta — threads ek ek karke chalte hain
+- I/O-bound tasks: GIL I/O wait mein release hota hai — threading useful hai
+
+Solutions:
+- CPU-bound: multiprocessing (separate processes = separate GIL)
+- I/O-bound: asyncio ya threading (GIL release hota hai)
+- CPU-bound heavy: C extensions (NumPy GIL release karta hai), PyPy
+
+from concurrent.futures import ProcessPoolExecutor  # CPU
+from concurrent.futures import ThreadPoolExecutor   # I/O
+
+# CPU-bound — ProcessPoolExecutor
+with ProcessPoolExecutor() as executor:
+    results = list(executor.map(cpu_heavy_task, data))`,
+    tags: ["concurrency", "threading", "gil"],
+  },
+  {
+    id: 31,
+    level: "Intermediate" as const,
+    question: "Python mein @property decorator kya karta hai? Getter/setter kaise banate hain?",
+    answer: `@property: Method ko attribute ki tarah access karo — validation, computed values ke liye.
+
+class Temperature:
+    def __init__(self, celsius):
+        self._celsius = celsius
+    
+    @property
+    def celsius(self):
+        return self._celsius
+    
+    @celsius.setter
+    def celsius(self, value):
+        if value < -273.15:
+            raise ValueError("Below absolute zero!")
+        self._celsius = value
+    
+    @property
+    def fahrenheit(self):  # computed — no setter
+        return self._celsius * 9/5 + 32
+
+t = Temperature(25)
+print(t.fahrenheit)  # 77.0 — method ki tarah nahi!
+t.celsius = -300     # ValueError!
+
+Benefits: Validation add karo, backward compatible (attribute → property), computed values.`,
+    tags: ["oop", "property"],
+  },
+  {
+    id: 32,
+    level: "Advanced" as const,
+    question: "Python mein __slots__ kya hai? Memory optimization kaise karta hai?",
+    answer: `__slots__: Class attributes ki fixed list define karo — __dict__ create nahi hota, memory save hoti hai.
+
+class Normal:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+# __dict__ = {'x': 1, 'y': 2} — flexible lekin memory zyada
+
+class WithSlots:
+    __slots__ = ['x', 'y']
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+# No __dict__ — ~40-50% less memory per instance
+
+Benefits:
+- Memory: Millions of instances = significant saving
+- Speed: Attribute access faster (no dict lookup)
+- Safety: New attributes add nahi ho sakte (typo protection)
+
+Kab use: Small, many-instance classes (Point, Vector, Node in tree/graph).`,
+    tags: ["memory", "optimization", "oop"],
+  },
+  {
+    id: 33,
+    level: "Intermediate" as const,
+    question: "Python mein Exception hierarchy kya hai? Custom exceptions kaise banate hain?",
+    answer: `BaseException → Exception → StandardError → specific errors
+
+Main hierarchy:
+Exception → ValueError, TypeError, AttributeError, KeyError, IndexError, RuntimeError
+Exception → OSError → FileNotFoundError, PermissionError
+Exception → ArithmeticError → ZeroDivisionError, OverflowError
+
+Custom exceptions:
+class AppError(Exception):
+    """Base application exception"""
+    pass
+
+class ValidationError(AppError):
+    def __init__(self, field: str, message: str):
+        self.field = field
+        super().__init__(f"{field}: {message}")
+
+class NotFoundError(AppError):
+    def __init__(self, resource: str, id: int):
+        super().__init__(f"{resource} with id={id} not found")
+
+# Usage
+try:
+    raise ValidationError("email", "Invalid format")
+except ValidationError as e:
+    print(e.field)  # "email"
+except AppError as e:
+    print("App error:", e)`,
+    tags: ["exceptions", "error-handling"],
+  },
+  {
+    id: 34,
+    level: "Advanced" as const,
+    question: "Python mein metaclass kya hota hai? Real use case batao.",
+    answer: `Metaclass = class ka class — classes banane ka process control karo.
+'type' default metaclass hai — sab classes type ka instance hain.
+
+# Simple metaclass
+class SingletonMeta(type):
+    _instances = {}
+    
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class Database(metaclass=SingletonMeta):
+    def __init__(self):
+        self.connection = "connected"
+
+db1 = Database()
+db2 = Database()
+print(db1 is db2)  # True!
+
+# Real use cases:
+# 1. ORM (Django Models — field registration)
+# 2. API validation (auto-validate methods)
+# 3. Plugin systems (auto-register subclasses)
+# 4. Abstract base classes (ABCMeta)
+
+# Registry pattern with metaclass
+class PluginMeta(type):
+    registry = {}
+    def __new__(mcs, name, bases, namespace):
+        cls = super().__new__(mcs, name, bases, namespace)
+        if bases:  # base class ko skip karo
+            mcs.registry[name] = cls
+        return cls`,
+    tags: ["metaclass", "advanced-oop"],
+  },
+  {
+    id: 35,
+    level: "Intermediate" as const,
+    question: "Python mein namedtuple aur dataclass mein kya fark hai?",
+    answer: `namedtuple: Immutable, tuple subclass — lightweight, memory efficient.
+dataclass: Mutable (default), class subclass — more features, flexible.
+
+from collections import namedtuple
+from dataclasses import dataclass, field
+
+# namedtuple — simple, immutable
+Point = namedtuple('Point', ['x', 'y'])
+p = Point(1, 2)
+print(p.x, p[0])  # attribute ya index access
+p.x = 3  # AttributeError! immutable
+
+# dataclass — powerful, mutable
+@dataclass
+class User:
+    name: str
+    age: int
+    email: str = ""                    # default value
+    tags: list = field(default_factory=list)  # mutable default!
+    
+    def greet(self): return f"Hi, {self.name}!"
+
+u = User("Ali", 25)
+u.age = 26  # OK!
+
+# @dataclass(frozen=True) — immutable dataclass (namedtuple jaisa)
+# @dataclass(order=True) — comparison operators auto-generate
+
+Kab namedtuple: Simple, immutable records, memory critical.
+Kab dataclass: Methods chahiye, mutability, complex defaults.`,
+    tags: ["dataclass", "namedtuple", "data-structures"],
+  },
+  {
+    id: 36,
+    level: "Advanced" as const,
+    question: "Python mein context manager kaise banate hain? __enter__ aur __exit__ explain karo.",
+    answer: `Context manager = 'with' statement support — setup aur teardown guarantee karo.
+
+Method 1: Class-based
+class FileManager:
+    def __init__(self, filename, mode):
+        self.filename = filename
+        self.mode = mode
+    
+    def __enter__(self):
+        self.file = open(self.filename, self.mode)
+        return self.file  # 'as' variable ko assign hota hai
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.file.close()
+        # True return = exception suppress karo
+        # False/None = exception propagate karo
+        return False
+
+with FileManager('test.txt', 'w') as f:
+    f.write("Hello!")
+
+Method 2: @contextmanager decorator
+from contextlib import contextmanager
+
+@contextmanager
+def db_transaction(connection):
+    transaction = connection.begin()
+    try:
+        yield transaction  # __enter__ ka return value
+        transaction.commit()
+    except Exception:
+        transaction.rollback()
+        raise  # re-raise exception
+
+with db_transaction(conn) as txn:
+    txn.execute("INSERT ...")`,
+    tags: ["context-manager", "with-statement"],
+  },
 ];
+
 

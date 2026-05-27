@@ -1194,6 +1194,432 @@ ANALYZE TABLE users;`,
       "LIKE '%text' = no index, 'text%' = index works",
     ],
   },
+  {
+    id: "mysql-window",
+    title: "Window Functions",
+    titleEn: "Window Functions",
+    emoji: "🪟",
+    category: "Advanced",
+    description: "MySQL window functions — ROW_NUMBER, RANK, LAG/LEAD, running totals, partitions",
+    descriptionEn: "MySQL window functions — ROW_NUMBER, RANK, LAG/LEAD, running totals, partitions",
+    sections: [
+      {
+        heading: "Window Functions kya hain?",
+        content: `**Window functions** = Rows ke upar calculations — GROUP BY ki tarah nahi, rows preserve hoti hain.
+
+**GROUP BY vs Window:**
+- GROUP BY = rows collapse, ek row per group
+- Window = rows preserve, calculation upar se
+
+**Syntax:**
+\`\`\`sql
+function() OVER (
+  PARTITION BY column   -- groups (optional)
+  ORDER BY column       -- order
+  ROWS BETWEEN ... AND ... -- frame (optional)
+)
+\`\`\`
+
+**Main functions:**
+- **ROW_NUMBER()** — unique row number (1,2,3...)
+- **RANK()** — ties same rank, gaps (1,1,3)
+- **DENSE_RANK()** — ties same rank, no gaps (1,1,2)
+- **LAG/LEAD** — previous/next row value
+- **SUM/AVG OVER** — running totals`,
+        code: `-- Employees table per example
+CREATE TABLE employees (
+    id INT,
+    name VARCHAR(100),
+    department VARCHAR(50),
+    salary DECIMAL(10,2),
+    hire_date DATE
+);
+
+-- ROW_NUMBER — har department mein row number
+SELECT
+    name,
+    department,
+    salary,
+    ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS row_num
+FROM employees;
+
+-- RANK vs DENSE_RANK
+SELECT
+    name,
+    salary,
+    RANK() OVER (ORDER BY salary DESC) AS rank_sal,
+    DENSE_RANK() OVER (ORDER BY salary DESC) AS dense_rank_sal
+FROM employees;
+-- Salary: 90k,90k,80k → RANK: 1,1,3 | DENSE_RANK: 1,1,2
+
+-- Top N per group (har department ka top salary wala)
+SELECT * FROM (
+    SELECT
+        name, department, salary,
+        ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn
+    FROM employees
+) ranked
+WHERE rn = 1;`,
+      },
+      {
+        heading: "LAG/LEAD aur Running Totals",
+        content: `**LAG(col, n):** n rows pehle ki value — month-over-month comparison.
+**LEAD(col, n):** n rows baad ki value — next month preview.
+**SUM OVER (ORDER BY):** Running total — cumulative sum.
+**AVG OVER (ROWS BETWEEN):** Moving average — rolling window.`,
+        code: `-- LAG — previous month sales comparison
+SELECT
+    sale_month,
+    revenue,
+    LAG(revenue, 1) OVER (ORDER BY sale_month) AS prev_month,
+    revenue - LAG(revenue, 1) OVER (ORDER BY sale_month) AS change,
+    ROUND(
+        (revenue - LAG(revenue, 1) OVER (ORDER BY sale_month))
+        / LAG(revenue, 1) OVER (ORDER BY sale_month) * 100, 2
+    ) AS pct_change
+FROM monthly_sales;
+
+-- Running total (cumulative sum)
+SELECT
+    order_date,
+    amount,
+    SUM(amount) OVER (ORDER BY order_date) AS running_total,
+    AVG(amount) OVER (ORDER BY order_date) AS running_avg
+FROM orders;
+
+-- 3-month moving average
+SELECT
+    sale_month,
+    revenue,
+    AVG(revenue) OVER (
+        ORDER BY sale_month
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_3m
+FROM monthly_sales;
+
+-- NTILE — salary percentiles
+SELECT
+    name,
+    salary,
+    NTILE(4) OVER (ORDER BY salary) AS quartile
+FROM employees;
+-- 1=bottom 25%, 2=25-50%, 3=50-75%, 4=top 25%`,
+      },
+    ],
+    cheatsheet: [
+      "OVER (PARTITION BY dept ORDER BY salary) — window define",
+      "ROW_NUMBER() — unique 1,2,3 (ties = different)",
+      "RANK() — ties = same rank, gap baad mein",
+      "DENSE_RANK() — ties = same rank, no gap",
+      "LAG(col,1) — previous row value",
+      "LEAD(col,1) — next row value",
+      "SUM() OVER (ORDER BY date) — running total",
+    ],
+    revision: [
+      "Window = rows preserve (GROUP BY collapse karta hai)",
+      "PARTITION BY = window ke andar groups",
+      "ROW_NUMBER unique, RANK gaps, DENSE_RANK no gaps",
+      "LAG = past, LEAD = future row value",
+      "ROWS BETWEEN = frame define karo",
+    ],
+    revisionEn: [
+      "Window = rows preserved (unlike GROUP BY which collapses)",
+      "PARTITION BY = define groups within the window",
+      "ROW_NUMBER unique, RANK has gaps, DENSE_RANK no gaps",
+      "LAG = past value, LEAD = future row value",
+      "ROWS BETWEEN = define the calculation frame",
+    ],
+  },
+  {
+    id: "mysql-json",
+    title: "JSON Data Type aur Functions",
+    titleEn: "JSON Data Type and Functions",
+    emoji: "📋",
+    category: "Advanced",
+    description: "MySQL mein JSON store, query, aur update karna — modern flexible schema",
+    descriptionEn: "Storing, querying, and updating JSON in MySQL — modern flexible schema design",
+    sections: [
+      {
+        heading: "MySQL mein JSON kab use karein?",
+        content: `**JSON column** = Flexible schema — structured data ke saath semi-structured data bhi store karo.
+
+**Kab JSON use karein:**
+- Dynamic/flexible attributes (product variants, metadata)
+- Config settings per user
+- Audit logs, event data
+- Third-party API data store karna
+
+**Kab na karein:**
+- Frequently filter/search karni ho JSON fields pe → relational better
+- Joins chahiye JSON values pe → normalize better
+- ACID transactions with JSON fields → tricky
+
+**MySQL 5.7.8+** mein JSON type available hai — validated stored, not just text.`,
+        code: `-- JSON column create
+CREATE TABLE products (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255),
+    attributes JSON,  -- validated JSON!
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Insert JSON
+INSERT INTO products (name, attributes) VALUES
+(
+    'Laptop',
+    '{"brand": "Dell", "ram": 16, "storage": "512GB", "colors": ["black", "silver"]}'
+),
+(
+    'Phone',
+    '{"brand": "Samsung", "ram": 8, "features": {"5g": true, "nfc": true}}'
+);
+
+-- JSON_OBJECT — construct karo
+INSERT INTO products (name, attributes) VALUES (
+    'Tablet',
+    JSON_OBJECT('brand', 'Apple', 'ram', 8, 'os', 'iPadOS')
+);
+
+-- JSON_ARRAY
+UPDATE products SET attributes = JSON_SET(
+    attributes,
+    '$.colors',
+    JSON_ARRAY('blue', 'red', 'green')
+) WHERE id = 1;`,
+      },
+      {
+        heading: "JSON Query aur Index",
+        content: `**->  operator:** JSON_EXTRACT shorthand — JSON strings return karta hai (quotes sath).
+**->> operator:** JSON_UNQUOTE(JSON_EXTRACT) — clean string value.
+**JSON_CONTAINS:** Koi value hai JSON mein?
+**Generated column + Index:** JSON field pe index lagao — fast filtering.`,
+        code: `-- JSON path access
+SELECT
+    name,
+    attributes -> '$.brand' AS brand_quoted,       -- "Dell" (quotes)
+    attributes ->> '$.brand' AS brand_clean,       -- Dell (no quotes)
+    attributes -> '$.ram' AS ram,
+    attributes -> '$.colors[0]' AS first_color,
+    attributes -> '$.features.5g' AS has_5g
+FROM products;
+
+-- WHERE clause mein JSON filter
+SELECT name FROM products
+WHERE attributes ->> '$.brand' = 'Dell';
+
+SELECT name FROM products
+WHERE attributes -> '$.ram' >= 16;
+
+-- JSON_CONTAINS — array mein value check
+SELECT name FROM products
+WHERE JSON_CONTAINS(attributes -> '$.colors', '"black"');
+
+-- JSON_EXTRACT with path
+SELECT
+    name,
+    JSON_EXTRACT(attributes, '$.brand') AS brand,
+    JSON_LENGTH(attributes -> '$.colors') AS color_count
+FROM products;
+
+-- Generated column + index (fast JSON search!)
+ALTER TABLE products
+    ADD COLUMN brand VARCHAR(100) GENERATED ALWAYS AS
+        (attributes ->> '$.brand') VIRTUAL;
+
+CREATE INDEX idx_brand ON products(brand);
+
+-- Ab fast!
+SELECT * FROM products WHERE brand = 'Dell';
+
+-- JSON update functions
+UPDATE products
+SET attributes = JSON_SET(
+    attributes,
+    '$.ram', 32,           -- update
+    '$.ssd', true          -- add new key
+)
+WHERE id = 1;
+
+-- Remove key
+UPDATE products
+SET attributes = JSON_REMOVE(attributes, '$.colors')
+WHERE id = 2;`,
+      },
+    ],
+    cheatsheet: [
+      "JSON_OBJECT('key', val) — JSON banao",
+      "col -> '$.key' — extract (with quotes)",
+      "col ->> '$.key' — extract (clean string)",
+      "JSON_SET(col, '$.key', val) — update/add",
+      "JSON_REMOVE(col, '$.key') — key remove",
+      "JSON_CONTAINS(col, value) — check presence",
+      "Generated column + index → JSON field fast search",
+    ],
+    revision: [
+      "-> returns quoted, ->> returns clean value",
+      "JSON_SET = update/add, JSON_REMOVE = delete key",
+      "JSON_CONTAINS → array mein value check",
+      "Generated column = JSON field pe index lagao",
+      "JSON type = validated (invalid JSON reject hota hai)",
+    ],
+    revisionEn: [
+      "-> returns quoted value, ->> returns clean string",
+      "JSON_SET = update/add key, JSON_REMOVE = delete key",
+      "JSON_CONTAINS → check if value exists in array",
+      "Generated column + index = fast JSON field search",
+      "JSON type = validated on insert (invalid JSON rejected)",
+    ],
+  },
+  {
+    id: "mysql-advanced-queries",
+    title: "Advanced SQL Queries",
+    titleEn: "Advanced SQL Queries",
+    emoji: "🔮",
+    category: "Advanced",
+    description: "CTEs, recursive queries, pivot, CASE WHEN, EXISTS, aur complex patterns",
+    descriptionEn: "CTEs, recursive queries, pivot, CASE WHEN, EXISTS, and complex query patterns",
+    sections: [
+      {
+        heading: "CTE — Common Table Expressions",
+        content: `**CTE (WITH clause)** = Named temporary result set — complex queries readable banao, reuse karo.
+
+**CTE vs Subquery:**
+- CTE = ek baar define, multiple baar reference karo
+- Subquery = inline, ek hi jagah
+- CTE = more readable for complex queries
+- Recursive queries = sirf CTE se possible
+
+**Syntax:**
+\`\`\`sql
+WITH cte_name AS (
+    SELECT ...
+),
+second_cte AS (
+    SELECT ... FROM cte_name
+)
+SELECT * FROM second_cte;
+\`\`\``,
+        code: `-- Simple CTE — readable query
+WITH active_customers AS (
+    SELECT id, name, email
+    FROM customers
+    WHERE status = 'active' AND created_at > '2024-01-01'
+),
+high_value AS (
+    SELECT customer_id, SUM(amount) AS total
+    FROM orders
+    GROUP BY customer_id
+    HAVING total > 50000
+)
+SELECT c.name, c.email, h.total
+FROM active_customers c
+JOIN high_value h ON c.id = h.customer_id
+ORDER BY h.total DESC;
+
+-- Multiple CTEs
+WITH
+monthly_sales AS (
+    SELECT
+        DATE_FORMAT(order_date, '%Y-%m') AS month,
+        SUM(amount) AS revenue
+    FROM orders
+    GROUP BY month
+),
+ranked_months AS (
+    SELECT
+        month,
+        revenue,
+        RANK() OVER (ORDER BY revenue DESC) AS rank_num
+    FROM monthly_sales
+)
+SELECT month, revenue
+FROM ranked_months
+WHERE rank_num <= 3;  -- Top 3 months`,
+      },
+      {
+        heading: "Recursive CTE aur CASE WHEN",
+        content: `**Recursive CTE:** Hierarchical data — employees > managers, categories > subcategories, org charts.
+**CASE WHEN:** Conditional logic in SQL — computed columns, pivot tables.
+**EXISTS vs IN:** EXISTS = correlated subquery — IN ke saath large lists mein faster.`,
+        code: `-- Recursive CTE — employee hierarchy
+WITH RECURSIVE emp_hierarchy AS (
+    -- Base case: top-level managers
+    SELECT id, name, manager_id, 0 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+    
+    UNION ALL
+    
+    -- Recursive: har employee ke reports
+    SELECT e.id, e.name, e.manager_id, h.level + 1
+    FROM employees e
+    JOIN emp_hierarchy h ON e.manager_id = h.id
+)
+SELECT
+    CONCAT(REPEAT('  ', level), name) AS org_chart,
+    level
+FROM emp_hierarchy
+ORDER BY level, name;
+
+-- CASE WHEN — salary bands
+SELECT
+    name,
+    salary,
+    CASE
+        WHEN salary < 30000 THEN 'Junior'
+        WHEN salary < 60000 THEN 'Mid-level'
+        WHEN salary < 100000 THEN 'Senior'
+        ELSE 'Executive'
+    END AS grade,
+    CASE department
+        WHEN 'Engineering' THEN salary * 1.1   -- 10% bonus
+        WHEN 'Sales' THEN salary * 1.15        -- 15% bonus
+        ELSE salary
+    END AS adjusted_salary
+FROM employees;
+
+-- Pivot table with CASE WHEN
+SELECT
+    department,
+    SUM(CASE WHEN YEAR(hire_date) = 2022 THEN 1 ELSE 0 END) AS hired_2022,
+    SUM(CASE WHEN YEAR(hire_date) = 2023 THEN 1 ELSE 0 END) AS hired_2023,
+    SUM(CASE WHEN YEAR(hire_date) = 2024 THEN 1 ELSE 0 END) AS hired_2024
+FROM employees
+GROUP BY department;
+
+-- EXISTS — correlated subquery
+SELECT c.name
+FROM customers c
+WHERE EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.customer_id = c.id
+    AND o.amount > 10000
+);`,
+      },
+    ],
+    cheatsheet: [
+      "WITH cte AS (SELECT ...) SELECT * FROM cte",
+      "Multiple CTEs: WITH a AS (...), b AS (...)",
+      "Recursive CTE: UNION ALL with self-reference",
+      "CASE WHEN cond THEN val ELSE default END",
+      "EXISTS (SELECT 1 ...) — boolean check",
+      "GROUP_CONCAT(name SEPARATOR ', ') — string aggregate",
+    ],
+    revision: [
+      "CTE = readable subquery + reusable in same query",
+      "Recursive CTE = hierarchy/tree data traverse",
+      "CASE WHEN = SQL mein if-else",
+      "EXISTS = correlated subquery, early exit on match",
+      "Pivot = CASE WHEN + SUM/COUNT aggregation",
+    ],
+    revisionEn: [
+      "CTE = readable subquery that can be reused in same query",
+      "Recursive CTE = traverse hierarchical/tree data",
+      "CASE WHEN = if-else logic in SQL",
+      "EXISTS = correlated subquery, stops on first match",
+      "Pivot table = CASE WHEN + conditional aggregation",
+    ],
+  },
 ];
 
 export const mysqlInterviews = [
@@ -1324,4 +1750,315 @@ COMMIT;
   -- Koi error?
 ROLLBACK;`,
   },
+  {
+    id: 706,
+    level: "Beginner" as const,
+    question: "PRIMARY KEY aur UNIQUE KEY mein kya fark hai?",
+    answer: `PRIMARY KEY:
+- Table mein sirf ek ho sakti hai
+- NULL allowed nahi (NOT NULL implicit)
+- Clustered index automatically banta hai (InnoDB)
+- Row uniquely identify karta hai
+
+UNIQUE KEY:
+- Table mein multiple ho sakti hain
+- NULL allowed hai (multiple NULL values allowed — NULL != NULL)
+- Non-clustered index
+
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) UNIQUE,       -- null allowed, unique non-null values
+    username VARCHAR(50) UNIQUE NOT NULL
+);
+
+Composite PK:
+CREATE TABLE order_items (
+    order_id INT,
+    product_id INT,
+    PRIMARY KEY (order_id, product_id)  -- dono milke unique
+);`,
+    tags: ["keys", "constraints"],
+  },
+  {
+    id: 707,
+    level: "Beginner" as const,
+    question: "INNER JOIN, LEFT JOIN, RIGHT JOIN, aur FULL OUTER JOIN explain karo.",
+    answer: `INNER JOIN: Dono tables mein matching rows — non-matching rows exclude.
+LEFT JOIN: Left table ki sab rows + right table se matches (right NULL agar match nahi).
+RIGHT JOIN: Right table ki sab rows + left table se matches (left NULL agar match nahi).
+FULL OUTER JOIN: Dono tables ki sab rows (MySQL mein UNION se simulate karte hain).
+
+-- INNER JOIN
+SELECT o.id, u.name FROM orders o
+INNER JOIN users u ON o.user_id = u.id;
+
+-- LEFT JOIN — sab users even if no orders
+SELECT u.name, COUNT(o.id) as order_count
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.id;
+
+-- FULL OUTER (MySQL workaround)
+SELECT * FROM a LEFT JOIN b ON a.id = b.a_id
+UNION
+SELECT * FROM a RIGHT JOIN b ON a.id = b.a_id;
+
+Trick: LEFT JOIN + WHERE b.id IS NULL = only left rows with no match (anti-join).`,
+    tags: ["joins", "sql"],
+  },
+  {
+    id: 708,
+    level: "Intermediate" as const,
+    question: "MySQL mein Index kitne types ke hote hain? Kab kaunsa use karein?",
+    answer: `1. PRIMARY KEY: Ek per table, clustered, not null.
+2. UNIQUE Index: Duplicate values nahi, null allowed.
+3. Regular Index (KEY/INDEX): Performance ke liye, duplicates allowed.
+4. Composite Index: Multiple columns — leftmost prefix rule.
+5. FULLTEXT Index: Text search — MATCH() AGAINST() — articles, descriptions.
+6. SPATIAL Index: Geographic data — geometry types.
+
+CREATE INDEX idx_email ON users(email);
+CREATE INDEX idx_dept_salary ON employees(department, salary);  -- composite
+CREATE FULLTEXT INDEX idx_content ON posts(title, body);
+
+Composite index rules:
+WHERE dept = 'Eng' AND salary > 50000  → uses (dept, salary) ✓
+WHERE salary > 50000  → does NOT use (dept, salary) ✗ (leftmost missing)
+
+Kab index na banao: Small tables, frequently updated columns, low-cardinality (gender).`,
+    tags: ["index", "performance"],
+  },
+  {
+    id: 709,
+    level: "Intermediate" as const,
+    question: "HAVING aur WHERE mein kya fark hai?",
+    answer: `WHERE: Rows filter karo BEFORE aggregation — individual rows pe kaam karta hai.
+HAVING: Rows filter karo AFTER aggregation — groups pe kaam karta hai.
+
+-- WHERE — aggregation se pehle filter
+SELECT department, AVG(salary) as avg_sal
+FROM employees
+WHERE salary > 20000  -- individual salary filter
+GROUP BY department;
+
+-- HAVING — aggregation ke baad filter
+SELECT department, AVG(salary) as avg_sal
+FROM employees
+GROUP BY department
+HAVING avg_sal > 50000;  -- group average filter
+
+-- Dono saath
+SELECT department, COUNT(*) as emp_count, AVG(salary) as avg_sal
+FROM employees
+WHERE hire_date > '2020-01-01'  -- filter rows first
+GROUP BY department
+HAVING emp_count >= 5            -- then filter groups
+ORDER BY avg_sal DESC;
+
+Memory tip: WHERE = before GROUP BY, HAVING = after GROUP BY.`,
+    tags: ["sql", "aggregation", "filtering"],
+  },
+  {
+    id: 710,
+    level: "Intermediate" as const,
+    question: "Stored Procedure aur Function mein kya fark hai MySQL mein?",
+    answer: `Stored Procedure:
+- CALL procedure() se execute
+- Multiple result sets return kar sakta hai
+- IN, OUT, INOUT parameters
+- SQL statements mein use nahi ho sakta
+- Transactions, error handling complex logic ke liye
+
+Function:
+- SELECT mein use ho sakti hai
+- Sirf ek value return karta hai (scalar)
+- Sirf IN parameters
+- Side effects nahi hone chahiye (pure function)
+
+-- Procedure
+DELIMITER //
+CREATE PROCEDURE GetUserOrders(IN user_id INT)
+BEGIN
+    SELECT * FROM orders WHERE user_id = user_id;
+    SELECT COUNT(*) FROM orders WHERE user_id = user_id;
+END //
+CALL GetUserOrders(1);
+
+-- Function
+CREATE FUNCTION GetFullName(first VARCHAR(50), last VARCHAR(50))
+RETURNS VARCHAR(100) DETERMINISTIC
+BEGIN
+    RETURN CONCAT(first, ' ', last);
+END;
+
+SELECT GetFullName(first_name, last_name) FROM users;`,
+    tags: ["stored-procedures", "functions"],
+  },
+  {
+    id: 711,
+    level: "Advanced" as const,
+    question: "MySQL mein Deadlock kya hai? Kaise prevent karte hain?",
+    answer: `Deadlock: Do ya zyada transactions ek doosre ke lock ka wait kar rahein — circular dependency.
+
+T1 locks row A, wants B
+T2 locks row B, wants A
+→ Neither can proceed → MySQL detects and kills one transaction!
+
+Prevention strategies:
+1. Consistent lock order: Hamesha same order mein resources lock karo
+   -- Always lock user first, then account
+   T1: lock user(1) → lock account(101)
+   T2: lock user(1) → lock account(102)  -- same order!
+
+2. Short transactions: Transaction jaldi complete karo — locks kam time ke liye held
+
+3. Row-level locking: Table lock se bachao — SELECT ... FOR UPDATE specific rows ke liye
+
+4. Indexing: Non-indexed queries table lock karte hain → deadlock prone
+
+5. Deadlock detection: SHOW ENGINE INNODB STATUS — recent deadlock dekho
+
+-- Retry logic (application level)
+BEGIN TRY
+    START TRANSACTION;
+    -- operations
+    COMMIT;
+CATCH (deadlock error 1213)
+    ROLLBACK;
+    -- Retry the transaction`,
+    tags: ["transactions", "deadlock", "locking"],
+  },
+  {
+    id: 712,
+    level: "Intermediate" as const,
+    question: "EXPLAIN query output kaise interpret karte hain?",
+    answer: `EXPLAIN: Query execution plan — MySQL query kaise execute karega show karta hai.
+
+Key columns:
+- type: Access method — best to worst:
+  system/const > eq_ref > ref > range > index > ALL
+  ALL = full table scan = BAD!
+
+- key: Konsa index use ho raha hai (NULL = no index)
+- key_len: Kitna index use ho raha hai (longer = more columns)
+- rows: Estimated rows scan ki jaayegi
+- Extra: Using index (covering), Using filesort, Using temporary = BAD
+
+EXPLAIN SELECT * FROM orders WHERE user_id = 5;
+-- type: ref, key: idx_user_id → Good!
+
+EXPLAIN SELECT * FROM orders WHERE YEAR(created_at) = 2024;
+-- type: ALL → Bad! Function pe index nahi use hoga
+
+Fix:
+-- Instead of YEAR(created_at) = 2024:
+WHERE created_at >= '2024-01-01' AND created_at < '2025-01-01'
+-- Now index use hoga!
+
+EXPLAIN ANALYZE (MySQL 8.0+): Actual execution stats bhi dikhata hai.`,
+    tags: ["explain", "performance", "indexing"],
+  },
+  {
+    id: 713,
+    level: "Intermediate" as const,
+    question: "MySQL mein ENUM vs VARCHAR vs TINYINT — kab kya use karein?",
+    answer: `ENUM('val1','val2'): Fixed set of values — status columns ke liye.
+- Pros: Storage efficient (1-2 bytes), validation built-in, readable
+- Cons: Schema change karna expensive, alphabetical order problematic
+
+VARCHAR(n): Variable length string.
+- Pros: Flexible, easy to change
+- Cons: More storage, no built-in validation
+
+TINYINT: 0-255 (or -128 to 127 signed) — numeric status codes.
+- Pros: Fastest, least storage (1 byte)
+- Cons: Code mein magic numbers
+
+Best practices:
+-- Status columns
+status ENUM('pending', 'active', 'cancelled', 'completed')
+-- Readable + efficient
+
+-- Role (limited set, rarely changes)
+role ENUM('user', 'admin', 'moderator')
+
+-- Gender
+gender ENUM('M', 'F', 'Other', 'Prefer not to say')
+
+-- Avoid ENUM when: values frequently change, many values, internationalization
+
+-- Modern approach: separate lookup table
+CREATE TABLE statuses (code TINYINT PK, name VARCHAR(50));`,
+    tags: ["data-types", "design"],
+  },
+  {
+    id: 714,
+    level: "Advanced" as const,
+    question: "Database Sharding kya hai? MySQL mein kaise implement karte hain?",
+    answer: `Sharding = Database horizontally partition karo — data multiple databases pe distribute karo.
+
+Kab zaruri: Single DB handle nahi kar sakta traffic ya data volume.
+
+Sharding strategies:
+1. Range-based: User ID 1-1M → DB1, 1M-2M → DB2
+   - Simple lekin hotspots (new users sab ek DB pe)
+
+2. Hash-based: shard = hash(user_id) % num_shards
+   - Even distribution lekin rebalancing hard
+
+3. Directory-based: Lookup table — user_id → shard_id
+   - Flexible lekin extra DB call
+
+// Application-level sharding
+function getShard(userId) {
+    return userId % TOTAL_SHARDS;  // 0, 1, 2...
+}
+
+function getConnection(userId) {
+    const shard = getShard(userId);
+    return connections[shard];  // shard-specific connection
+}
+
+Challenges:
+- Cross-shard queries (JOINs across shards) — avoid!
+- Rebalancing shards — data migration
+- Transactions across shards — distributed transactions
+- Schema changes — apply to all shards
+
+Alternatives before sharding: Read replicas, caching (Redis), query optimization, vertical scaling.`,
+    tags: ["sharding", "scalability", "architecture"],
+  },
+  {
+    id: 715,
+    level: "Advanced" as const,
+    question: "MySQL replication kya hai? Master-Slave aur Master-Master explain karo.",
+    answer: `Replication: Data ek DB se doosre pe automatically copy karo — high availability, read scaling.
+
+Master-Slave (Primary-Replica):
+- Master: Writes handle karta hai
+- Slave: Reads handle karta hai (read scaling!)
+- Binary log (binlog) se changes propagate hote hain
+- Asynchronous — slave slightly behind
+
+Use case: Read-heavy apps — write master pe, reads replicas pe distribute karo.
+
+Master-Master (Active-Active):
+- Dono masters — dono read + write kar sakte hain
+- Conflicts possible — auto-increment must be different
+- server1: auto_increment_increment=2, auto_increment_offset=1 (1,3,5...)
+- server2: auto_increment_increment=2, auto_increment_offset=2 (2,4,6...)
+
+Application setup:
+-- Writes → master
+-- Reads → round-robin among replicas
+
+Replication types:
+- Async: Fast writes, slave can lag
+- Semi-sync: Master ek slave ka acknowledge wait karta hai
+- Group replication: Multi-master, consensus-based (MySQL InnoDB Cluster)
+
+Monitoring: SHOW SLAVE STATUS — Seconds_Behind_Master watch karo.`,
+    tags: ["replication", "high-availability", "scaling"],
+  },
 ];
+

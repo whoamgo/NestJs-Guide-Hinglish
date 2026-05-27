@@ -95,8 +95,8 @@ export const courses: CourseInfo[] = [
     description: "Server-side JavaScript — Streams, WebSockets, Redis, GraphQL, Microservices A to Z",
     level: "Intermediate",
     topics: ["Modules", "Express.js", "Async/Await", "Streams", "WebSockets", "Redis", "GraphQL", "Microservices", "TypeScript", "Testing"],
-    totalChapters: 20,
-    totalInterviews: 20,
+    totalChapters: 21,
+    totalInterviews: 37,
   },
   {
     id: "reactjs",
@@ -109,8 +109,8 @@ export const courses: CourseInfo[] = [
     description: "Facebook ka UI library — Hooks, TypeScript, Testing, Next.js, TanStack Query A to Z",
     level: "Intermediate",
     topics: ["JSX", "Hooks", "Performance", "Custom Hooks", "TypeScript", "Patterns", "Suspense", "TanStack Query", "Testing", "Next.js"],
-    totalChapters: 20,
-    totalInterviews: 20,
+    totalChapters: 21,
+    totalInterviews: 40,
   },
   {
     id: "api",
@@ -137,8 +137,8 @@ export const courses: CourseInfo[] = [
     description: "Database fundamentals — queries, joins, indexing, aur optimization",
     level: "Beginner",
     topics: ["SQL Basics", "JOINs", "Indexes", "Transactions", "Views", "CTEs", "Performance"],
-    totalChapters: 10,
-    totalInterviews: 20,
+    totalChapters: 13,
+    totalInterviews: 15,
   },
   {
     id: "python",
@@ -151,8 +151,8 @@ export const courses: CourseInfo[] = [
     description: "Python A to Z — basics se ML tak, data science, automation aur bahut kuch",
     level: "Beginner",
     topics: ["Basics", "OOP", "File Handling", "NumPy", "Pandas", "ML", "Automation", "Web Scraping", "Regex", "Testing", "FastAPI", "Async"],
-    totalChapters: 25,
-    totalInterviews: 25,
+    totalChapters: 26,
+    totalInterviews: 36,
   },
   {
     id: "dsa",
@@ -165,8 +165,8 @@ export const courses: CourseInfo[] = [
     description: "Data Structures & Algorithms in Python — FAANG interview preparation with advanced topics",
     level: "Intermediate",
     topics: ["Arrays", "Linked List", "Stack/Queue", "Trees", "Graphs", "Trie", "Union-Find", "Monotonic Stack", "Bit Manipulation", "Advanced DP"],
-    totalChapters: 17,
-    totalInterviews: 10,
+    totalChapters: 20,
+    totalInterviews: 20,
   },
 ];
 

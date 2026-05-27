@@ -724,6 +724,374 @@ await api.delete(\`/users/\${id}\`);`,
       "AbortController = prevent memory leaks on unmount",
     ],
   },
+  {
+    id: "react-advanced-hooks",
+    title: "Advanced Hooks — useReducer, useId, useSyncExternalStore",
+    titleEn: "Advanced Hooks — useReducer, useId, useSyncExternalStore",
+    emoji: "🪝",
+    category: "Advanced",
+    description: "Complex state management aur modern React hooks — useReducer, useId, useImperativeHandle",
+    descriptionEn: "Complex state management and modern React hooks — useReducer, useId, useImperativeHandle",
+    sections: [
+      {
+        heading: "useReducer — Complex State Logic",
+        content: `**useReducer** = useState ka powerful alternative — complex state logic, actions, Redux-like pattern.
+
+**Kab useReducer:**
+- Multiple related state fields
+- Next state depends on previous
+- Complex update logic
+- State transitions well-defined honi chahiye`,
+        code: `import { useReducer } from 'react';
+
+// State type
+type CartState = {
+    items: CartItem[];
+    total: number;
+    discount: number;
+};
+
+// Action types
+type CartAction =
+    | { type: 'ADD_ITEM'; payload: CartItem }
+    | { type: 'REMOVE_ITEM'; payload: string }
+    | { type: 'APPLY_DISCOUNT'; payload: number }
+    | { type: 'CLEAR' };
+
+// Reducer — pure function
+function cartReducer(state: CartState, action: CartAction): CartState {
+    switch (action.type) {
+        case 'ADD_ITEM':
+            const items = [...state.items, action.payload];
+            return {
+                ...state,
+                items,
+                total: items.reduce((sum, item) => sum + item.price, 0),
+            };
+        case 'REMOVE_ITEM':
+            const filtered = state.items.filter(i => i.id !== action.payload);
+            return { ...state, items: filtered, total: filtered.reduce((s, i) => s + i.price, 0) };
+        case 'APPLY_DISCOUNT':
+            return { ...state, discount: action.payload };
+        case 'CLEAR':
+            return { items: [], total: 0, discount: 0 };
+        default:
+            return state;
+    }
+}
+
+const initialState: CartState = { items: [], total: 0, discount: 0 };
+
+function Cart() {
+    const [state, dispatch] = useReducer(cartReducer, initialState);
+    
+    return (
+        <div>
+            <p>Total: {state.total * (1 - state.discount / 100)}</p>
+            <button onClick={() => dispatch({ type: 'ADD_ITEM', payload: item })}>
+                Add
+            </button>
+            <button onClick={() => dispatch({ type: 'CLEAR' })}>Clear</button>
+        </div>
+    );
+}`,
+        language: "tsx",
+      },
+      {
+        heading: "useImperativeHandle aur forwardRef",
+        content: `**forwardRef:** Parent component child ke DOM element ya methods access kar sake.
+**useImperativeHandle:** forwardRef ke saath — specific methods expose karo (full DOM nahi).
+
+**Kab use:** Custom input components, modal open/close, video player controls.`,
+        code: `import { useRef, useImperativeHandle, forwardRef } from 'react';
+
+// Child component — methods expose karo
+interface InputRef {
+    focus: () => void;
+    clear: () => void;
+    getValue: () => string;
+}
+
+const SmartInput = forwardRef<InputRef, { placeholder?: string }>(
+    ({ placeholder }, ref) => {
+        const inputRef = useRef<HTMLInputElement>(null);
+        
+        useImperativeHandle(ref, () => ({
+            focus: () => inputRef.current?.focus(),
+            clear: () => {
+                if (inputRef.current) inputRef.current.value = '';
+            },
+            getValue: () => inputRef.current?.value ?? '',
+        }));
+        
+        return <input ref={inputRef} placeholder={placeholder} />;
+    }
+);
+
+// Parent — child methods call karo
+function Form() {
+    const inputRef = useRef<InputRef>(null);
+    
+    const handleSubmit = () => {
+        const value = inputRef.current?.getValue();
+        console.log('Value:', value);
+        inputRef.current?.clear();
+    };
+    
+    return (
+        <>
+            <SmartInput ref={inputRef} placeholder="Enter text..." />
+            <button onClick={() => inputRef.current?.focus()}>Focus</button>
+            <button onClick={handleSubmit}>Submit & Clear</button>
+        </>
+    );
+}`,
+        language: "tsx",
+        tip: "useImperativeHandle sirf zaroori methods expose karo — pura DOM ref expose karna encapsulation break karta hai.",
+      },
+    ],
+    cheatsheet: [
+      "useReducer(reducer, initialState) — complex state",
+      "dispatch({ type: 'ACTION', payload: data })",
+      "forwardRef((props, ref) => ...) — ref forward karo",
+      "useImperativeHandle(ref, () => ({ method })) — expose",
+      "useId() — unique IDs generate (SSR safe)",
+    ],
+    revision: [
+      "useReducer = useState + action pattern",
+      "Reducer = pure function (state, action) => newState",
+      "forwardRef = parent ko child ref access dena",
+      "useImperativeHandle = selective method expose",
+      "dispatch() = action bhejo reducer ko",
+    ],
+  },
+  {
+    id: "react-performance-deep",
+    title: "React Performance Optimization",
+    titleEn: "React Performance Optimization",
+    emoji: "🚀",
+    category: "Advanced",
+    description: "React.memo, profiling, bundle optimization, aur rendering best practices",
+    descriptionEn: "React.memo, profiling, bundle optimization, and rendering best practices",
+    sections: [
+      {
+        heading: "React.memo aur Re-render prevent karna",
+        content: `**Re-render kab hota hai:** State change, props change, parent re-render.
+**React.memo:** Functional component memoize karo — props same hon toh re-render skip.
+
+**Warning:** Har component pe memo mat lagao — comparison ka bhi cost hai!`,
+        code: `import { memo, useMemo, useCallback, useState } from 'react';
+
+// React.memo — props comparison
+const ExpensiveList = memo(({ items, onDelete }: {
+    items: string[];
+    onDelete: (id: string) => void;
+}) => {
+    console.log('ExpensiveList rendered!');
+    return <ul>{items.map(item => <li key={item}>{item}</li>)}</ul>;
+});
+
+// Custom comparison function
+const UserCard = memo(({ user }: { user: User }) => {
+    return <div>{user.name}</div>;
+}, (prevProps, nextProps) => {
+    // true = same = skip re-render
+    return prevProps.user.id === nextProps.user.id &&
+           prevProps.user.name === nextProps.user.name;
+});
+
+function Parent() {
+    const [count, setCount] = useState(0);
+    const [items, setItems] = useState(['a', 'b', 'c']);
+    
+    // useCallback — function stable raho (memo ke liye zaroori)
+    const handleDelete = useCallback((id: string) => {
+        setItems(prev => prev.filter(item => item !== id));
+    }, []);  // no deps — never recreate
+    
+    // useMemo — expensive computation
+    const sortedItems = useMemo(() => {
+        return [...items].sort();
+    }, [items]);  // sirf items change pe sort karo
+    
+    return (
+        <>
+            <button onClick={() => setCount(c => c + 1)}>
+                Count: {count}
+            </button>
+            {/* Count change pe ExpensiveList re-render nahi karega! */}
+            <ExpensiveList items={sortedItems} onDelete={handleDelete} />
+        </>
+    );
+}`,
+        language: "tsx",
+      },
+      {
+        heading: "Profiling aur Bundle Optimization",
+        content: `**React DevTools Profiler:** Kaunsa component kitni baar render hua, kitna time liya.
+**Bundle analysis:** webpack-bundle-analyzer — largest chunks identify karo.
+**Virtualization:** react-window — 1000+ items efficiently render karo.`,
+        code: `// React DevTools Profiler — browser mein
+// Components tab → ⏺ Record → Interact → Stop → Flamegraph
+
+// Virtualization — 10000 items efficiently
+import { FixedSizeList } from 'react-window';
+
+function VirtualList({ items }: { items: string[] }) {
+    const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => (
+        <div style={style}>Item {items[index]}</div>
+    );
+    
+    return (
+        <FixedSizeList
+            height={400}
+            width="100%"
+            itemCount={items.length}
+            itemSize={50}  // row height
+        >
+            {Row}
+        </FixedSizeList>
+    );
+}
+
+// Bundle optimization
+// 1. Tree shaking — named imports use karo
+import { debounce } from 'lodash-es';  // not import _ from 'lodash'
+
+// 2. Dynamic imports — code splitting
+const Chart = lazy(() => import('./Chart'));
+
+// 3. Image optimization
+<img loading="lazy" src={src} alt={alt} />
+
+// 4. Production build check
+// npm run build -- --stats
+// npx webpack-bundle-analyzer stats.json`,
+        language: "tsx",
+        tip: "Premature optimization avoid karo. Pehle profile karo, phir optimize. React DevTools Profiler se actual bottlenecks identify karo.",
+      },
+    ],
+    cheatsheet: [
+      "React.memo(Component) — props same? skip render",
+      "useMemo(() => expensive(), [deps]) — value cache",
+      "useCallback(fn, [deps]) — function stable rakhna",
+      "React DevTools Profiler — rendering analyze",
+      "react-window FixedSizeList — long list virtualize",
+      "lazy() + Suspense — code splitting",
+    ],
+    revision: [
+      "memo = props change nahi → re-render skip",
+      "useMemo = value memoize, useCallback = function memoize",
+      "Virtualization = sirf visible items render",
+      "Profile first, optimize later (DevTools)",
+      "memo + useCallback = sath mein use karo",
+    ],
+  },
+  {
+    id: "react-architecture",
+    title: "React Project Architecture",
+    titleEn: "React Project Architecture",
+    emoji: "🏛️",
+    category: "Advanced",
+    description: "React apps ko scalable banao — folder structure, custom hooks, separation of concerns",
+    descriptionEn: "Scale React apps — folder structure, custom hooks, separation of concerns",
+    sections: [
+      {
+        heading: "Folder Structure aur Feature-based Organization",
+        content: `**2 approaches:**
+1. **Type-based:** components/, hooks/, utils/, pages/ — small apps ke liye
+2. **Feature-based:** features/auth/, features/cart/ — large apps ke liye (recommended)
+
+**Feature-based structure:**
+\`\`\`
+src/
+├── features/
+│   ├── auth/
+│   │   ├── components/     LoginForm, RegisterForm
+│   │   ├── hooks/          useAuth, useLogin
+│   │   ├── api/            authApi.ts
+│   │   ├── store/          authSlice.ts
+│   │   └── index.ts        public API
+│   └── products/
+│       ├── components/     ProductCard, ProductList
+│       ├── hooks/          useProducts, useCart
+│       └── index.ts
+├── shared/
+│   ├── components/         Button, Input, Modal (reusable)
+│   ├── hooks/              useDebounce, useLocalStorage
+│   └── utils/              formatDate, formatCurrency
+├── app/
+│   ├── store.ts            Redux store
+│   ├── router.tsx          Routes
+│   └── App.tsx
+└── main.tsx
+\`\`\``,
+        code: `// Custom hook — logic extract karo component se
+// hooks/useProducts.ts
+import { useState, useEffect, useCallback } from 'react';
+import { productApi } from '../api/productApi';
+
+export function useProducts(categoryId?: string) {
+    const [products, setProducts] = useState<Product[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
+    
+    useEffect(() => {
+        const controller = new AbortController();
+        
+        setLoading(true);
+        productApi.getAll(categoryId, controller.signal)
+            .then(setProducts)
+            .catch(err => {
+                if (err.name !== 'AbortError') setError(err);
+            })
+            .finally(() => setLoading(false));
+        
+        return () => controller.abort();
+    }, [categoryId]);
+    
+    const deleteProduct = useCallback(async (id: string) => {
+        await productApi.delete(id);
+        setProducts(prev => prev.filter(p => p.id !== id));
+    }, []);
+    
+    return { products, loading, error, deleteProduct };
+}
+
+// Component — sirf UI (no business logic)
+function ProductList({ categoryId }: { categoryId: string }) {
+    const { products, loading, error, deleteProduct } = useProducts(categoryId);
+    
+    if (loading) return <Spinner />;
+    if (error) return <ErrorMessage error={error} />;
+    
+    return (
+        <ul>
+            {products.map(p => (
+                <ProductCard key={p.id} product={p} onDelete={deleteProduct} />
+            ))}
+        </ul>
+    );
+}`,
+        language: "tsx",
+        tip: "Custom hooks main benefit: reusability + testability. Business logic hooks mein, presentation components mein sirf UI.",
+      },
+    ],
+    cheatsheet: [
+      "Feature-based folders — large apps ke liye",
+      "Custom hooks — logic extract + reuse karo",
+      "index.ts — feature ka public API",
+      "Shared folder — truly reusable components only",
+      "API layer separate — components direct fetch nahi",
+    ],
+    revision: [
+      "Feature-based > type-based for large apps",
+      "Custom hook = logic + state extract karo",
+      "Component = UI sirf, hook = logic + data",
+      "index.ts = barrel exports, clean imports",
+      "Separation of concerns = test karna easy hota hai",
+    ],
+  },
 ];
 
 export const reactInterviews = [
@@ -3232,4 +3600,360 @@ function LoginButton() {
   return <button onClick={login}>Login</button>;
 }`,
   },
+  {
+    id: 536,
+    level: "Beginner" as const,
+    question: "React mein Virtual DOM kya hai? Reconciliation kaise kaam karta hai?",
+    answer: `Virtual DOM: Real DOM ka lightweight JavaScript representation — memory mein.
+
+Process:
+1. State change → New Virtual DOM tree create hota hai
+2. Diff algorithm: Old vDOM vs New vDOM compare — kya kya change hua?
+3. Batch update: Sirf changed parts real DOM mein update hote hain
+
+Reconciliation rules (Diffing algorithm):
+- Different element type → Pura tree replace
+- Same element type → Props update, children diff
+- Keys → Lists mein elements efficiently track karo
+
+Why fast: Real DOM manipulation slow (reflow, repaint). Batch + minimal updates = performance.
+
+React Fiber (React 16+): Reconciliation interruptible — urgent updates (user input) non-urgent se interrupt kar sakte hain.
+
+Key lesson: Key prop sirf lists mein use karo unique IDs se — array index avoid karo (reorder pe bugs).`,
+    tags: ["virtual-dom", "reconciliation"],
+  },
+  {
+    id: 537,
+    level: "Beginner" as const,
+    question: "useState aur useRef mein kya fark hai? Kab useRef use karo?",
+    answer: `useState: Re-render trigger karta hai jab value change ho.
+useRef: Value persist karo without re-render — mutable ref object.
+
+const [count, setCount] = useState(0);  // change → re-render
+const countRef = useRef(0);             // change → NO re-render
+
+useRef use cases:
+1. DOM element access karna
+   const inputRef = useRef(null);
+   <input ref={inputRef} />
+   inputRef.current.focus();  // programmatic focus
+
+2. Previous value store karna
+   const prevCount = useRef(count);
+   useEffect(() => { prevCount.current = count; });
+
+3. Timer IDs store karna
+   const timerRef = useRef(null);
+   timerRef.current = setTimeout(fn, 1000);
+   clearTimeout(timerRef.current);  // cleanup
+
+4. Flag variables (isMounted, isFirstRender)
+
+Rule: Agar value change pe render chahiye → useState. Agar sirf value store karna hai → useRef.`,
+    tags: ["hooks", "useref", "usestate"],
+  },
+  {
+    id: 538,
+    level: "Intermediate" as const,
+    question: "useCallback aur useMemo kab use karein? Overuse se kya problem hoti hai?",
+    answer: `useMemo: Expensive calculation memoize karo — deps change pe recalculate.
+useCallback: Function memoize karo — deps change pe recreate nahi hota.
+
+const expensiveValue = useMemo(() => {
+    return data.filter(item => item.active).reduce(...);
+}, [data]);  // sirf data change pe recalculate
+
+const handleClick = useCallback((id) => {
+    dispatch({ type: 'DELETE', payload: id });
+}, [dispatch]);  // dispatch change pe recreate
+
+Kab use karein:
+- useMemo: Genuinely expensive computation (sorting large arrays, complex math)
+- useCallback: Child component memo() wrapped ho, aur function prop jaata ho
+
+Overuse problem:
+- Har function pe useCallback mat lagao — overhead bhi hai!
+- Premature optimization: Profile karo pehle
+- Extra complexity, bugs (stale closures)
+
+Rule of thumb: Profile first (React DevTools Profiler), then optimize. useCallback only when:
+Child is React.memo() wrapped AND function prop pass ho rahe ho.`,
+    tags: ["hooks", "performance", "memoization"],
+  },
+  {
+    id: 539,
+    level: "Intermediate" as const,
+    question: "React mein error boundaries kya hain? Kaise implement karte hain?",
+    answer: `Error Boundary: React component jo child tree mein JavaScript errors catch kare — crash prevent karo, fallback UI dikhao.
+
+Class component (sirf class-based possible hai — hooks mein nahi):
+class ErrorBoundary extends Component {
+    state = { hasError: false, error: null };
+    
+    static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+    }
+    
+    componentDidCatch(error, errorInfo) {
+        // Error logging service pe bhejo
+        logError(error, errorInfo.componentStack);
+    }
+    
+    render() {
+        if (this.state.hasError) {
+            return <div>Something went wrong! <button onClick={() => this.setState({ hasError: false })}>Retry</button></div>;
+        }
+        return this.props.children;
+    }
+}
+
+// Usage
+<ErrorBoundary fallback={<ErrorPage />}>
+    <UserProfile />
+</ErrorBoundary>
+
+Library: react-error-boundary (functional + hooks).
+
+Note: Error boundaries sirf render, lifecycle, constructors mein errors catch karte hain. Event handlers mein nahi (try-catch use karo).`,
+    tags: ["error-handling", "error-boundary"],
+  },
+  {
+    id: 540,
+    level: "Intermediate" as const,
+    question: "React mein controlled vs uncontrolled components kya hain?",
+    answer: `Controlled: Form data React state mein — onChange se sync.
+Uncontrolled: Form data DOM mein — ref se access karo.
+
+// Controlled — React state = single source of truth
+function ControlledForm() {
+    const [name, setName] = useState('');
+    
+    return (
+        <input
+            value={name}          // state se value
+            onChange={e => setName(e.target.value)}  // state update
+        />
+    );
+}
+
+// Uncontrolled — DOM manages value
+function UncontrolledForm() {
+    const inputRef = useRef(null);
+    
+    const handleSubmit = () => {
+        console.log(inputRef.current.value);  // submit pe read karo
+    };
+    
+    return <input ref={inputRef} defaultValue="initial" />;
+}
+
+Controlled use karo when:
+- Instant validation
+- Dynamic form (field add/remove)
+- Submit disable based on form state
+- Format/transform input
+
+Uncontrolled use karo when:
+- File inputs (always uncontrolled)
+- Simple forms, no validation
+- Third-party DOM library integration`,
+    tags: ["forms", "controlled", "uncontrolled"],
+  },
+  {
+    id: 541,
+    level: "Advanced" as const,
+    question: "React mein code splitting aur lazy loading kaise karte hain?",
+    answer: `Code splitting: Bundle ko chunks mein divide karo — initial load fast, demand pe load.
+
+React.lazy + Suspense:
+import { lazy, Suspense } from 'react';
+
+// Route-based splitting
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+
+function App() {
+    return (
+        <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+            </Routes>
+        </Suspense>
+    );
+}
+
+// Component-based splitting
+const HeavyChart = lazy(() => import('./HeavyChart'));
+<Suspense fallback={<div>Loading chart...</div>}>
+    {showChart && <HeavyChart data={data} />}
+</Suspense>
+
+Dynamic import:
+// Event pe load karo
+const handleClick = async () => {
+    const { default: HeavyLib } = await import('heavy-library');
+    HeavyLib.doSomething();
+};
+
+Benefits: Initial bundle size kam, faster first load, code sirf jab chahiye load hota hai.`,
+    tags: ["code-splitting", "lazy-loading", "performance"],
+  },
+  {
+    id: 542,
+    level: "Advanced" as const,
+    question: "React mein Portal kya hai? Kab use karte hain?",
+    answer: `Portal: React component ko DOM mein kisi bhi node ke andar render karo — parent component ke DOM subtree se bahar.
+
+import { createPortal } from 'react-dom';
+
+function Modal({ children, isOpen }) {
+    if (!isOpen) return null;
+    
+    return createPortal(
+        <div className="modal-overlay">
+            <div className="modal-content">
+                {children}
+            </div>
+        </div>,
+        document.getElementById('modal-root')  // body ke direct child!
+    );
+}
+
+// HTML
+// <div id="root">...</div>
+// <div id="modal-root"></div>  ← Modal yahan render hoga
+
+Kab use karein:
+- Modals/dialogs: Overflow hidden ya z-index issues bypass karo
+- Tooltips: Positioned relative to viewport
+- Notifications/toasts: Always on top
+- Dropdown menus: Overflow containers se bahar
+
+Key: Portal mein events still bubble through React tree (not DOM tree) — parent component ka event handler fire hoga.`,
+    tags: ["portal", "modal", "advanced"],
+  },
+  {
+    id: 543,
+    level: "Intermediate" as const,
+    question: "useEffect cleanup function kab aur kyun zaroori hai?",
+    answer: `Cleanup function: useEffect se return karo — component unmount ya next effect run se pehle execute hoti hai.
+
+useEffect(() => {
+    // Setup
+    const subscription = subscribe();
+    const timer = setInterval(tick, 1000);
+    
+    return () => {
+        // Cleanup — memory leaks prevent karo!
+        subscription.unsubscribe();
+        clearInterval(timer);
+    };
+}, [deps]);
+
+Cleanup zaroori kab:
+1. Event listeners: window.addEventListener → removeEventListener
+2. Timers: setInterval/setTimeout → clearInterval/clearTimeout
+3. Subscriptions: WebSocket, observable, EventEmitter
+4. Fetch requests: AbortController
+5. Third-party library cleanup
+
+AbortController example:
+useEffect(() => {
+    const controller = new AbortController();
+    
+    fetch('/api/user', { signal: controller.signal })
+        .then(r => r.json())
+        .then(setUser)
+        .catch(err => {
+            if (err.name !== 'AbortError') setError(err);
+        });
+    
+    return () => controller.abort();  // component unmount pe cancel!
+}, [userId]);
+
+Bina cleanup: Memory leaks, state updates on unmounted component warnings.`,
+    tags: ["useeffect", "cleanup", "memory-leaks"],
+  },
+  {
+    id: 544,
+    level: "Advanced" as const,
+    question: "React Server Components kya hain? Client Components se kya fark hai?",
+    answer: `Server Components (RSC): Server pe render hote hain — JavaScript client pe nahi bheja jaata.
+Client Components: Browser pe render — useState, useEffect, event handlers.
+
+Server Components:
+- 'use client' directive NAHI
+- Database direct access kar sakte hain
+- Secrets expose nahi (API keys server pe)
+- No useState, useEffect, event handlers
+- Bundle size zero — JS client ko nahi bheja
+
+'use client'  // Client Component
+import { useState } from 'react';
+export function Counter() {
+    const [count, setCount] = useState(0);
+    return <button onClick={() => setCount(c => c+1)}>{count}</button>;
+}
+
+// Server Component (default in Next.js 13+ App Router)
+async function UserList() {
+    const users = await db.getUsers();  // direct DB!
+    return <ul>{users.map(u => <li key={u.id}>{u.name}</li>)}</ul>;
+}
+
+Rules:
+- Server Component → Server/Client child import kar sakta hai
+- Client Component → Server Component import NAHI kar sakta (as child pass kar sakte hain)
+- Data fetching → Server mein (waterfall avoid)
+
+Benefits: Faster initial load, less JS, server-side data access.`,
+    tags: ["server-components", "nextjs", "rsc"],
+  },
+  {
+    id: 545,
+    level: "Advanced" as const,
+    question: "Zustand vs Redux Toolkit — kab kaunsa use karein?",
+    answer: `Redux Toolkit (RTK):
+- Boilerplate kam kiya (immer, createSlice)
+- DevTools excellent
+- Large teams + complex state
+- Middleware ecosystem
+- RTK Query = data fetching built-in
+
+import { createSlice } from '@reduxjs/toolkit';
+const counterSlice = createSlice({
+    name: 'counter',
+    initialState: { value: 0 },
+    reducers: {
+        increment: state => { state.value += 1 },
+        decrement: state => { state.value -= 1 },
+    }
+});
+
+Zustand:
+- Minimal API — 10 lines mein global state
+- No boilerplate
+- React-agnostic
+- Small/medium apps
+
+import { create } from 'zustand';
+const useStore = create(set => ({
+    count: 0,
+    increment: () => set(state => ({ count: state.count + 1 })),
+}));
+
+function Counter() {
+    const { count, increment } = useStore();
+    return <button onClick={increment}>{count}</button>;
+}
+
+Decision:
+- Small-medium app → Zustand (simple, fast)
+- Large app, team, complex state → Redux Toolkit
+- Server state (API data) → React Query / RTK Query`,
+    tags: ["state-management", "zustand", "redux"],
+  },
 ];
+

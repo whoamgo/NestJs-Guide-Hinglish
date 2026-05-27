@@ -715,6 +715,426 @@ await User.findByIdAndDelete(userId);`,
       "pre('save') hook = save se pehle logic (hashing)",
     ],
   },
+  {
+    id: "node-docker",
+    title: "Docker aur Containerization",
+    titleEn: "Docker and Containerization",
+    emoji: "🐳",
+    category: "Advanced",
+    description: "Node.js apps Docker mein containerize karo — Dockerfile, docker-compose, production best practices",
+    descriptionEn: "Containerize Node.js apps with Docker — Dockerfile, docker-compose, production best practices",
+    sections: [
+      {
+        heading: "Docker kya hai? Node.js ke saath kyon?",
+        content: `**Docker** = Lightweight containers — application aur dependencies ek saath package karo.
+
+**Fayde:**
+- "Works on my machine" problem khatam
+- Dev, staging, production identical environment
+- Easy scaling (multiple containers)
+- Kubernetes pe deploy karna easy
+
+**Key concepts:**
+- **Image:** Read-only template — Dockerfile se build
+- **Container:** Running instance of image
+- **Volume:** Persistent data (container delete pe data bache)
+- **Network:** Containers communicate karein`,
+        code: `# Dockerfile — Node.js app ke liye
+FROM node:20-alpine AS base
+WORKDIR /app
+
+# Dependencies separately (layer caching!)
+FROM base AS deps
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Build stage (TypeScript)
+FROM base AS builder
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Production image — minimal
+FROM node:20-alpine AS production
+WORKDIR /app
+
+# Non-root user (security!)
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+
+ENV NODE_ENV=production
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+    CMD node -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+CMD ["node", "dist/main.js"]`,
+        language: "dockerfile",
+      },
+      {
+        heading: "docker-compose — Multi-container Setup",
+        content: `**docker-compose:** Multiple containers define + ek command se sab start karo.
+
+**.dockerignore:** node_modules, .git, logs — image mein include mat karo.`,
+        code: `# docker-compose.yml
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=mysql://user:pass@mysql:3306/mydb
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+  
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pass
+    volumes:
+      - mysql_data:/var/lib/mysql  # persistent!
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+  
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  mysql_data:
+  redis_data:
+
+# Commands:
+# docker-compose up -d        -- start all
+# docker-compose logs -f app  -- logs follow
+# docker-compose down -v      -- stop + volumes delete`,
+        language: "yaml",
+        tip: "Multi-stage Dockerfile use karo — production image mein dev dependencies nahi jaayenge. Image size 500MB se 150MB ho jaata hai.",
+      },
+    ],
+    cheatsheet: [
+      "docker build -t myapp . — image build",
+      "docker run -p 3000:3000 myapp — container start",
+      "docker-compose up -d — all services start",
+      "docker-compose logs -f app — logs follow",
+      "FROM node:20-alpine — lightweight base image",
+      "COPY package*.json . && npm ci — layer cache",
+      ".dockerignore — node_modules etc exclude karo",
+    ],
+    revision: [
+      "Multi-stage Dockerfile = smaller production image",
+      "Non-root user = security best practice",
+      "docker-compose = local dev multi-container",
+      "HEALTHCHECK = container health monitoring",
+      "Volumes = persistent data (DB etc)",
+    ],
+  },
+  {
+    id: "node-logging",
+    title: "Structured Logging aur Monitoring",
+    titleEn: "Structured Logging and Monitoring",
+    emoji: "📊",
+    category: "Intermediate",
+    description: "Winston, Pino structured logging — log levels, correlation IDs, production monitoring",
+    descriptionEn: "Winston, Pino structured logging — log levels, correlation IDs, production monitoring",
+    sections: [
+      {
+        heading: "Structured Logging kya hai aur kyon?",
+        content: `**console.log()** production mein enough nahi — searchable, parseable logs chahiye.
+
+**Structured logging:** JSON format — log aggregation tools (ELK, Datadog) parse kar sakein.
+
+**Log levels:**
+- ERROR: System broken, immediate action
+- WARN: Something unusual, watch out
+- INFO: Normal operations (requests, startup)
+- DEBUG: Detailed debugging info (dev only)
+- TRACE: Very verbose (avoid in prod)
+
+**Pino** = Fastest Node.js logger (vs Winston slower lekin more features).`,
+        code: `// npm install pino pino-http
+const pino = require('pino');
+
+const logger = pino({
+    level: process.env.LOG_LEVEL || 'info',
+    formatters: {
+        level: (label) => ({ level: label }),  // numeric nahi, string
+    },
+    base: {
+        service: 'user-api',
+        version: process.env.APP_VERSION || '1.0.0',
+        env: process.env.NODE_ENV,
+    },
+    // Development mein pretty print
+    transport: process.env.NODE_ENV !== 'production'
+        ? { target: 'pino-pretty', options: { colorize: true } }
+        : undefined,
+});
+
+// Usage
+logger.info({ userId: 123, action: 'login' }, 'User logged in');
+logger.error({ err: error, userId: 123 }, 'Login failed');
+logger.warn({ ip: req.ip, attempts: 5 }, 'Too many login attempts');
+
+// Child logger — context add karo
+const requestLogger = logger.child({ requestId: uuid() });
+requestLogger.info('Processing request');
+requestLogger.info({ dbQuery: 'users' }, 'DB query started');`,
+        language: "javascript",
+      },
+      {
+        heading: "Correlation IDs aur Request Logging",
+        content: `**Correlation ID:** Har request ko unique ID — distributed systems mein trace karo.
+**Request middleware:** Automatic request/response logging.`,
+        code: `const { v4: uuidv4 } = require('uuid');
+const pinoHttp = require('pino-http');
+
+// Request logging middleware
+const httpLogger = pinoHttp({
+    logger,
+    genReqId: (req) => req.headers['x-request-id'] || uuidv4(),
+    customLogLevel: (req, res, err) => {
+        if (res.statusCode >= 500 || err) return 'error';
+        if (res.statusCode >= 400) return 'warn';
+        return 'info';
+    },
+    customSuccessMessage: (req, res) =>
+        \`\${req.method} \${req.url} → \${res.statusCode}\`,
+    serializers: {
+        req: (req) => ({
+            method: req.method,
+            url: req.url,
+            ip: req.ip,
+            userId: req.user?.id,
+        }),
+        res: (res) => ({
+            statusCode: res.statusCode,
+            responseTime: res.responseTime,
+        }),
+    },
+});
+
+app.use(httpLogger);
+
+// Request ID propagate karo
+app.use((req, res, next) => {
+    res.setHeader('X-Request-ID', req.id);  // client ko bhi bhejo
+    next();
+});
+
+// Downstream services ko bhi bhejo
+const fetchWithCorrelation = (url, req) =>
+    fetch(url, {
+        headers: { 'X-Request-ID': req.id }
+    });
+
+// Log output (JSON):
+// {"level":"info","time":1234567890,"service":"user-api",
+//  "req":{"method":"POST","url":"/api/users","userId":123},
+//  "res":{"statusCode":201,"responseTime":45}}`,
+        language: "javascript",
+        tip: "Production mein LOG_LEVEL=warn ya error set karo — info logs production mein too verbose hote hain. Errors + warnings capture karo.",
+      },
+    ],
+    cheatsheet: [
+      "pino/winston — structured JSON logging",
+      "logger.child({requestId}) — request context",
+      "Log levels: error > warn > info > debug > trace",
+      "X-Request-ID header — distributed tracing",
+      "LOG_LEVEL env var — runtime log level control",
+    ],
+    revision: [
+      "JSON logs = machines parse kar sakein (ELK, Datadog)",
+      "Child logger = request-scoped context",
+      "Correlation ID = distributed request tracing",
+      "Production: warn/error level only",
+      "Sensitive data (passwords, tokens) log mat karo!",
+    ],
+  },
+  {
+    id: "node-api-design",
+    title: "REST API Design Best Practices",
+    titleEn: "REST API Design Best Practices",
+    emoji: "🎯",
+    category: "Intermediate",
+    description: "RESTful API design — naming, versioning, pagination, error responses, OpenAPI",
+    descriptionEn: "RESTful API design — naming, versioning, pagination, error responses, OpenAPI docs",
+    sections: [
+      {
+        heading: "REST API conventions aur naming",
+        content: `**REST** = Representational State Transfer — HTTP methods + nouns.
+
+**Resource naming (nouns, not verbs):**
+- ✅ GET /users, POST /users, GET /users/123
+- ❌ GET /getUsers, POST /createUser
+
+**HTTP methods:**
+- GET = Read (idempotent, cacheable)
+- POST = Create (non-idempotent)
+- PUT = Replace entire resource
+- PATCH = Partial update
+- DELETE = Remove
+
+**Status codes:**
+- 200 OK, 201 Created, 204 No Content
+- 400 Bad Request, 401 Unauthorized, 403 Forbidden
+- 404 Not Found, 409 Conflict, 422 Validation Error
+- 500 Internal Server Error`,
+        code: `// Express REST API — proper structure
+const router = express.Router();
+
+// GET /api/v1/users — paginated list
+router.get('/', authenticate, async (req, res, next) => {
+    try {
+        const { page = 1, limit = 20, sort = 'createdAt', order = 'desc', search } = req.query;
+        
+        const { users, total } = await userService.findAll({
+            page: +page, limit: +limit, sort, order, search
+        });
+        
+        res.json({
+            data: users,
+            meta: {
+                page: +page,
+                limit: +limit,
+                total,
+                totalPages: Math.ceil(total / +limit),
+                hasNext: +page * +limit < total,
+            }
+        });
+    } catch (err) { next(err); }
+});
+
+// GET /api/v1/users/:id
+router.get('/:id', authenticate, async (req, res, next) => {
+    try {
+        const user = await userService.findById(req.params.id);
+        if (!user) return res.status(404).json({ error: 'User not found', code: 'USER_NOT_FOUND' });
+        res.json({ data: user });
+    } catch (err) { next(err); }
+});
+
+// POST /api/v1/users
+router.post('/', authenticate, authorize('admin'), validate(createUserSchema), async (req, res, next) => {
+    try {
+        const user = await userService.create(req.body);
+        res.status(201).json({ data: user });
+    } catch (err) {
+        if (err.code === 'DUPLICATE_EMAIL')
+            return res.status(409).json({ error: 'Email already exists', code: 'DUPLICATE_EMAIL' });
+        next(err);
+    }
+});
+
+// Standard error response format
+// { error: "human readable", code: "MACHINE_CODE", details: [...] }`,
+        language: "javascript",
+      },
+      {
+        heading: "API Versioning aur OpenAPI Docs",
+        content: `**Versioning:** Breaking changes pe new version — backward compatibility maintain karo.
+**OpenAPI/Swagger:** Auto-generated docs + testing interface.`,
+        code: `// Versioning strategies
+// 1. URL versioning (most common)
+app.use('/api/v1', v1Router);
+app.use('/api/v2', v2Router);
+
+// 2. Header versioning
+app.use((req, res, next) => {
+    req.version = req.headers['api-version'] || 'v1';
+    next();
+});
+
+// OpenAPI with swagger-jsdoc
+const swaggerJsDoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+
+const options = {
+    definition: {
+        openapi: '3.0.0',
+        info: { title: 'My API', version: '1.0.0' },
+        components: {
+            securitySchemes: {
+                bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }
+            }
+        },
+        security: [{ bearerAuth: [] }],
+    },
+    apis: ['./src/routes/*.js'],  // JSDoc comments se generate
+};
+
+/**
+ * @openapi
+ * /api/v1/users:
+ *   get:
+ *     summary: Get all users
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *     responses:
+ *       200:
+ *         description: Users list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data: { type: array, items: { $ref: '#/components/schemas/User' } }
+ */
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerJsDoc(options)));
+// /api-docs → Swagger UI!`,
+        language: "javascript",
+        tip: "API versioning: URL versioning (/v1) sabse simple aur visible hai. Header versioning clean lekin harder to test.",
+      },
+    ],
+    cheatsheet: [
+      "GET/POST/PUT/PATCH/DELETE — correct HTTP methods",
+      "/api/v1/resources — plural nouns, versioned",
+      "201 Created + Location header — POST response",
+      "{ data, meta: { page, total } } — list response",
+      "{ error, code, details } — error response format",
+      "/api-docs — Swagger UI auto-generated",
+    ],
+    revision: [
+      "Nouns nahi verbs: /users not /getUsers",
+      "Status codes sahi use karo — 200/201/400/401/404/409",
+      "Pagination: page, limit, total, hasNext",
+      "Versioning: /api/v1/ URL mein",
+      "Error format: { error, code } — machine readable",
+    ],
+  },
 ];
 
 export const nodeInterviews = [
@@ -2984,4 +3404,472 @@ Worker threads vs cluster:
 - cluster = separate Node.js processes (memory isolated)
 - worker_threads = same process, shared memory (CPU-intensive tasks)`,
   },
+  {
+    id: 433,
+    level: "Beginner" as const,
+    question: "Node.js mein Event Loop kya hai? Call Stack, Callback Queue explain karo.",
+    answer: `Event Loop: Node.js ka heart — single thread hone ke bawajood async kaam kaise karta hai.
+
+Components:
+1. Call Stack: Synchronous code execute hota hai (LIFO)
+2. Web APIs/libuv: Async ops handle (setTimeout, fs, HTTP)
+3. Callback Queue (Macro): setTimeout, setInterval callbacks
+4. Microtask Queue: Promise.then, queueMicrotask — PRIORITY!
+5. Event Loop: Call stack empty? Microtasks pehle, phir callbacks
+
+Order:
+console.log('1');
+setTimeout(() => console.log('4'), 0);
+Promise.resolve().then(() => console.log('3'));
+console.log('2');
+// Output: 1, 2, 3, 4
+// Microtask (Promise) setTimeout se pehle!
+
+Event loop phases (libuv):
+1. timers (setTimeout, setInterval)
+2. pending callbacks
+3. idle, prepare
+4. poll (I/O wait — blocking agar nothing)
+5. check (setImmediate)
+6. close callbacks
+
+setImmediate vs setTimeout(fn, 0): I/O callback mein setImmediate pehle, bahar se uncertain.`,
+    tags: ["event-loop", "async", "fundamentals"],
+  },
+  {
+    id: 434,
+    level: "Beginner" as const,
+    question: "Node.js mein require() aur ES modules (import/export) mein kya fark hai?",
+    answer: `CommonJS (require): Node.js ka original module system.
+ES Modules (import): Modern JavaScript standard — tree-shakeable.
+
+CommonJS:
+const express = require('express');
+const { Router } = require('express');
+module.exports = { myFunc };
+module.exports.myFunc = myFunc;
+
+// Dynamic require (runtime)
+const config = require(\`./config/\${env}\`);
+
+ES Modules:
+import express from 'express';
+import { Router } from 'express';
+export const myFunc = () => {};
+export default myFunc;
+
+// Dynamic import (lazy)
+const module = await import('./heavy-module.js');
+
+Differences:
+- CJS = synchronous, ESM = async (top-level await)
+- CJS = runtime evaluation, ESM = static analysis (tree-shaking!)
+- ESM = .mjs extension ya "type":"module" in package.json
+- CJS files mein __dirname, __filename available — ESM mein nahi
+
+// ESM mein __dirname:
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __dirname = dirname(fileURLToPath(import.meta.url));`,
+    tags: ["modules", "commonjs", "esm"],
+  },
+  {
+    id: 435,
+    level: "Intermediate" as const,
+    question: "Express.js mein middleware kya hai? Error handling middleware kaise likhte hain?",
+    answer: `Middleware: Request-response cycle mein function — (req, res, next) signature.
+
+Types:
+1. Application-level: app.use()
+2. Router-level: router.use()
+3. Error-handling: 4 parameters (err, req, res, next)
+4. Built-in: express.json(), express.static()
+5. Third-party: cors, helmet, morgan
+
+// Custom middleware
+const requestLogger = (req, res, next) => {
+    console.log(\`\${req.method} \${req.path} \${Date.now()}\`);
+    next();  // zaroori! nahi toh request hang ho jaayegi
+};
+
+// Auth middleware
+const authenticate = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        req.user = await verifyToken(token);
+        next();
+    } catch (err) {
+        next(err);  // error middleware pe bhejo
+    }
+};
+
+// Error handling middleware — 4 params zaroori!
+const errorHandler = (err, req, res, next) => {
+    const status = err.status || 500;
+    res.status(status).json({
+        error: err.message,
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+};
+
+// Order matters!
+app.use(requestLogger);
+app.use('/api', router);
+app.use(errorHandler);  // sab se last!`,
+    tags: ["express", "middleware", "error-handling"],
+  },
+  {
+    id: 436,
+    level: "Intermediate" as const,
+    question: "Node.js mein streams kya hain? Pipe kaise use karte hain?",
+    answer: `Streams: Data ko chunks mein process karo — puri file memory mein load karne ki zarurat nahi.
+
+4 types:
+1. Readable: Data source (fs.createReadStream, HTTP req)
+2. Writable: Data sink (fs.createWriteStream, HTTP res)
+3. Duplex: Dono (TCP socket)
+4. Transform: Read + modify + write (zlib, crypto)
+
+// Bina stream — MEMORY PROBLEM!
+const data = fs.readFileSync('huge-file.csv');  // 2GB file = 2GB RAM!
+
+// Stream — memory efficient
+const readable = fs.createReadStream('huge-file.csv');
+const writable = fs.createWriteStream('output.csv');
+
+readable.pipe(writable);  // automatic backpressure!
+
+// Transform stream — CSV compress karo
+const zlib = require('zlib');
+fs.createReadStream('data.csv')
+    .pipe(zlib.createGzip())        // compress
+    .pipe(fs.createWriteStream('data.csv.gz'));
+
+// HTTP response streaming
+app.get('/large-file', (req, res) => {
+    res.setHeader('Content-Type', 'text/csv');
+    fs.createReadStream('large.csv').pipe(res);
+    // File read + network write concurrently — fast!
+});
+
+// Custom transform stream
+const { Transform } = require('stream');
+const upperCase = new Transform({
+    transform(chunk, encoding, callback) {
+        callback(null, chunk.toString().toUpperCase());
+    }
+});`,
+    tags: ["streams", "performance", "file-handling"],
+  },
+  {
+    id: 437,
+    level: "Intermediate" as const,
+    question: "Node.js mein JWT authentication kaise implement karte hain?",
+    answer: `JWT (JSON Web Token): Stateless authentication — server pe session store nahi karna.
+
+Structure: header.payload.signature (Base64URL encoded)
+
+npm install jsonwebtoken bcryptjs
+
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
+// Login route
+app.post('/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const accessToken = jwt.sign(
+        { userId: user.id, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: '15m' }   // short-lived!
+    );
+    const refreshToken = jwt.sign(
+        { userId: user.id },
+        process.env.REFRESH_SECRET,
+        { expiresIn: '7d' }
+    );
+    
+    res.json({ accessToken, refreshToken });
+});
+
+// Auth middleware
+const authenticate = (req, res, next) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'No token' });
+    
+    try {
+        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        next();
+    } catch (err) {
+        res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
+// Protected route
+app.get('/profile', authenticate, (req, res) => {
+    res.json({ userId: req.user.userId });
+});`,
+    tags: ["jwt", "authentication", "security"],
+  },
+  {
+    id: 438,
+    level: "Intermediate" as const,
+    question: "Node.js mein environment variables aur configuration kaise manage karte hain?",
+    answer: `dotenv: .env file se environment variables load karo.
+npm install dotenv
+
+// app.js — sab se pehle!
+require('dotenv').config();
+
+// .env file (NEVER commit to git!)
+DATABASE_URL=mysql://user:pass@localhost:3306/mydb
+JWT_SECRET=super-secret-key-min-32-chars
+NODE_ENV=development
+PORT=3000
+REDIS_URL=redis://localhost:6379
+
+// Config module — validated, typed config
+const config = {
+    port: parseInt(process.env.PORT) || 3000,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    db: {
+        url: process.env.DATABASE_URL,
+        poolSize: parseInt(process.env.DB_POOL_SIZE) || 10,
+    },
+    jwt: {
+        secret: process.env.JWT_SECRET,
+        expiresIn: process.env.JWT_EXPIRES || '15m',
+    },
+    isProduction: process.env.NODE_ENV === 'production',
+    isDevelopment: process.env.NODE_ENV === 'development',
+};
+
+// Validate required env vars on startup
+const required = ['DATABASE_URL', 'JWT_SECRET'];
+for (const key of required) {
+    if (!process.env[key]) {
+        throw new Error(\`Missing required env var: \${key}\`);
+    }
+}
+
+module.exports = config;
+
+// .gitignore mein add karo:
+// .env
+// .env.local`,
+    tags: ["configuration", "environment", "security"],
+  },
+  {
+    id: 439,
+    level: "Advanced" as const,
+    question: "Node.js mein database connection pooling kya hai aur kyon zaroori hai?",
+    answer: `Connection Pooling: Database connections reuse karo — har request pe naya connection nahi banao.
+
+Kyon zaroori:
+- DB connection expensive (TCP handshake, auth, SSL)
+- Max connections limited hoti hain (MySQL default 151)
+- Pool = connections ready-to-use maintain karo
+
+// mysql2 pool
+const mysql = require('mysql2/promise');
+const pool = mysql.createPool({
+    host: 'localhost',
+    database: 'mydb',
+    user: 'root',
+    password: 'pass',
+    connectionLimit: 10,    // max simultaneous connections
+    queueLimit: 0,          // queue unlimited (0 = no limit)
+    waitForConnections: true,
+    idleTimeout: 60000,     // 60s idle pe connection release
+    enableKeepAlive: true,
+});
+
+// Usage — connection automatically pool se milta/return hota hai
+async function getUsers() {
+    const [rows] = await pool.execute('SELECT * FROM users WHERE active = ?', [1]);
+    return rows;  // connection automatically released!
+}
+
+// Sequelize pool config
+const sequelize = new Sequelize(config.db.url, {
+    pool: {
+        max: 10,
+        min: 2,
+        acquire: 30000,  // max ms connection acquire wait
+        idle: 10000,     // connection idle ms before release
+    }
+});
+
+// Health check
+app.get('/health', async (req, res) => {
+    await pool.execute('SELECT 1');
+    res.json({ status: 'ok', db: 'connected' });
+});`,
+    tags: ["database", "connection-pool", "performance"],
+  },
+  {
+    id: 440,
+    level: "Advanced" as const,
+    question: "Node.js mein performance profiling aur memory leaks kaise detect karte hain?",
+    answer: `Memory Leak: Memory allocate hoti hai lekin kabhi free nahi hoti — time ke saath RAM badhta rehta hai.
+
+Common causes:
+- Global variables mein data accumulate karna
+- Event listeners remove nahi karna
+- Closures mein large data hold karna
+- Caches unbounded grow karna
+
+Detection tools:
+
+1. --inspect flag:
+node --inspect app.js
+# Chrome DevTools → chrome://inspect
+# Memory snapshots, heap profiling
+
+2. clinic.js (npm install -g clinic):
+clinic doctor -- node app.js
+clinic heap -- node app.js  # heap profiling
+
+3. Code pe:
+// Heap snapshot
+const v8 = require('v8');
+const snapshot = v8.writeHeapSnapshot();
+
+// Memory usage monitor
+setInterval(() => {
+    const mem = process.memoryUsage();
+    console.log({
+        rss: (mem.rss / 1024 / 1024).toFixed(2) + 'MB',
+        heapUsed: (mem.heapUsed / 1024 / 1024).toFixed(2) + 'MB',
+    });
+}, 10000);
+
+Common fixes:
+// Bad — event listener leak!
+function badCode() {
+    emitter.on('data', handler);  // remove nahi kiya
+}
+
+// Good
+function goodCode() {
+    const handler = (data) => process(data);
+    emitter.on('data', handler);
+    return () => emitter.off('data', handler);  // cleanup
+}`,
+    tags: ["performance", "memory-leak", "debugging"],
+  },
+  {
+    id: 441,
+    level: "Advanced" as const,
+    question: "Node.js mein graceful shutdown kaise implement karte hain?",
+    answer: `Graceful Shutdown: Server band hone pe existing requests complete karo, new accept mat karo.
+
+Kyon zaroori: Deployment ke waqt (SIGTERM) in-flight requests drop nahi honni chahiye.
+
+const express = require('express');
+const app = express();
+
+const server = app.listen(3000, () => console.log('Server started'));
+
+// Graceful shutdown handler
+async function shutdown(signal) {
+    console.log(\`Received \${signal}. Graceful shutdown...\`);
+    
+    // 1. Naya connections accept karna band karo
+    server.close(async () => {
+        console.log('HTTP server closed');
+        
+        try {
+            // 2. Database connections close karo
+            await db.pool.end();
+            await redis.quit();
+            
+            // 3. Background jobs finish karo
+            await jobQueue.close();
+            
+            console.log('Cleanup complete');
+            process.exit(0);
+        } catch (err) {
+            console.error('Shutdown error:', err);
+            process.exit(1);
+        }
+    });
+    
+    // Force shutdown after 30s (hanging requests)
+    setTimeout(() => {
+        console.error('Force shutdown after timeout');
+        process.exit(1);
+    }, 30000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));  // PM2, Kubernetes
+process.on('SIGINT', () => shutdown('SIGINT'));    // Ctrl+C
+
+// Unhandled errors
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+    shutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('Unhandled Rejection:', reason);
+    shutdown('unhandledRejection');
+});`,
+    tags: ["deployment", "graceful-shutdown", "production"],
+  },
+  {
+    id: 442,
+    level: "Advanced" as const,
+    question: "Node.js mein caching strategies kya hain? Redis integration kaise karte hain?",
+    answer: `Caching levels:
+1. In-Memory (node-cache, Map): Process mein — fastest, restart pe clear
+2. Redis: External — multiple instances share, persist
+3. CDN: Static assets, edge locations
+
+Redis with ioredis:
+const Redis = require('ioredis');
+const redis = new Redis(process.env.REDIS_URL);
+
+// Cache middleware
+const cache = (ttl = 300) => async (req, res, next) => {
+    const key = \`cache:\${req.method}:\${req.originalUrl}\`;
+    
+    const cached = await redis.get(key);
+    if (cached) {
+        return res.json(JSON.parse(cached));  // Cache hit!
+    }
+    
+    // Original response intercept karo
+    const originalJson = res.json.bind(res);
+    res.json = (data) => {
+        redis.setex(key, ttl, JSON.stringify(data));  // Cache save
+        return originalJson(data);
+    };
+    
+    next();
+};
+
+// Usage
+app.get('/api/products', cache(600), getProducts);
+
+// Cache invalidation
+async function updateProduct(id, data) {
+    await db.update(id, data);
+    // Cache clear karo
+    await redis.del(\`cache:GET:/api/products\`);
+    await redis.del(\`cache:GET:/api/products/\${id}\`);
+}
+
+// Cache patterns:
+// Cache-aside: App check kare, miss pe DB se lo, cache mein save karo
+// Write-through: Write pe DB + cache dono update karo
+// Write-back: Cache update karo, DB baad mein (risky)`,
+    tags: ["caching", "redis", "performance"],
+  },
 ];
+

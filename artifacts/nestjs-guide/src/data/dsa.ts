@@ -4157,6 +4157,428 @@ for i in range(n):
       "Knapsack 1D with reverse loop = 0/1 constraint",
     ],
   },
+  {
+    id: "dsa-sliding-window",
+    title: "Sliding Window Technique",
+    titleEn: "Sliding Window Technique",
+    emoji: "🪟",
+    category: "Algorithms",
+    description: "Fixed aur variable size sliding window — substring, subarray problems efficiently solve karo",
+    descriptionEn: "Fixed and variable size sliding window — solve substring and subarray problems efficiently",
+    sections: [
+      {
+        heading: "Sliding Window kya hai?",
+        content: `**Sliding Window** = Subarray/substring problems O(n²) se O(n) mein solve karo — ek window maintain karo jo array pe slide karti hai.
+
+**2 types:**
+1. **Fixed size window:** Window size k fixed — sum, max, min
+2. **Variable size window:** Condition ke according window shrink/expand — longest/shortest subarray
+
+**Pattern recognition:**
+- "Contiguous subarray" + "max/min/sum" → Sliding window
+- "Longest substring with..." → Variable window
+- "Subarray of size k" → Fixed window
+
+**Template:**
+\`\`\`python
+left = 0
+for right in range(n):
+    # window mein right element add karo
+    while window_invalid:
+        # left se shrink karo
+        left += 1
+    # current window valid — answer update karo
+\`\`\``,
+        code: `# Fixed window — max sum of size k subarray
+def max_sum_subarray(arr: list[int], k: int) -> int:
+    n = len(arr)
+    if n < k:
+        return 0
+    
+    # First window
+    window_sum = sum(arr[:k])
+    max_sum = window_sum
+    
+    # Slide karo
+    for i in range(k, n):
+        window_sum += arr[i] - arr[i - k]  # add new, remove old
+        max_sum = max(max_sum, window_sum)
+    
+    return max_sum
+
+# O(n) — no nested loop!
+print(max_sum_subarray([2, 1, 5, 1, 3, 2], 3))  # 9
+
+# Variable window — longest subarray with sum <= target
+def longest_subarray_sum(arr: list[int], target: int) -> int:
+    left = 0
+    current_sum = 0
+    max_len = 0
+    
+    for right in range(len(arr)):
+        current_sum += arr[right]
+        
+        while current_sum > target:
+            current_sum -= arr[left]
+            left += 1
+        
+        max_len = max(max_len, right - left + 1)
+    
+    return max_len`,
+      },
+      {
+        heading: "String Problems — Sliding Window",
+        content: `**Longest substring without repeating:** Classic variable window.
+**Minimum window substring:** LeetCode 76 — find smallest window in s containing all chars of t.
+**Anagram in string:** Fixed window + frequency comparison.`,
+        code: `# Longest substring without repeating characters
+def length_of_longest_substring(s: str) -> int:
+    char_index = {}  # char → last seen index
+    left = 0
+    max_len = 0
+    
+    for right, char in enumerate(s):
+        # Char already in window? left ko jump karo
+        if char in char_index and char_index[char] >= left:
+            left = char_index[char] + 1
+        
+        char_index[char] = right
+        max_len = max(max_len, right - left + 1)
+    
+    return max_len
+
+# "abcabcbb" → 3 ("abc")
+# "pwwkew" → 3 ("wke")
+
+# Find all anagrams of p in s
+from collections import Counter
+
+def find_anagrams(s: str, p: str) -> list[int]:
+    if len(p) > len(s):
+        return []
+    
+    p_count = Counter(p)
+    window = Counter(s[:len(p)])
+    result = []
+    
+    if window == p_count:
+        result.append(0)
+    
+    for i in range(len(p), len(s)):
+        # Add new char
+        window[s[i]] += 1
+        # Remove old char
+        old_char = s[i - len(p)]
+        window[old_char] -= 1
+        if window[old_char] == 0:
+            del window[old_char]
+        
+        if window == p_count:
+            result.append(i - len(p) + 1)
+    
+    return result`,
+      },
+    ],
+    cheatsheet: [
+      "Fixed window: window_sum += arr[r] - arr[r-k]",
+      "Variable window: left shrink while condition invalid",
+      "char_index dict → O(1) duplicate check",
+      "Counter comparison → anagram check O(1)",
+      "Trigger: 'subarray/substring' + 'max/min'",
+    ],
+    revision: [
+      "Fixed size = sum/avg of k elements efficiently",
+      "Variable size = expand right, shrink left",
+      "O(n) — each element max 2 baar visit hota hai",
+      "Frequency map + window → string problems",
+      "Duplicate char → left ko char_index[char]+1 jump karo",
+    ],
+    revisionEn: [
+      "Fixed size = efficient sum/avg of exactly k elements",
+      "Variable size = expand right, shrink left on violation",
+      "O(n) — each element visited at most twice",
+      "Frequency map + window = key for string problems",
+      "Duplicate char → jump left to char_index[char] + 1",
+    ],
+  },
+  {
+    id: "dsa-two-pointers",
+    title: "Two Pointers Technique",
+    titleEn: "Two Pointers Technique",
+    emoji: "👆",
+    category: "Algorithms",
+    description: "Two pointers pattern — sorted arrays, pair sum, palindromes, fast/slow pointers",
+    descriptionEn: "Two pointers pattern — sorted arrays, pair sum, palindromes, fast/slow pointers",
+    sections: [
+      {
+        heading: "Two Pointers kya hai?",
+        content: `**Two Pointers** = Array/string pe do pointers rakh ke O(n²) → O(n) karo.
+
+**3 variations:**
+1. **Opposite ends:** left=0, right=n-1 — pair sum, palindrome
+2. **Same direction:** slow/fast — duplicates remove, cycle detect
+3. **Two arrays:** Merge sorted arrays, intersection
+
+**Kab use karein:**
+- Sorted array + pair/triplet sum
+- Palindrome check
+- Linked list cycle
+- Remove duplicates in-place
+
+**Pattern:**
+\`\`\`python
+left, right = 0, len(arr) - 1
+while left < right:
+    if condition: return result
+    elif too_small: left += 1
+    else: right -= 1
+\`\`\``,
+        code: `# Two Sum in sorted array
+def two_sum_sorted(nums: list[int], target: int) -> list[int]:
+    left, right = 0, len(nums) - 1
+    
+    while left < right:
+        total = nums[left] + nums[right]
+        if total == target:
+            return [left + 1, right + 1]  # 1-indexed
+        elif total < target:
+            left += 1   # sum barhao
+        else:
+            right -= 1  # sum ghatao
+    
+    return []
+
+# Three Sum — O(n²)
+def three_sum(nums: list[int]) -> list[list[int]]:
+    nums.sort()
+    result = []
+    
+    for i in range(len(nums) - 2):
+        if i > 0 and nums[i] == nums[i-1]:
+            continue  # duplicates skip
+        
+        left, right = i + 1, len(nums) - 1
+        while left < right:
+            total = nums[i] + nums[left] + nums[right]
+            if total == 0:
+                result.append([nums[i], nums[left], nums[right]])
+                while left < right and nums[left] == nums[left+1]: left += 1
+                while left < right and nums[right] == nums[right-1]: right -= 1
+                left += 1; right -= 1
+            elif total < 0:
+                left += 1
+            else:
+                right -= 1
+    
+    return result`,
+      },
+      {
+        heading: "Fast/Slow Pointers aur Palindrome",
+        content: `**Fast/Slow (Floyd's):** Cycle detect, middle of linked list, nth node from end.
+**Palindrome:** Opposite ends se compare karo.
+**Remove duplicates in-place:** slow = write pointer, fast = read pointer.`,
+        code: `# Palindrome check
+def is_palindrome(s: str) -> bool:
+    s = ''.join(c.lower() for c in s if c.isalnum())
+    left, right = 0, len(s) - 1
+    while left < right:
+        if s[left] != s[right]:
+            return False
+        left += 1; right -= 1
+    return True
+
+# Remove duplicates in-place (sorted array)
+def remove_duplicates(nums: list[int]) -> int:
+    if not nums: return 0
+    slow = 0
+    for fast in range(1, len(nums)):
+        if nums[fast] != nums[slow]:
+            slow += 1
+            nums[slow] = nums[fast]
+    return slow + 1  # unique count
+
+# Container with most water
+def max_water(height: list[int]) -> int:
+    left, right = 0, len(height) - 1
+    max_area = 0
+    while left < right:
+        area = min(height[left], height[right]) * (right - left)
+        max_area = max(max_area, area)
+        if height[left] < height[right]:
+            left += 1
+        else:
+            right -= 1
+    return max_area
+
+# Linked list cycle (Floyd's)
+def has_cycle(head) -> bool:
+    slow = fast = head
+    while fast and fast.next:
+        slow = slow.next
+        fast = fast.next.next
+        if slow is fast:
+            return True
+    return False`,
+      },
+    ],
+    cheatsheet: [
+      "Opposite: left=0, right=n-1, move based on sum",
+      "Same dir: slow write pointer, fast read pointer",
+      "Palindrome: s == s[::-1] ya two pointer",
+      "3Sum = outer loop + inner two pointer O(n²)",
+      "Floyd's cycle: slow+1, fast+2 — meet = cycle",
+    ],
+    revision: [
+      "Sorted array + pair sum → two pointers O(n)",
+      "Remove duplicates in-place → slow/fast pointers",
+      "3Sum = sort + outer loop + two pointer",
+      "Floyd's = cycle detect in O(n) space O(1)",
+      "Container water = min(h[l],h[r]) * (r-l)",
+    ],
+    revisionEn: [
+      "Sorted array + pair sum → two pointers O(n)",
+      "Remove duplicates in-place → slow/fast pointer trick",
+      "3Sum = sort + outer loop + two pointer = O(n²)",
+      "Floyd's = cycle detection in O(n) time, O(1) space",
+      "Container water = min(h[l], h[r]) * (r - l)",
+    ],
+  },
+  {
+    id: "dsa-greedy",
+    title: "Greedy Algorithms",
+    titleEn: "Greedy Algorithms",
+    emoji: "💰",
+    category: "Algorithms",
+    description: "Greedy approach — local optimal se global optimal, interval scheduling, Huffman, Dijkstra",
+    descriptionEn: "Greedy approach — local to global optimal, interval scheduling, Huffman, coin change",
+    sections: [
+      {
+        heading: "Greedy kya hai?",
+        content: `**Greedy Algorithm** = Har step pe locally best (greedy) choice karo — globally optimal answer milega.
+
+**Kab greedy kaam karta hai:**
+- Greedy choice property: Local optimal → Global optimal
+- Optimal substructure: Sub-problems ke solutions combine ho sakein
+
+**Kab greedy fail hota hai:**
+- Coin change (arbitrary denominations) → DP chahiye
+- 0/1 Knapsack → DP chahiye
+
+**Classic greedy problems:**
+- Activity selection / Interval scheduling
+- Fractional Knapsack
+- Huffman coding
+- Dijkstra's shortest path
+- Kruskal's/Prim's MST
+- Jump game`,
+        code: `# Activity Selection (Interval Scheduling)
+# Maximum activities select karo jo overlap na karein
+def activity_selection(activities: list[tuple]) -> list[tuple]:
+    # End time se sort karo — greedy choice!
+    sorted_acts = sorted(activities, key=lambda x: x[1])
+    
+    selected = [sorted_acts[0]]
+    last_end = sorted_acts[0][1]
+    
+    for start, end in sorted_acts[1:]:
+        if start >= last_end:  # no overlap
+            selected.append((start, end))
+            last_end = end
+    
+    return selected
+
+activities = [(1,4), (3,5), (0,6), (5,7), (3,9), (5,9), (6,10), (8,11)]
+result = activity_selection(activities)
+# [(1,4), (5,7), (8,11)] — 3 activities!
+
+# Jump Game — kya end tak pahunch sakte hain?
+def can_jump(nums: list[int]) -> bool:
+    max_reach = 0
+    for i, jump in enumerate(nums):
+        if i > max_reach:
+            return False
+        max_reach = max(max_reach, i + jump)
+    return True
+
+can_jump([2,3,1,1,4])  # True
+can_jump([3,2,1,0,4])  # False`,
+      },
+      {
+        heading: "Fractional Knapsack aur Coin Change",
+        content: `**Fractional Knapsack:** Items ko fraction mein le sakte hain — value/weight ratio se sort karo.
+**Coin Change (greedy works with standard coins):** Largest coin pehle — standard denominations ke liye.
+**Meeting Rooms:** Minimum rooms kitne chahiye — events schedule karne ke liye.`,
+        code: `# Fractional Knapsack
+def fractional_knapsack(capacity: int, items: list[tuple]) -> float:
+    # items = [(value, weight), ...]
+    # value/weight ratio se sort — greedy!
+    ratio_items = sorted(items, key=lambda x: x[0]/x[1], reverse=True)
+    
+    total_value = 0.0
+    remaining = capacity
+    
+    for value, weight in ratio_items:
+        if remaining <= 0:
+            break
+        take = min(weight, remaining)  # partial le sakte hain
+        total_value += (take / weight) * value
+        remaining -= take
+    
+    return total_value
+
+items = [(60, 10), (100, 20), (120, 30)]
+print(fractional_knapsack(50, items))  # 240.0
+
+# Minimum meeting rooms (intervals overlap)
+import heapq
+
+def min_meeting_rooms(intervals: list[list[int]]) -> int:
+    if not intervals: return 0
+    intervals.sort(key=lambda x: x[0])
+    
+    heap = []  # end times min-heap
+    for start, end in intervals:
+        if heap and heap[0] <= start:
+            heapq.heapreplace(heap, end)  # reuse room
+        else:
+            heapq.heappush(heap, end)    # new room
+    
+    return len(heap)
+
+# Task Scheduler — cooldown ke saath
+from collections import Counter
+
+def least_interval(tasks: list[str], n: int) -> int:
+    count = Counter(tasks)
+    max_count = max(count.values())
+    max_tasks = sum(1 for v in count.values() if v == max_count)
+    
+    return max(len(tasks), (max_count - 1) * (n + 1) + max_tasks)`,
+      },
+    ],
+    cheatsheet: [
+      "Greedy = local optimal → global optimal",
+      "Interval scheduling: sort by end time",
+      "Fractional knapsack: sort by value/weight ratio",
+      "Jump game: max_reach track karo",
+      "Meeting rooms: min-heap of end times",
+      "Greedy fails: 0/1 knapsack, arbitrary coin change",
+    ],
+    revision: [
+      "Greedy choice property confirm karo pehle",
+      "Interval = sort by end time, take if no overlap",
+      "Fractional knapsack = sort by ratio, take greedy",
+      "Jump game = max_reach >= n-1?",
+      "Meeting rooms = min-heap, reuse room if free",
+    ],
+    revisionEn: [
+      "Always verify greedy choice property first",
+      "Interval = sort by end time, select if no overlap",
+      "Fractional knapsack = sort by value/weight ratio",
+      "Jump game = track max reachable index",
+      "Meeting rooms = min-heap of end times = room reuse",
+    ],
+  },
 ];
 
 export const dsaInterviews = [
@@ -4230,4 +4652,305 @@ export const dsaInterviews = [
     answer: "tails array maintain karo — tails[i] = smallest tail of all increasing subsequences of length i+1. Har element ke liye binary search se position dhundo. O(log n) per element, total O(n log n).",
     tags: ["dp", "binary-search"],
   },
+  {
+    id: 11,
+    level: "Beginner" as const,
+    question: "Big O notation kya hai? O(1), O(log n), O(n), O(n²) mein kya fark hai?",
+    answer: `Big O = algorithm ki time ya space complexity worst case mein kaise badti hai input ke saath.
+
+O(1) — Constant: Input chahe kuch bhi ho, same time. Array index access, hash map lookup.
+O(log n) — Logarithmic: Har step mein problem half ho jaati hai. Binary search.
+O(n) — Linear: Input ke saath linear growth. Array traverse.
+O(n log n) — Linearithmic: Efficient sorting. Merge sort, heap sort.
+O(n²) — Quadratic: Nested loops. Bubble sort, selection sort.
+O(2^n) — Exponential: Fibonacci naive, subset enumeration.
+
+Interview trick: Nested loops = O(n²), ek loop = O(n), binary search = O(log n).`,
+    tags: ["complexity", "big-o"],
+  },
+  {
+    id: 12,
+    level: "Beginner" as const,
+    question: "Stack aur Queue mein kya fark hai? Real-world examples batao.",
+    answer: `Stack: LIFO — Last In First Out. Push/pop same end se.
+Queue: FIFO — First In First Out. Enqueue ek end se, dequeue doosre se.
+
+Stack real-world:
+- Browser back button (pages ka history)
+- Function call stack (recursion)
+- Undo/redo functionality
+- Balanced parentheses check
+
+Queue real-world:
+- Print job queue
+- BFS graph traversal
+- Task scheduling (OS process queue)
+- Message queues (Kafka, RabbitMQ)
+
+Python:
+stack = []
+stack.append(1); stack.pop()  # Stack
+
+from collections import deque
+queue = deque()
+queue.append(1); queue.popleft()  # Queue — O(1)!`,
+    tags: ["stack", "queue", "basics"],
+  },
+  {
+    id: 13,
+    level: "Intermediate" as const,
+    question: "Binary search kab kaam karta hai? Template batao.",
+    answer: `Binary search = sorted array pe O(log n) search — har step mein search space half hoti hai.
+
+Conditions: Array sorted hona chahiye, ya monotonic condition ho.
+
+Template:
+def binary_search(arr, target):
+    left, right = 0, len(arr) - 1
+    while left <= right:
+        mid = left + (right - left) // 2  # overflow safe
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return -1  # not found
+
+Advanced uses:
+- First/last occurrence of target
+- Search in rotated sorted array
+- Minimum in rotated array
+- Square root (integer)
+- "Binary search on answer" — answer range pe search karo
+
+bisect module: bisect_left, bisect_right — O(log n) insert position.`,
+    tags: ["binary-search", "searching"],
+  },
+  {
+    id: 14,
+    level: "Intermediate" as const,
+    question: "BFS aur DFS mein kya fark hai? Kab kaunsa use karo?",
+    answer: `BFS (Breadth First Search): Level by level — queue use karta hai.
+DFS (Depth First Search): Depth mein jaata hai — stack/recursion use karta hai.
+
+BFS use karo jab:
+- Shortest path in unweighted graph
+- Level-order traversal
+- Nearest neighbor (e.g., nearest hospital in map)
+
+DFS use karo jab:
+- Path existence check
+- Topological sort
+- Connected components
+- Cycle detection
+- Backtracking (maze, sudoku)
+
+Complexity: Dono O(V + E) — vertices + edges
+
+BFS = shortest (unweighted), DFS = explore (backtrack)
+BFS extra memory = O(width), DFS extra memory = O(depth)`,
+    tags: ["graphs", "bfs", "dfs"],
+  },
+  {
+    id: 15,
+    level: "Intermediate" as const,
+    question: "Hash Map collisions kya hain? Kaise handle hoti hain?",
+    answer: `Collision: Do alag keys same hash index pe map ho jaayein.
+
+Handling strategies:
+1. Chaining (Separate Chaining): Har slot pe linked list — extra elements chain mein. Python dict mein use hota hai.
+   - Worst case O(n) — sab ek slot pe
+   - Average O(1) — good hash function se
+
+2. Open Addressing (Linear Probing): Collision pe next empty slot dhundo.
+   - Linear: index+1, index+2...
+   - Quadratic: index+1², index+2²...
+   - Double Hashing: doosra hash function se step decide karo
+
+Load Factor: elements/slots — Python dict 2/3 se pehle resize karta hai.
+
+Python dict: Open addressing + compact tables (Python 3.6+) — insertion order bhi maintain karta hai.
+
+Average O(1) insert/search/delete — amortized.`,
+    tags: ["hash-table", "collision"],
+  },
+  {
+    id: 16,
+    level: "Intermediate" as const,
+    question: "Merge Sort aur Quick Sort compare karo — time/space complexity aur kab kaunsa?",
+    answer: `Merge Sort:
+- Time: O(n log n) — always (best/avg/worst)
+- Space: O(n) — extra array chahiye
+- Stable sort — equal elements ka order preserve
+- Linked lists ke liye better
+
+Quick Sort:
+- Time: O(n log n) average, O(n²) worst (sorted array + bad pivot)
+- Space: O(log n) average (call stack)
+- Unstable — equal elements reorder ho sakte hain
+- Cache friendly — in-place
+
+Kab Merge Sort:
+- Stable sort zaruri ho
+- Linked list sort
+- External sort (disk-based)
+
+Kab Quick Sort:
+- In-place chahiye (memory constraint)
+- Average case performance critical
+- Randomized pivot = O(n²) practically impossible
+
+Python's sort: Timsort = merge sort + insertion sort hybrid. O(n log n) worst case, O(n) nearly-sorted.`,
+    tags: ["sorting", "algorithms"],
+  },
+  {
+    id: 17,
+    level: "Advanced" as const,
+    question: "Dynamic Programming mein memoization aur tabulation ka fark batao.",
+    answer: `Memoization (Top-Down): Recursive + cache — natural recursion, lazy (sirf needed subproblems solve).
+Tabulation (Bottom-Up): Iterative + table — explicit order, all subproblems solve karo.
+
+Memoization:
+from functools import lru_cache
+
+@lru_cache(maxsize=None)
+def fib(n):
+    if n <= 1: return n
+    return fib(n-1) + fib(n-2)
+
+Tabulation:
+def fib(n):
+    if n <= 1: return n
+    dp = [0] * (n+1)
+    dp[1] = 1
+    for i in range(2, n+1):
+        dp[i] = dp[i-1] + dp[i-2]
+    return dp[n]
+
+# Space optimized tabulation
+def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+
+Memoization = easier to write, recursive overhead.
+Tabulation = faster (no recursion), explicit memory control.`,
+    tags: ["dp", "memoization", "tabulation"],
+  },
+  {
+    id: 18,
+    level: "Advanced" as const,
+    question: "Dijkstra's algorithm kya hai? Kab use karo aur time complexity kya hai?",
+    answer: `Dijkstra's = weighted graph mein single source shortest path — greedy + priority queue.
+
+Conditions:
+- Non-negative weights (negative = Bellman-Ford use karo)
+- Weighted directed/undirected graph
+
+import heapq
+
+def dijkstra(graph, start):
+    distances = {node: float('inf') for node in graph}
+    distances[start] = 0
+    heap = [(0, start)]  # (distance, node)
+    
+    while heap:
+        curr_dist, curr = heapq.heappop(heap)
+        
+        if curr_dist > distances[curr]:
+            continue  # stale entry
+        
+        for neighbor, weight in graph[curr]:
+            new_dist = curr_dist + weight
+            if new_dist < distances[neighbor]:
+                distances[neighbor] = new_dist
+                heapq.heappush(heap, (new_dist, neighbor))
+    
+    return distances
+
+Time Complexity: O((V + E) log V) with binary heap.
+Space: O(V + E)
+
+Use: GPS navigation, network routing, game pathfinding (A*).`,
+    tags: ["graphs", "shortest-path", "dijkstra"],
+  },
+  {
+    id: 19,
+    level: "Intermediate" as const,
+    question: "Kadane's algorithm kya hai? Maximum subarray problem explain karo.",
+    answer: `Kadane's Algorithm = Maximum subarray sum O(n) mein — dynamic programming greedy approach.
+
+Idea: Har index pe decide karo — current element se naya start karo ya previous subarray extend karo.
+
+def max_subarray(nums):
+    max_sum = current_sum = nums[0]
+    
+    for num in nums[1:]:
+        current_sum = max(num, current_sum + num)  # extend ya restart
+        max_sum = max(max_sum, current_sum)
+    
+    return max_sum
+
+# With indices (subarray boundaries)
+def max_subarray_with_indices(nums):
+    max_sum = current_sum = nums[0]
+    start = end = temp_start = 0
+    
+    for i in range(1, len(nums)):
+        if nums[i] > current_sum + nums[i]:
+            current_sum = nums[i]
+            temp_start = i
+        else:
+            current_sum += nums[i]
+        
+        if current_sum > max_sum:
+            max_sum = current_sum
+            start, end = temp_start, i
+    
+    return max_sum, start, end
+
+# [-2,1,-3,4,-1,2,1,-5,4] → 6 ([4,-1,2,1])
+
+O(n) time, O(1) space — brute force O(n²).`,
+    tags: ["dp", "arrays", "kadane"],
+  },
+  {
+    id: 20,
+    level: "Advanced" as const,
+    question: "Graph mein cycle detect karne ke methods kya hain?",
+    answer: `Undirected Graph:
+1. DFS + visited set: Parent tracking se — agar neighbor visited hai aur wo parent nahi → cycle
+2. Union-Find: Dono nodes same set mein → cycle
+
+def has_cycle_undirected(graph, n):
+    visited = set()
+    def dfs(node, parent):
+        visited.add(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                if dfs(neighbor, node): return True
+            elif neighbor != parent:
+                return True  # cycle!
+        return False
+    return any(dfs(i, -1) for i in range(n) if i not in visited)
+
+Directed Graph:
+1. DFS + rec_stack (recursion stack): Agar node dfs mein hai aur phir mile → cycle
+2. Kahn's algorithm (topological sort): Agar sab nodes process na hon → cycle
+
+def has_cycle_directed(graph, n):
+    visited, rec_stack = set(), set()
+    def dfs(node):
+        visited.add(node); rec_stack.add(node)
+        for nb in graph[node]:
+            if nb not in visited and dfs(nb): return True
+            if nb in rec_stack: return True
+        rec_stack.remove(node)
+        return False
+    return any(dfs(i) for i in range(n) if i not in visited)`,
+    tags: ["graphs", "cycle-detection"],
+  },
 ];
+
