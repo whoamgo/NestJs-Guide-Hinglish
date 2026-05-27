@@ -140,6 +140,20 @@ export const courses: CourseInfo[] = [
     totalChapters: 10,
     totalInterviews: 20,
   },
+  {
+    id: "python",
+    title: "Python",
+    emoji: "🐍",
+    color: "text-emerald-600 dark:text-emerald-400",
+    bgGradient: "from-emerald-500/10 to-teal-500/10",
+    borderColor: "border-emerald-200 dark:border-emerald-800",
+    badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    description: "Python A to Z — basics se ML tak, data science, automation aur bahut kuch",
+    level: "Beginner",
+    topics: ["Basics", "OOP", "File Handling", "NumPy", "Pandas", "ML", "Automation", "Web Scraping"],
+    totalChapters: 20,
+    totalInterviews: 6,
+  },
 ];
 
 export function getCourse(id: string) {
