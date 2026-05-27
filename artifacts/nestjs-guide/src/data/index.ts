@@ -40,8 +40,8 @@ export const allCourseData: Record<string, { chapters: Chapter[]; interviews: In
   api: { chapters: apiChapters, interviews: apiInterviews as InterviewQ[] },
   mysql: { chapters: mysqlChapters, interviews: mysqlInterviews as InterviewQ[] },
   javascript: { chapters: jsChapters, interviews: jsInterviews as InterviewQ[] },
-  python: { chapters: pythonChapters, interviews: pythonInterviews as InterviewQ[] },
-  dsa: { chapters: dsaChapters, interviews: dsaInterviews as InterviewQ[] },
+  python: { chapters: pythonChapters, interviews: pythonInterviews as unknown as InterviewQ[] },
+  dsa: { chapters: dsaChapters, interviews: dsaInterviews as unknown as InterviewQ[] },
 };
 
 export function getCourseData(courseId: string) {

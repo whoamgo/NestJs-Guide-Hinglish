@@ -52,7 +52,8 @@ function renderAnswer(text: string) {
 function QuestionCard({ q, num }: { q: InterviewQ; num: number }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const cfg = levelConfig[q.level];
+  const level = q.level ?? "Beginner";
+  const cfg = levelConfig[level] ?? levelConfig["Beginner"];
 
   return (
     <div className={`bg-card border rounded-2xl overflow-hidden transition-all duration-200 ${open ? "border-primary/50 shadow-md" : "border-border hover:border-primary/30 hover:shadow-sm"}`}>

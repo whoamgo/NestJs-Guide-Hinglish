@@ -1165,4 +1165,1249 @@ module.exports = {
       "pm2 save + startup = system reboot pe auto start",
     ],
   },
+  {
+    id: "node-streams",
+    title: "Streams & Buffers",
+    emoji: "🌊",
+    category: "Intermediate",
+    description: "Node.js Streams — large files bina memory issue ke process karo, piping, Transform streams",
+    sections: [
+      {
+        heading: "Streams Kya Hain?",
+        content: `Stream = data ka continuous flow — poora file memory mein load kiye bina chunks mein process karo.
+
+**4 Types:**
+- **Readable** — source se data (fs.createReadStream)
+- **Writable** — destination pe data (fs.createWriteStream)
+- **Duplex** — dono (TCP socket)
+- **Transform** — read karo, transform karo, write karo (zlib.createGzip)
+
+**Problem without streams:**
+100MB file read karo → 100MB RAM use. Streams se → sirf chunk (64KB default) RAM mein.`,
+        diagram: `Without streams:           With streams:
+[File 100MB]               [File 100MB]
+     ↓                          ↓ chunk
+[RAM: 100MB]               [RAM: 64KB]
+     ↓                          ↓
+[Process]                  [Process chunk]
+                               ↓ next chunk
+                           [Process chunk]`,
+      },
+      {
+        heading: "Streams aur Piping",
+        content: `pipe() streams ko connect karta hai — readable se writable tak:`,
+        code: `const fs = require('fs');
+const zlib = require('zlib');
+const { Transform } = require('stream');
+
+// ─── File copy with stream ─────────────────────────
+fs.createReadStream('input.txt')
+  .pipe(fs.createWriteStream('output.txt'));
+
+// ─── Compression stream ────────────────────────────
+// 1GB file compress karo — sirf 64KB RAM use hoga!
+fs.createReadStream('big-file.log')
+  .pipe(zlib.createGzip())           // Transform: compress
+  .pipe(fs.createWriteStream('big-file.log.gz'));
+
+// ─── Custom Transform Stream ──────────────────────
+const upperCaseTransform = new Transform({
+  transform(chunk, encoding, callback) {
+    // chunk process karo
+    this.push(chunk.toString().toUpperCase());
+    callback();  // done, next chunk maango
+  }
+});
+
+fs.createReadStream('data.txt')
+  .pipe(upperCaseTransform)
+  .pipe(fs.createWriteStream('upper.txt'));
+
+// ─── HTTP streaming response ──────────────────────
+const express = require('express');
+const app = express();
+
+app.get('/download', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain');
+  // File directly response mein pipe karo
+  fs.createReadStream('large-file.txt').pipe(res);
+  // Client ko data milta rehta hai — poori file download hone ka wait nahi!
+});
+
+// ─── Stream events ────────────────────────────────
+const readable = fs.createReadStream('file.txt');
+readable.on('data', (chunk) => console.log('Got chunk:', chunk.length));
+readable.on('end', () => console.log('Done!'));
+readable.on('error', (err) => console.error(err));`,
+        language: "javascript",
+        tip: "pipe() error handle nahi karta — pipeline() use karo ya error events listen karo. pipeline() automatically sab streams clean up karta hai error pe.",
+      },
+    ],
+    mcqs: [
+      { q: "Streams ka main advantage kya hai large files ke liye?", options: ["Faster processing", "Low memory usage — poori file memory mein load nahi karna", "Better error handling", "Simpler code"], correct: 1, explain: "Streams data ko chunks mein process karte hain — constant memory use (chunk size). Without streams, 1GB file = 1GB RAM. With streams = 64KB chunk size = minimal RAM." },
+      { q: "pipe() aur pipeline() mein kya fark hai?", options: ["Koi fark nahi", "pipeline() error handling + cleanup automatic karta hai", "pipe() faster hai", "pipeline() async hai"], correct: 1, explain: "pipe() error handling nahi karta — stream destroy nahi hota error pe. pipeline(src, ...transforms, dest, cb) automatically sab streams destroy karta hai error ya completion pe." },
+    ],
+    cheatsheet: [
+      "fs.createReadStream(path) — file read stream",
+      "fs.createWriteStream(path) — file write stream",
+      "readable.pipe(writable) — connect streams",
+      "pipeline(src, transform, dest, cb) — with error handling",
+      "new Transform({ transform(chunk, enc, cb) {} })",
+      "stream.on('data'/'end'/'error', handler)",
+    ],
+    revision: [
+      "Streams = chunks mein process, low memory constant",
+      "Readable → Transform → Writable = processing pipeline",
+      "pipe() = connect karo, pipeline() = error-safe connect",
+      "HTTP response mein pipe = streaming downloads",
+      "Transform = read, modify, write in one step",
+    ],
+  },
+  {
+    id: "node-events",
+    title: "EventEmitter & Event-Driven Architecture",
+    emoji: "📡",
+    category: "Intermediate",
+    description: "EventEmitter, custom events, event-driven patterns, aur Node.js event loop samjho",
+    sections: [
+      {
+        heading: "EventEmitter — Custom Events",
+        content: `Node.js EventEmitter observer pattern implement karta hai — loose coupling ke liye.`,
+        code: `const EventEmitter = require('events');
+
+// ─── Custom EventEmitter ───────────────────────────
+class OrderService extends EventEmitter {
+  async createOrder(orderData) {
+    // Order create karo
+    const order = await db.orders.create(orderData);
+
+    // Events emit karo — ye service ka kaam complete hua
+    this.emit('order:created', order);
+    this.emit('order:payment-pending', order.id, order.amount);
+
+    return order;
+  }
+
+  async processPayment(orderId, amount) {
+    const result = await paymentGateway.charge(amount);
+    if (result.success) {
+      this.emit('order:paid', orderId);
+    } else {
+      this.emit('order:payment-failed', orderId, result.error);
+    }
+  }
+}
+
+const orderService = new OrderService();
+
+// ─── Listeners — decoupled handlers ───────────────
+// Email service ko pata nahi hai OrderService ke baare mein
+orderService.on('order:created', async (order) => {
+  await emailService.sendConfirmation(order.userId, order.id);
+  console.log('Confirmation email sent!');
+});
+
+// Inventory service
+orderService.on('order:created', async (order) => {
+  await inventory.reserve(order.items);
+});
+
+// Analytics
+orderService.on('order:paid', (orderId) => {
+  analytics.track('payment_success', { orderId });
+});
+
+// One-time listener (once)
+orderService.once('order:first-ever', () => {
+  console.log('First order! Celebrate!');
+});
+
+// ─── Error handling ───────────────────────────────
+orderService.on('error', (err) => {
+  console.error('OrderService error:', err);
+  // Bina error listener ke 'error' event = uncaught exception crash!
+});
+
+// Remove listener
+const handler = (order) => console.log(order);
+orderService.on('order:created', handler);
+orderService.off('order:created', handler);  // remove`,
+        language: "javascript",
+        tip: "Hamesha 'error' event listener add karo — bina iske 'error' emit hone pe process crash kar jaata hai!",
+      },
+      {
+        heading: "Event Loop — Node.js ke Andar",
+        content: `Event Loop = Node.js ki heartbeat — asynchronous code kaise kaam karta hai:`,
+        diagram: `Event Loop Phases (simplified):
+
+  ┌─────────────────────────────┐
+  │           timers            │  ← setTimeout, setInterval callbacks
+  ├─────────────────────────────┤
+  │      pending callbacks      │  ← I/O errors, etc.
+  ├─────────────────────────────┤
+  │           I/O               │  ← File, Network callbacks (majority)
+  ├─────────────────────────────┤
+  │            poll             │  ← New I/O events wait karo
+  ├─────────────────────────────┤
+  │           check             │  ← setImmediate callbacks
+  ├─────────────────────────────┤
+  │        close callbacks      │  ← socket.on('close', ...)
+  └─────────────────────────────┘
+         ↑ loop again
+
+  Between each phase: process.nextTick() + Promises (microtasks)
+  Microtasks = I/O se pehle run! (nextTick > Promises > I/O)`,
+        code: `// Event Loop execution order demonstrate karo
+console.log('1 - Synchronous');
+
+setTimeout(() => console.log('5 - setTimeout (timers phase)'), 0);
+
+setImmediate(() => console.log('6 - setImmediate (check phase)'));
+
+Promise.resolve().then(() => console.log('3 - Promise (microtask)'));
+
+process.nextTick(() => console.log('2 - nextTick (microtask, first!)'));
+
+console.log('4 is wrong...');
+// Actually: 1, synchronous end, THEN 2 (nextTick), 3 (promise), 4? no...
+// Output: 1, "4 is wrong", 2 (nextTick), 3 (Promise), 5 (setTimeout), 6 (setImmediate)
+
+// ─── ACTUAL ORDER ─────────────────────────────────
+// 1. All synchronous code
+// 2. process.nextTick callbacks (current phase end pe)
+// 3. Promises (.then callbacks)
+// 4. setTimeout/setInterval (timers phase)
+// 5. setImmediate (check phase)`,
+        language: "javascript",
+      },
+    ],
+    mcqs: [
+      { q: "EventEmitter 'error' event bina listener ke kya karta hai?", options: ["Ignore karta hai", "Process crash kar jaata hai — uncaught exception", "Console log karta hai", "Event queue mein wait karta hai"], correct: 1, explain: "'error' event special hai — agar koi listener nahi hai toh Node.js Error throw karta hai jo process crash kar deta hai. Hamesha error listener add karo: emitter.on('error', handler)." },
+      { q: "Microtasks (nextTick, Promises) event loop mein kab run hote hain?", options: ["Timers ke baad", "Har event loop phase ke baad — I/O se pehle", "Sirf end mein", "Kisi bhi time"], correct: 1, explain: "Microtasks (process.nextTick + Promise callbacks) har event loop phase ke baad run hote hain — next phase start hone se pehle. nextTick Promise se pehle run hota hai." },
+    ],
+    cheatsheet: [
+      "class Svc extends EventEmitter {}",
+      "this.emit('event', data) — event emit",
+      "emitter.on('event', handler) — listen",
+      "emitter.once('event', handler) — one-time",
+      "emitter.off('event', handler) — remove",
+      "hamesha .on('error', handler) — crash prevent",
+      "nextTick > Promise > setTimeout > setImmediate",
+    ],
+    revision: [
+      "EventEmitter = observer pattern, loose coupling",
+      "emit = event bhejo, on = suno, once = ek baar suno",
+      "'error' event = hamesha listener chahiye",
+      "Event Loop: sync → nextTick → Promise → I/O → timers",
+      "setImmediate = current I/O ke baad, setTimeout = timer ke baad",
+    ],
+  },
+  {
+    id: "node-websocket",
+    title: "WebSockets & Real-time (Socket.io)",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "Real-time bidirectional communication — chat apps, live notifications, Socket.io setup",
+    sections: [
+      {
+        heading: "WebSocket vs HTTP",
+        content: `**HTTP:** Client request → Server response → connection close. Ek direction, client initiate karta hai.
+**WebSocket:** One-time handshake → persistent connection → **both sides** anytime message bhej saktey hain!
+
+**Use cases:** Chat apps, live scores, collaborative editing, real-time notifications, multiplayer games.`,
+        diagram: `HTTP:                    WebSocket:
+Client → [req] → Server  Client ──────── Server
+Client ← [res] ← Server     ↕ (anytime!)   ↕
+connection close          persistent connection`,
+      },
+      {
+        heading: "Socket.io Server & Client",
+        content: `Socket.io = WebSocket + fallback (polling) + rooms + namespaces:`,
+        code: `// ─── SERVER (server.js) ───────────────────────────
+const express = require('express');
+const { createServer } = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: { origin: 'http://localhost:3000' }
+});
+
+// Connection event
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // ─── Join room (chat rooms, game rooms) ─────────
+  socket.on('join-room', (roomId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit('user-joined', socket.id);
+  });
+
+  // ─── Chat message ────────────────────────────────
+  socket.on('send-message', ({ roomId, message, sender }) => {
+    // Room ke sabko broadcast karo (sender except)
+    socket.to(roomId).emit('new-message', { message, sender, time: Date.now() });
+  });
+
+  // ─── Disconnect ───────────────────────────────────
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Specific socket ko message
+io.to(socketId).emit('private-msg', data);
+// Sab connected users ko
+io.emit('announcement', 'Server maintenance in 5 min');
+// Room ke sab users ko (including sender)
+io.to(roomId).emit('room-update', data);
+
+httpServer.listen(3001);
+
+// ─── CLIENT (React) ────────────────────────────────
+import { useEffect, useState, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+
+function Chat({ roomId, username }) {
+  const [messages, setMessages] = useState([]);
+  const socketRef = useRef<Socket>();
+
+  useEffect(() => {
+    socketRef.current = io('http://localhost:3001');
+    const socket = socketRef.current;
+
+    socket.emit('join-room', roomId);
+
+    socket.on('new-message', (data) => {
+      setMessages(prev => [...prev, data]);
+    });
+
+    socket.on('user-joined', (userId) => {
+      setMessages(prev => [...prev, { system: true, text: \`\${userId} joined\` }]);
+    });
+
+    return () => { socket.disconnect(); };  // cleanup!
+  }, [roomId]);
+
+  const sendMessage = (text: string) => {
+    socketRef.current?.emit('send-message', {
+      roomId, message: text, sender: username
+    });
+    setMessages(prev => [...prev, { message: text, sender: 'You' }]);
+  };
+
+  return (/* JSX */);
+}`,
+        language: "javascript",
+        tip: "socket.to(room).emit = room ke sab (excluding sender). io.to(room).emit = room ke sab (including sender). socket.emit = sirf us ek user ko.",
+      },
+    ],
+    mcqs: [
+      { q: "WebSocket HTTP se kaise alag hai?", options: ["Faster hai", "Persistent bidirectional connection — server bhi anytime client ko bhej sakta hai", "Secure hai", "Simpler hai"], correct: 1, explain: "HTTP request-response, one-directional (client always initiates). WebSocket = one-time handshake se persistent bidirectional channel — server push kar sakta hai bina client request ke." },
+      { q: "socket.to(room).emit vs io.to(room).emit mein kya fark?", options: ["Koi fark nahi", "socket.to = sender except, io.to = including sender", "io.to faster hai", "socket.to broadcast hai"], correct: 1, explain: "socket.to(room) = room ke sab users ko except jo send kar raha hai. io.to(room) = room ke sab users ko including sender." },
+    ],
+    cheatsheet: [
+      "io.on('connection', socket => {}) — new client",
+      "socket.emit('event', data) — sirf us client ko",
+      "socket.to(room).emit() — room ko except sender",
+      "io.to(room).emit() — room ko including sender",
+      "io.emit() — sab connected clients",
+      "socket.join(room) — room join",
+      "socket.on('disconnect', cb) — client gone",
+    ],
+    revision: [
+      "WebSocket = persistent bidirectional, HTTP = request-response",
+      "Socket.io = WebSocket + rooms + namespaces + fallback",
+      "io.on('connection') = har naye client ke liye",
+      "socket.to() = excluding sender, io.to() = including sender",
+      "useRef socket store karo React mein — cleanup on unmount",
+    ],
+  },
+  {
+    id: "node-typescript",
+    title: "Node.js with TypeScript",
+    emoji: "🔷",
+    category: "Intermediate",
+    description: "TypeScript Node.js setup, types, Express typing, path aliases, aur compilation",
+    sections: [
+      {
+        heading: "TypeScript Node.js Setup",
+        content: `TypeScript Node.js project setup karna:`,
+        code: `# ─── Setup ────────────────────────────────────────
+npm init -y
+npm install typescript ts-node @types/node --save-dev
+npm install express
+npm install @types/express --save-dev
+
+# tsconfig.json generate karo
+npx tsc --init
+
+# ─── tsconfig.json (recommended settings) ──────────
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    // Path aliases
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@services/*": ["src/services/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+
+# ─── package.json scripts ─────────────────────────
+{
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  }
+}`,
+        language: "bash",
+        tip: "ts-node-dev = ts-node + nodemon. Development mein fast restart. Production ke liye tsc se compile karo → node dist/ chalao.",
+      },
+      {
+        heading: "Typed Express + Middleware",
+        content: `Express TypeScript mein properly type karna:`,
+        code: `import express, { Request, Response, NextFunction, Router } from 'express';
+
+// ─── Custom typed Request ──────────────────────────
+interface AuthRequest extends Request {
+  user?: { id: number; email: string; role: string };
+}
+
+// ─── Typed Route Params & Body ────────────────────
+interface CreateUserBody {
+  name: string;
+  email: string;
+  password: string;
+}
+
+interface UserParams {
+  id: string;
+}
+
+const router = Router();
+
+// GET /users/:id — typed params
+router.get('/users/:id', async (
+  req: Request<UserParams>,
+  res: Response
+) => {
+  const userId = parseInt(req.params.id);  // string → number
+  const user = await UserService.findById(userId);
+  if (!user) return res.status(404).json({ error: 'Not found' });
+  res.json(user);
+});
+
+// POST /users — typed body
+router.post('/users', async (
+  req: Request<{}, {}, CreateUserBody>,
+  res: Response
+) => {
+  const { name, email, password } = req.body;  // fully typed!
+  const user = await UserService.create({ name, email, password });
+  res.status(201).json(user);
+});
+
+// ─── Typed Middleware ─────────────────────────────
+function authMiddleware(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  req.user = verifyToken(token);  // req pe user attach
+  next();
+}
+
+// ─── Error Handler ────────────────────────────────
+// 4 parameters = Express error handler
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error(err.stack);
+  res.status(500).json({ error: err.message });
+});`,
+        language: "typescript",
+      },
+    ],
+    mcqs: [
+      { q: "Request<Params, ResBody, ReqBody, Query> mein 3rd generic kya hai?", options: ["Response body", "Request params", "Request body type (req.body)", "Query string"], correct: 2, explain: "Request<Params, ResponseBody, RequestBody, QueryString> — 3rd generic = req.body ka type. POST/PUT handlers mein request body type define karte hain yahan." },
+      { q: "Production mein TypeScript Node app kaise run karte hain?", options: ["ts-node se", "tsc compile → node dist/", "tsx se", "babel se"], correct: 1, explain: "Production mein: tsc se JavaScript compile karo → dist/ folder. Phir node dist/index.js. ts-node/tsx development tools hain — runtime TypeScript compilation production mein slow hai." },
+    ],
+    cheatsheet: [
+      "ts-node-dev --respawn src/index.ts — dev server",
+      "tsc && node dist/ — production",
+      "Request<Params, Res, Body, Query> — typed request",
+      "interface AuthReq extends Request { user?: User }",
+      "@types/express — Express type definitions",
+      "paths in tsconfig — import aliases",
+      "strict: true — best TypeScript practices",
+    ],
+    revision: [
+      "ts-node-dev = dev, tsc → node dist = production",
+      "Request<P,Rb,Qb,Q> generics se typed routes",
+      "Custom interface extends Request — user attach pattern",
+      "4-param function = Express error handler",
+      "paths config = @/services/... import aliases",
+    ],
+  },
+  {
+    id: "node-redis",
+    title: "Caching with Redis",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "Redis setup, caching strategies, session store, rate limiting, pub/sub with Node.js",
+    sections: [
+      {
+        heading: "Redis Kya Hai aur Kyun?",
+        content: `Redis = in-memory data store — database se 100x fast reads.
+
+**Use cases:**
+- **Caching** — database queries cache karo
+- **Sessions** — user sessions store karo
+- **Rate limiting** — API calls count karo
+- **Pub/Sub** — microservices communication
+- **Queues** — background jobs`,
+      },
+      {
+        heading: "Redis Caching Patterns",
+        content: `ioredis se Redis Node.js mein use karo:`,
+        code: `const Redis = require('ioredis');
+
+const redis = new Redis({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: 6379,
+  password: process.env.REDIS_PASSWORD,
+});
+
+// ─── Cache-Aside Pattern ──────────────────────────
+// 1. Cache check karo, 2. Miss pe DB se, 3. Cache mein save
+async function getUser(userId) {
+  const cacheKey = \`user:\${userId}\`;
+
+  // Check cache
+  const cached = await redis.get(cacheKey);
+  if (cached) {
+    console.log('Cache HIT!');
+    return JSON.parse(cached);
+  }
+
+  // Cache miss — DB se fetch
+  console.log('Cache MISS — fetching from DB');
+  const user = await db.users.findById(userId);
+
+  // Cache mein save karo (1 hour TTL)
+  await redis.setex(cacheKey, 3600, JSON.stringify(user));
+
+  return user;
+}
+
+// ─── Cache Invalidation ───────────────────────────
+async function updateUser(userId, data) {
+  await db.users.update(userId, data);
+  await redis.del(\`user:\${userId}\`);  // cache invalidate karo!
+}
+
+// ─── Rate Limiting with Redis ─────────────────────
+async function rateLimitMiddleware(req, res, next) {
+  const key = \`rate:\${req.ip}\`;
+  const limit = 100;  // 100 requests per window
+  const window = 60;  // 60 seconds
+
+  const current = await redis.incr(key);  // increment counter
+  if (current === 1) {
+    await redis.expire(key, window);  // first request pe TTL set karo
+  }
+
+  if (current > limit) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      retryAfter: await redis.ttl(key)
+    });
+  }
+
+  res.setHeader('X-RateLimit-Remaining', limit - current);
+  next();
+}
+
+// ─── Session Store ────────────────────────────────
+const session = require('express-session');
+const RedisStore = require('connect-redis').default;
+
+app.use(session({
+  store: new RedisStore({ client: redis }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: true, maxAge: 24 * 60 * 60 * 1000 }
+}));`,
+        language: "javascript",
+        tip: "setex key = set + expire ek saath. TTL (Time-To-Live) hamesha set karo — warna Redis memory bhar jaati hai stale data se!",
+      },
+    ],
+    mcqs: [
+      { q: "Cache-Aside pattern mein data kab cache mein jaata hai?", options: ["Hamesha pehle se", "Cache miss pe — DB se fetch ke baad", "User login pe", "App start pe"], correct: 1, explain: "Cache-Aside (Lazy Loading): 1. Cache check karo, 2. Miss pe DB se fetch, 3. Cache mein save. Sirf actually requested data cache hota hai — memory efficient." },
+      { q: "Redis mein TTL kyun set karna chahiye?", options: ["Performance ke liye", "Security ke liye", "Stale data auto expire ho — memory leaks prevent", "Required hai"], correct: 2, explain: "TTL bina cache forever rehta hai — stale/outdated data serve hoga aur Redis memory bhar jaayegi. TTL = automatic expiry = always fresh data guarantee + controlled memory usage." },
+    ],
+    cheatsheet: [
+      "redis.get(key) — value fetch",
+      "redis.setex(key, ttl, value) — set with expiry",
+      "redis.del(key) — cache invalidate",
+      "redis.incr(key) — atomic counter (rate limiting)",
+      "redis.expire(key, seconds) — TTL set",
+      "redis.ttl(key) — remaining time",
+      "JSON.stringify/parse — object store karo",
+    ],
+    revision: [
+      "Redis = in-memory, 100x faster than DB",
+      "Cache-Aside = check → miss → DB → cache",
+      "setex = set + expire ek command",
+      "Cache invalidate karo data update pe",
+      "Rate limiting = incr + expire pattern",
+    ],
+  },
+  {
+    id: "node-testing",
+    title: "Testing Node.js — Jest & Supertest",
+    emoji: "🧪",
+    category: "Advanced",
+    description: "Unit tests, integration tests, API testing with Supertest, mocking, coverage",
+    sections: [
+      {
+        heading: "Testing Setup — Jest",
+        content: `Jest = Node.js testing framework — built-in assertions, mocks, coverage:`,
+        code: `# Install
+npm install jest @types/jest ts-jest --save-dev
+npm install supertest @types/supertest --save-dev
+
+# package.json
+{
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "testMatch": ["**/*.test.ts"],
+    "coverageThreshold": {
+      "global": { "lines": 80 }
+    }
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  }
+}`,
+        language: "bash",
+      },
+      {
+        heading: "Unit Tests & API Integration Tests",
+        content: `Unit tests aur Supertest se API testing:`,
+        code: `// ─── Unit Test — Service Layer ────────────────────
+// userService.test.ts
+import { UserService } from '../services/UserService';
+import { UserRepository } from '../repositories/UserRepository';
+
+// Mock repository
+jest.mock('../repositories/UserRepository');
+const mockRepo = UserRepository as jest.Mocked<typeof UserRepository>;
+
+describe('UserService', () => {
+  let service: UserService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new UserService(new UserRepository());
+  });
+
+  it('findById existing user return kare', async () => {
+    const mockUser = { id: 1, name: 'Alice', email: 'alice@test.com' };
+    mockRepo.prototype.findById.mockResolvedValue(mockUser);
+
+    const result = await service.findById(1);
+
+    expect(result).toEqual(mockUser);
+    expect(mockRepo.prototype.findById).toHaveBeenCalledWith(1);
+  });
+
+  it('findById null pe error throw kare', async () => {
+    mockRepo.prototype.findById.mockResolvedValue(null);
+    await expect(service.findById(999)).rejects.toThrow('User not found');
+  });
+});
+
+// ─── API Integration Test — Supertest ─────────────
+// app.test.ts
+import request from 'supertest';
+import app from '../app';  // Express app
+
+describe('POST /api/users', () => {
+  it('valid data pe user create kare', async () => {
+    const response = await request(app)
+      .post('/api/users')
+      .send({ name: 'Bob', email: 'bob@test.com', password: 'secret123' })
+      .expect(201)
+      .expect('Content-Type', /json/);
+
+    expect(response.body).toMatchObject({
+      id: expect.any(Number),
+      name: 'Bob',
+      email: 'bob@test.com',
+    });
+    expect(response.body.password).toBeUndefined();  // password exposed mat karo!
+  });
+
+  it('invalid email pe 400 return kare', async () => {
+    const response = await request(app)
+      .post('/api/users')
+      .send({ name: 'Bob', email: 'not-email', password: '123' })
+      .expect(400);
+
+    expect(response.body.errors).toBeDefined();
+  });
+});`,
+        language: "typescript",
+        tip: "Supertest actual HTTP server start nahi karta — app export karo (app.listen() bina) aur Supertest directly inject karta hai. Fast aur no port conflicts!",
+      },
+    ],
+    mcqs: [
+      { q: "jest.mock() kya karta hai?", options: ["Test slow karta hai", "Module ko mock se replace karta hai — actual implementation call nahi hoti", "Error throw karta hai", "Coverage improve karta hai"], correct: 1, explain: "jest.mock('./module') = actual module ki jagah mock version use karo. Unit tests mein dependencies isolate karne ke liye — test sirf ek unit ko test kare, baaki mock." },
+      { q: "Supertest se API test karne ka advantage kya hai?", options: ["Faster tests", "Actual HTTP server start kiye bina full request-response cycle test", "Better coverage", "TypeScript support"], correct: 1, explain: "Supertest Express app directly inject karta hai — actual server start nahi hota, no port binding, no async server setup. Fast, isolated API testing." },
+    ],
+    cheatsheet: [
+      "jest.fn() — mock function",
+      "jest.mock('./module') — module mock",
+      "mockFn.mockResolvedValue(data) — async mock",
+      "expect(fn).rejects.toThrow('msg') — error test",
+      "request(app).get('/route').expect(200) — Supertest",
+      ".send(body) — request body",
+      ".expect('Content-Type', /json/) — header check",
+    ],
+    revision: [
+      "Unit test = service isolate, dependencies mock karo",
+      "jest.mock = module replace with mock",
+      "mockFn.mockResolvedValue = async mock return value",
+      "Supertest = HTTP test bina server start kiye",
+      "beforeEach clearAllMocks = tests isolate karo",
+    ],
+  },
+  {
+    id: "node-queue",
+    title: "Job Queues — BullMQ",
+    emoji: "📋",
+    category: "Advanced",
+    description: "Background jobs, email queues, retry logic, scheduled jobs with BullMQ + Redis",
+    sections: [
+      {
+        heading: "Job Queue Kyun Chahiye?",
+        content: `HTTP request mein heavy tasks mat karo — user wait karega!
+
+**Queue wale kaam:**
+- Email sending (SMTP slow hai)
+- Image processing/resize
+- PDF generation
+- 3rd party API calls
+- Scheduled tasks (cron)
+- Retry logic for failures`,
+        diagram: `Without Queue:
+HTTP Request → [Email Send (slow)] → Response (5 sec wait!)
+
+With Queue:
+HTTP Request → Queue job → Response (instant!)
+                              ↓ (background)
+                    Worker → Email Send`,
+      },
+      {
+        heading: "BullMQ Setup",
+        content: `BullMQ = Redis-backed job queue — most popular Node.js queue library:`,
+        code: `const { Queue, Worker, QueueEvents } = require('bullmq');
+
+const connection = { host: 'localhost', port: 6379 };
+
+// ─── Producer — job add karo ───────────────────────
+const emailQueue = new Queue('email', { connection });
+const imageQueue = new Queue('image-processing', { connection });
+
+// Job add karo
+await emailQueue.add('welcome-email', {
+  to: 'user@example.com',
+  name: 'Alice',
+  templateId: 'welcome',
+}, {
+  attempts: 3,          // 3 baar retry
+  backoff: { type: 'exponential', delay: 2000 },  // 2s, 4s, 8s
+  removeOnComplete: 100,  // 100 completed jobs keep karo
+  removeOnFail: 50,       // 50 failed jobs keep karo
+});
+
+// Delayed job (1 hour baad run)
+await emailQueue.add('reminder', data, { delay: 60 * 60 * 1000 });
+
+// Repeating job (every day at 9am)
+await emailQueue.add('daily-report', {}, {
+  repeat: { cron: '0 9 * * *' }
+});
+
+// ─── Worker — job process karo ─────────────────────
+const emailWorker = new Worker('email', async (job) => {
+  console.log('Processing job:', job.id, job.name);
+  const { to, name, templateId } = job.data;
+
+  // Heavy work karo
+  await sendEmail({ to, subject: 'Welcome!', template: templateId, data: { name } });
+
+  // Progress update (optional)
+  await job.updateProgress(100);
+
+  return { sent: true };  // job result
+}, {
+  connection,
+  concurrency: 5,  // 5 jobs ek saath process karo
+});
+
+// Worker events
+emailWorker.on('completed', (job, result) => {
+  console.log(\`Job \${job.id} completed\`, result);
+});
+emailWorker.on('failed', (job, err) => {
+  console.error(\`Job \${job?.id} failed:\`, err.message);
+});
+
+// ─── Express endpoint ─────────────────────────────
+app.post('/register', async (req, res) => {
+  const user = await UserService.create(req.body);
+
+  // Queue mein daalo — request block mat karo!
+  await emailQueue.add('welcome-email', {
+    to: user.email,
+    name: user.name,
+    templateId: 'welcome'
+  });
+
+  res.status(201).json({ user });  // instant response!
+});`,
+        language: "javascript",
+        tip: "Worker separate process/server pe run karo main app se — agar email service down ho toh main app affect nahi hogi. Microservices pattern!",
+      },
+    ],
+    mcqs: [
+      { q: "Job queue ka main benefit kya hai?", options: ["Faster code", "HTTP response fast — heavy tasks background mein", "Better security", "Simpler code"], correct: 1, explain: "Queue = HTTP request instantly respond karo, heavy task background mein async process karo. User ko wait nahi karna pata. Email, image processing, PDF generation sab queue mein daalo." },
+      { q: "BullMQ mein attempts aur backoff kya karta hai?", options: ["Speed improve karta hai", "Job retry karta hai failure pe — exponential delay ke saath", "Concurrency set karta hai", "Memory optimize karta hai"], correct: 1, explain: "attempts = kitni baar retry karo failure pe. backoff = retries ke beech delay (exponential = 2s, 4s, 8s, ...). Transient failures (network, 3rd party APIs) automatically handle ho jaate hain." },
+    ],
+    cheatsheet: [
+      "new Queue('name', {connection}) — queue create",
+      "queue.add('jobName', data, opts) — job add",
+      "new Worker('name', async job => {}, opts) — processor",
+      "attempts + backoff — automatic retry",
+      "delay: ms — delayed job",
+      "cron: '0 9 * * *' — scheduled job",
+      "concurrency — parallel jobs count",
+    ],
+    revision: [
+      "Queue = HTTP se alag heavy tasks run karo",
+      "Producer = job add, Worker = job process",
+      "attempts + exponential backoff = reliable retries",
+      "Delayed jobs = schedule future tasks",
+      "Worker separate service mein = fault isolation",
+    ],
+  },
+  {
+    id: "node-graphql",
+    title: "GraphQL with Node.js",
+    emoji: "◈",
+    category: "Advanced",
+    description: "GraphQL schema, resolvers, mutations, Apollo Server, REST vs GraphQL comparison",
+    sections: [
+      {
+        heading: "GraphQL Kya Hai?",
+        content: `GraphQL = query language for APIs — client decide karta hai exactly kya data chahiye.
+
+**REST problems GraphQL solve karta hai:**
+- **Over-fetching** — /users 50 fields laata hai, 3 chahiye
+- **Under-fetching** — /user/1 → /posts?userId=1 → /comments?postId=... (N+1)
+- **Multiple endpoints** — sirf ek /graphql endpoint
+
+**GraphQL benefits:**
+- Exactly wahi fields maango jo chahiye
+- Related data ek query mein
+- Strongly typed schema
+- Self-documenting API`,
+        diagram: `REST:                        GraphQL:
+GET /users          →        query {
+GET /users/1/posts  →          user(id: 1) {
+GET /posts/5/comments→           name
+(3 requests!)                    posts {
+                                   title
+                                   comments { body }
+                                 }
+                               }
+                             }   (1 request!)`,
+      },
+      {
+        heading: "Apollo Server Setup",
+        content: `Apollo Server se GraphQL API banao:`,
+        code: `const { ApolloServer, gql } = require('@apollo/server');
+const { startStandaloneServer } = require('@apollo/server/standalone');
+
+// ─── Schema (Type Definitions) ────────────────────
+const typeDefs = gql\`
+  type User {
+    id: ID!
+    name: String!
+    email: String!
+    posts: [Post!]!
+  }
+
+  type Post {
+    id: ID!
+    title: String!
+    body: String!
+    author: User!
+    createdAt: String!
+  }
+
+  type Query {
+    users: [User!]!
+    user(id: ID!): User
+    posts(limit: Int = 10): [Post!]!
+  }
+
+  type Mutation {
+    createUser(name: String!, email: String!, password: String!): User!
+    createPost(title: String!, body: String!, authorId: ID!): Post!
+    deletePost(id: ID!): Boolean!
+  }
+\`;
+
+// ─── Resolvers ────────────────────────────────────
+const resolvers = {
+  Query: {
+    users: () => db.users.findAll(),
+    user: (_, { id }) => db.users.findById(id),
+    posts: (_, { limit }) => db.posts.findAll({ limit }),
+  },
+
+  Mutation: {
+    createUser: async (_, { name, email, password }) => {
+      const hashed = await bcrypt.hash(password, 10);
+      return db.users.create({ name, email, password: hashed });
+    },
+    createPost: (_, { title, body, authorId }) =>
+      db.posts.create({ title, body, authorId }),
+    deletePost: async (_, { id }) => {
+      await db.posts.delete(id);
+      return true;
+    },
+  },
+
+  // Nested resolver — User.posts
+  User: {
+    posts: (parent) => db.posts.findByAuthorId(parent.id),
+    // parent = User object from parent resolver
+  },
+
+  Post: {
+    author: (parent) => db.users.findById(parent.authorId),
+  },
+};
+
+// ─── Server ───────────────────────────────────────
+const server = new ApolloServer({ typeDefs, resolvers });
+const { url } = await startStandaloneServer(server, {
+  listen: { port: 4000 },
+  context: async ({ req }) => ({
+    user: await getUserFromToken(req.headers.authorization)
+  }),
+});
+
+// ─── Query Example ────────────────────────────────
+// Client se:
+// query GetUser($id: ID!) {
+//   user(id: $id) {
+//     name
+//     posts { title }
+//   }
+// }`,
+        language: "javascript",
+        tip: "N+1 problem: User.posts resolver har user ke liye alag DB query karta hai. DataLoader (batching) se solve karo — 1000 users ke posts 1 DB call mein!",
+      },
+    ],
+    mcqs: [
+      { q: "GraphQL mein over-fetching problem kya hai?", options: ["Server pe extra load", "API se zyada data aata hai jo chahiye — bandwidth waste", "Query slow hai", "Security issue"], correct: 1, explain: "REST /users 50 fields return karta hai lekin sirf name+email chahiye — bandwidth waste. GraphQL mein exactly wahi fields maango jo chahiye — no more, no less." },
+      { q: "GraphQL resolver mein `parent` argument kya hai?", options: ["Root query object", "Parent type ka resolved value — nested resolvers mein pass hota hai", "Request object", "Schema definition"], correct: 1, explain: "parent = upar wale resolver ka result. User.posts mein parent = User object jo Query.user ne return kiya. Isse nested data efficiently fetch kar sakte ho." },
+    ],
+    cheatsheet: [
+      "typeDefs = schema (types, Query, Mutation)",
+      "resolvers = actual functions jo data return karein",
+      "Query { users: () => db.all() } — list",
+      "Mutation { create: (_, args) => db.create(args) }",
+      "User { posts: (parent) => db.byUserId(parent.id) }",
+      "context = auth, DB connection per request",
+      "! = non-nullable, [] = list type",
+    ],
+    revision: [
+      "GraphQL = ek endpoint, client decides what data",
+      "typeDefs = schema contract, resolvers = implementations",
+      "Nested resolvers = parent ke ID se related data fetch",
+      "N+1 problem = DataLoader se solve karo",
+      "context = request-level auth/DB injection",
+    ],
+  },
+  {
+    id: "node-microservices",
+    title: "Microservices Architecture",
+    emoji: "🏗️",
+    category: "Advanced",
+    description: "Monolith vs Microservices, REST inter-service communication, message queues, API Gateway",
+    sections: [
+      {
+        heading: "Monolith vs Microservices",
+        content: `**Monolith:** Sab code ek app mein — simple but scale karna mushkil.
+**Microservices:** Har feature alag service — independent deploy, scale, fail.
+
+**Kab Microservices:**
+- Different parts ko alag scale karna ho (checkout service > browse service)
+- Different teams alag kaam karein
+- Different tech stack (ML service Python, main app Node)
+- Large team (Conway's Law)
+
+**Kab Monolith:**
+- Small team, early startup
+- Functionality clear nahi hai abhi
+- Operational complexity avoid karna`,
+        diagram: `Monolith:                    Microservices:
+┌─────────────────┐          ┌──────────┐ ┌──────────┐
+│  Users           │          │  Users   │ │  Orders  │
+│  Orders          │    →     │  Service │ │  Service │
+│  Payments        │          └──────────┘ └──────────┘
+│  Notifications   │          ┌──────────┐ ┌──────────┐
+└─────────────────┘          │ Payments │ │  Notifs  │
+                              │ Service  │ │  Service │
+                              └──────────┘ └──────────┘`,
+      },
+      {
+        heading: "Service Communication Patterns",
+        content: `Services aapas mein communicate karne ke do tarike:`,
+        code: `// ─── 1. Synchronous — REST/HTTP ───────────────────
+// Order service → User service se user check karo
+class OrderService {
+  async createOrder(userId, items) {
+    // HTTP call to User Service
+    const userRes = await fetch(\`\${USER_SERVICE_URL}/users/\${userId}\`);
+    if (!userRes.ok) throw new Error('User not found');
+    const user = await userRes.json();
+
+    const order = await db.orders.create({ userId, items });
+
+    // HTTP call to Notification Service
+    await fetch(\`\${NOTIFICATION_SERVICE_URL}/notify\`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, event: 'order_created', orderId: order.id })
+    });
+
+    return order;
+  }
+}
+
+// ─── 2. Async — Message Queue (Event-Driven) ────────
+// Services loosely coupled — ek fail ho toh doosre impact nahi
+const { Queue } = require('bullmq');
+const notificationQueue = new Queue('notifications', { connection });
+
+class OrderService {
+  async createOrder(userId, items) {
+    const order = await db.orders.create({ userId, items });
+
+    // Event publish karo — Notification Service subscribe karega
+    await notificationQueue.add('order-created', {
+      userId,
+      orderId: order.id,
+      email: items[0].name
+    });
+
+    return order;  // wait nahi karo notification ke liye
+  }
+}
+
+// Notification Service — Worker
+const worker = new Worker('notifications', async (job) => {
+  if (job.name === 'order-created') {
+    await emailService.sendOrderConfirmation(job.data);
+  }
+}, { connection });
+
+// ─── API Gateway Pattern ──────────────────────────
+// Single entry point — routes to different services
+app.use('/api/users/*', proxy({ target: USER_SERVICE_URL }));
+app.use('/api/orders/*', proxy({ target: ORDER_SERVICE_URL }));
+app.use('/api/payments/*', proxy({ target: PAYMENT_SERVICE_URL }));`,
+        language: "javascript",
+        tip: "Start with modular monolith — clear service boundaries rakho code mein. Jab actual scale/team issue aaye tab extract karo microservice. Premature microservices = distributed monolith (worst of both worlds)!",
+      },
+    ],
+    mcqs: [
+      { q: "Microservices mein event-driven architecture ka faida kya hai?", options: ["Faster communication", "Loose coupling — ek service fail ho toh doosri affect nahi", "Simpler code", "Better security"], correct: 1, explain: "Event-driven (async via queue) = services loosely coupled. Notification service down ho toh Order service chal rahi hai — order create hoga, notification baad mein retry hogi. Sync REST mein → notification fail = order fail." },
+      { q: "Kab Monolith prefer karna chahiye?", options: ["Hamesha", "Small team, early stage, unclear boundaries", "Large scale apps", "Multiple teams"], correct: 1, explain: "Early stage mein boundaries clear nahi hoti. Monolith se shuru karo — modular code rakho. Jab actual scale issues aayein tab extract karo. 'Distributed monolith' avoid karo." },
+    ],
+    cheatsheet: [
+      "Sync = HTTP/REST (tight coupling, simple)",
+      "Async = Message Queue (loose coupling, resilient)",
+      "API Gateway = single entry, proxy to services",
+      "Service discovery = DNS ya Kubernetes services",
+      "Circuit breaker = failing service pe calls stop karo",
+      "Modular monolith → extract microservices when needed",
+    ],
+    revision: [
+      "Microservices = independent deploy, scale, fail",
+      "Sync (HTTP) = simple, tight coupling",
+      "Async (Queue) = resilient, loose coupling",
+      "API Gateway = single entry point",
+      "Monolith first → microservices jab actual need ho",
+    ],
+  },
+  {
+    id: "node-best-practices",
+    title: "Best Practices & Clean Architecture",
+    emoji: "✅",
+    category: "Advanced",
+    description: "Project structure, error handling, validation, logging, SOLID principles Node.js mein",
+    sections: [
+      {
+        heading: "Project Structure — Layered Architecture",
+        content: `Clean architecture = separated concerns, testable, maintainable:`,
+        diagram: `src/
+├── controllers/     ← HTTP layer: req/res handle
+│   └── userController.ts
+├── services/        ← Business logic: rules, workflows
+│   └── UserService.ts
+├── repositories/    ← Data layer: DB queries
+│   └── UserRepository.ts
+├── models/          ← Data types, schemas (Prisma/TypeORM)
+│   └── User.ts
+├── middleware/      ← Auth, validation, rate limit
+│   └── authMiddleware.ts
+├── routes/          ← Express routes
+│   └── userRoutes.ts
+├── utils/           ← Helpers, formatters
+├── config/          ← App config, env vars
+└── app.ts           ← Express setup
+
+Rule: Controller → Service → Repository
+Controller business logic nahi jaanta
+Service DB nahi jaanta
+Repository business logic nahi jaanta`,
+      },
+      {
+        heading: "Error Handling & Validation",
+        content: `Production-grade error handling patterns:`,
+        code: `// ─── Custom Error Classes ─────────────────────────
+class AppError extends Error {
+  constructor(
+    public message: string,
+    public statusCode: number = 500,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'AppError';
+  }
+}
+
+class NotFoundError extends AppError {
+  constructor(resource: string) {
+    super(\`\${resource} not found\`, 404, 'NOT_FOUND');
+  }
+}
+
+class ValidationError extends AppError {
+  constructor(public fields: Record<string, string>) {
+    super('Validation failed', 400, 'VALIDATION_ERROR');
+  }
+}
+
+// ─── Async error wrapper ───────────────────────────
+const asyncHandler = (fn) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+
+// Controller mein use karo — no try/catch har jagah!
+router.get('/users/:id', asyncHandler(async (req, res) => {
+  const user = await UserService.findById(req.params.id);
+  if (!user) throw new NotFoundError('User');  // automatic 404!
+  res.json(user);
+}));
+
+// ─── Global Error Handler ─────────────────────────
+app.use((err, req, res, next) => {
+  const statusCode = err instanceof AppError ? err.statusCode : 500;
+  const isDev = process.env.NODE_ENV === 'development';
+
+  res.status(statusCode).json({
+    error: {
+      message: err.message,
+      code: err.code || 'INTERNAL_ERROR',
+      ...(isDev && { stack: err.stack }),  // dev only!
+    }
+  });
+});
+
+// ─── Input Validation — Zod ───────────────────────
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  name: z.string().min(2).max(50),
+  email: z.string().email(),
+  password: z.string().min(8).regex(/[A-Z]/).regex(/[0-9]/),
+  age: z.number().int().min(13).max(120).optional(),
+});
+
+function validateBody(schema) {
+  return (req, res, next) => {
+    const result = schema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: result.error.flatten().fieldErrors,
+      });
+    }
+    req.body = result.data;  // parsed + typed
+    next();
+  };
+}
+
+router.post('/users', validateBody(createUserSchema), createUserHandler);`,
+        language: "typescript",
+        tip: "asyncHandler wrapper se har route mein try/catch nahi likhna padta — error automatically next() mein jaata hai global error handler ke paas.",
+      },
+    ],
+    mcqs: [
+      { q: "Controller layer mein business logic kyun nahi honi chahiye?", options: ["Performance issue", "Testing aur reuse mushkil hogi — service layer mein rakho", "Security issue", "TypeScript requirement"], correct: 1, explain: "Controller = HTTP handling only (req parse, res send). Business logic service mein rakho — test easily (bina HTTP), reuse easily (multiple controllers/queues/CLI se call)." },
+      { q: "asyncHandler wrapper ka benefit kya hai?", options: ["Code faster hai", "Har route mein try/catch nahi likhna — errors auto next() mein jaate hain", "Memory save hoti hai", "TypeScript support"], correct: 1, explain: "asyncHandler = Promise.resolve(fn).catch(next). Async route errors automatically Express error handler mein jaate hain. DRY code — no repeated try/catch in every route." },
+    ],
+    cheatsheet: [
+      "Controller → Service → Repository — layered arch",
+      "class AppError extends Error { statusCode }",
+      "asyncHandler = auto catch + next(err)",
+      "Global error handler = 4 param middleware",
+      "Zod.safeParse = validation with typed result",
+      "NODE_ENV=development mein stack show karo only",
+    ],
+    revision: [
+      "Controller = HTTP only, Service = business logic, Repository = DB",
+      "Custom error classes = structured error responses",
+      "asyncHandler = no try/catch in every route",
+      "Zod = runtime validation + TypeScript types",
+      "Global error handler = centralized error responses",
+    ],
+  },
 ];

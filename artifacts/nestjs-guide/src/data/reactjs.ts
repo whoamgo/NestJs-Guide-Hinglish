@@ -1216,4 +1216,1387 @@ function AddToCart({ product }) {
       "Select only needed state = no unnecessary re-renders",
     ],
   },
+  {
+    id: "react-lifecycle",
+    title: "useEffect Deep Dive & Lifecycle",
+    emoji: "🔄",
+    category: "Core",
+    description: "Component lifecycle, useEffect ke har pattern, cleanup, aur dependency array mastery",
+    sections: [
+      {
+        heading: "useEffect — Lifecycle Mapping",
+        content: `useEffect teen class component lifecycle methods replace karta hai:
+- **componentDidMount** → useEffect(() => {...}, [])
+- **componentDidUpdate** → useEffect(() => {...}, [deps])
+- **componentWillUnmount** → useEffect cleanup function`,
+        diagram: `Class Lifecycle → Hooks Mapping:
+
+componentDidMount    →  useEffect(() => { ... }, [])
+componentDidUpdate   →  useEffect(() => { ... }, [val])
+componentWillUnmount →  useEffect(() => { return () => cleanup() }, [])
+shouldComponentUpdate→  React.memo + useMemo`,
+      },
+      {
+        heading: "useEffect ke Saare Patterns",
+        content: `Har pattern ka alag use case hai:`,
+        code: `import { useState, useEffect, useRef } from 'react';
+
+// ─── Pattern 1: Run once (mount pe) ───────────────
+useEffect(() => {
+  fetchInitialData();
+}, []);  // empty array = run once
+
+// ─── Pattern 2: Dependency pe run karo ────────────
+useEffect(() => {
+  fetchUser(userId);  // userId change hone pe fetch
+}, [userId]);
+
+// ─── Pattern 3: Cleanup (subscriptions, timers) ───
+useEffect(() => {
+  const timer = setInterval(() => setCount(c => c + 1), 1000);
+  return () => clearInterval(timer);  // cleanup!
+}, []);
+
+// ─── Pattern 4: Event listener ────────────────────
+useEffect(() => {
+  const handler = (e) => setKey(e.key);
+  window.addEventListener('keydown', handler);
+  return () => window.removeEventListener('keydown', handler);
+}, []);
+
+// ─── Pattern 5: Async inside useEffect ─────────────
+useEffect(() => {
+  let cancelled = false;  // race condition prevent
+
+  async function load() {
+    const data = await fetchData(id);
+    if (!cancelled) setData(data);  // unmount ke baad setState mat karo
+  }
+
+  load();
+  return () => { cancelled = true; };
+}, [id]);`,
+        language: "tsx",
+        tip: "useEffect direct async nahi ho sakta — inner async function banao ya IIFE use karo. Race conditions ke liye cancelled flag use karo.",
+      },
+      {
+        heading: "useRef — DOM & Mutable Values",
+        content: `useRef do kamon ke liye — DOM access aur re-render trigger kiye bina value store karna.`,
+        code: `function Timer() {
+  const [count, setCount] = useState(0);
+  const timerRef = useRef<NodeJS.Timeout>();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Timer start/stop — ref se interval track karo
+  const start = () => {
+    timerRef.current = setInterval(
+      () => setCount(c => c + 1), 1000
+    );
+  };
+  const stop = () => clearInterval(timerRef.current);
+
+  // DOM focus
+  const focusInput = () => inputRef.current?.focus();
+
+  // Previous value track karo
+  const prevCountRef = useRef(0);
+  useEffect(() => {
+    prevCountRef.current = count;  // render ke baad update
+  });
+  const prevCount = prevCountRef.current;
+
+  return (
+    <div>
+      <p>Now: {count}, Prev: {prevCount}</p>
+      <input ref={inputRef} />
+      <button onClick={focusInput}>Focus</button>
+      <button onClick={start}>Start</button>
+      <button onClick={stop}>Stop</button>
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "useRef change se re-render nahi hota — mutable container hai. useState = UI update chahiye, useRef = just value store karo.",
+      },
+    ],
+    mcqs: [
+      { q: "useEffect(() => {...}, []) kab run hota hai?", options: ["Har render pe", "Sirf mount pe (ek baar)", "Sirf unmount pe", "Kabhi nahi"], correct: 1, explain: "Empty dependency array = component mount pe sirf ek baar run. componentDidMount equivalent." },
+      { q: "useEffect cleanup function kab call hoti hai?", options: ["Before every re-render + unmount", "Sirf unmount pe", "Sirf re-render pe", "Kabhi nahi"], correct: 0, explain: "Cleanup function next effect run se pehle (re-render pe) aur component unmount pe call hoti hai. Previous side effects clean karne ke liye." },
+    ],
+    cheatsheet: [
+      "useEffect(() => {}, []) — once on mount",
+      "useEffect(() => {}, [dep]) — dep change pe",
+      "return () => cleanup() — unmount/re-run se pehle",
+      "useRef<T>(null) — DOM ref ya mutable value",
+      "ref.current — ref value access",
+      "cancelled flag — async race conditions prevent",
+    ],
+    revision: [
+      "Empty deps = mount once, deps = on change, no deps = every render",
+      "Cleanup = subscriptions, timers, listeners hatao",
+      "Async useEffect = inner async function banao",
+      "useRef = re-render trigger nahi karta",
+      "Race conditions = cancelled flag pattern use karo",
+    ],
+  },
+  {
+    id: "react-performance",
+    title: "Performance Optimization",
+    emoji: "⚡",
+    category: "Advanced",
+    description: "React.memo, useMemo, useCallback — unnecessary re-renders rokna aur app fast banana",
+    sections: [
+      {
+        heading: "Re-render Kyun Hota Hai?",
+        content: `React component re-render kab hota hai — yeh samajhna optimization ka pehla step hai:
+1. **State change** — component ka apna state change ho
+2. **Parent re-render** — parent render ho toh child bhi
+3. **Context change** — subscribed context update ho
+4. **Props change** — props ki value/reference change ho`,
+        diagram: `Re-render Chain:
+
+Parent re-renders
+  └── Child A (re-renders — even if props same!)
+      └── Child B (re-renders)
+          └── Child C (re-renders)
+
+With React.memo:
+Parent re-renders
+  └── Child A (SKIPPED — same props)  ← optimization!`,
+      },
+      {
+        heading: "React.memo — Component Memoization",
+        content: `React.memo wraps component — same props pe re-render skip karta hai.`,
+        code: `import { memo, useState } from 'react';
+
+// ─── Without memo — har parent render pe re-renders ──
+function ExpensiveChild({ name, count }: { name: string; count: number }) {
+  console.log('ExpensiveChild rendered!');  // bahut baar aayega
+  return <div>{name}: {count}</div>;
+}
+
+// ─── With memo — only when props actually change ───
+const MemoizedChild = memo(function ExpensiveChild({
+  name, count
+}: { name: string; count: number }) {
+  console.log('MemoizedChild rendered!');  // sirf tab jab name/count change ho
+  return <div>{name}: {count}</div>;
+});
+
+// Custom comparison function (deep equality, etc.)
+const MemoizedWithCustom = memo(UserCard, (prevProps, nextProps) => {
+  return prevProps.user.id === nextProps.user.id;  // true = skip re-render
+});
+
+function Parent() {
+  const [counter, setCounter] = useState(0);
+  const [name] = useState('Alice');
+
+  return (
+    <div>
+      <button onClick={() => setCounter(c => c + 1)}>
+        Click: {counter}
+      </button>
+      {/* counter change pe MemoizedChild re-render nahi hoga */}
+      <MemoizedChild name={name} count={42} />
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "React.memo sirf props comparison karta hai (shallow). Objects/arrays ke liye useMemo se stable reference do.",
+      },
+      {
+        heading: "useMemo & useCallback",
+        content: `useMemo = expensive value memoize karo. useCallback = function reference stable rakho.`,
+        code: `import { useState, useMemo, useCallback, memo } from 'react';
+
+function ProductList({ products, onSelect }) {
+  // ─── useMemo: expensive computation memoize ───────
+  const sortedProducts = useMemo(() => {
+    console.log('Sorting...');  // sirf products change pe
+    return [...products].sort((a, b) => a.price - b.price);
+  }, [products]);  // products change hone pe recalculate
+
+  const total = useMemo(
+    () => products.reduce((sum, p) => sum + p.price, 0),
+    [products]
+  );
+
+  return (
+    <div>
+      <p>Total: ₹{total}</p>
+      {sortedProducts.map(p => (
+        <ProductCard key={p.id} product={p} onSelect={onSelect} />
+      ))}
+    </div>
+  );
+}
+
+function Parent() {
+  const [count, setCount] = useState(0);
+  const [products] = useState([...]);
+
+  // ─── useCallback: stable function reference ────────
+  // Without: har render pe naya function → ProductCard re-renders
+  // With: same reference → ProductCard memo works!
+  const handleSelect = useCallback((id: number) => {
+    console.log('Selected:', id);
+    // setSelectedId(id);
+  }, []);  // no deps = never changes
+
+  return (
+    <div>
+      <button onClick={() => setCount(c => c + 1)}>{count}</button>
+      <ProductList products={products} onSelect={handleSelect} />
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "Rule of thumb: useMemo = expensive calculations (O(n²)+), useCallback = functions jo memo ke saath pass ho rahi hain. Har jagah mat lagao — premature optimization costly hai!",
+      },
+    ],
+    mcqs: [
+      { q: "React.memo kya karta hai?", options: ["State memoize karta hai", "Same props pe component re-render skip karta hai", "useEffect optimize karta hai", "Bundle size reduce karta hai"], correct: 1, explain: "React.memo wraps component and does shallow props comparison. Same props pe previous render output return karta hai bina re-rendering ke." },
+      { q: "useCallback aur useMemo mein kya fark hai?", options: ["Koi fark nahi", "useCallback function memoize karta hai, useMemo value memoize karta hai", "useMemo faster hai", "useCallback async ke liye hai"], correct: 1, explain: "useCallback(() => fn, deps) = memoized function return karta hai. useMemo(() => value, deps) = memoized value return karta hai. useCallback(fn, deps) === useMemo(() => fn, deps)." },
+    ],
+    cheatsheet: [
+      "memo(Component) — same props pe skip re-render",
+      "useMemo(() => expensive(), [deps]) — value cache",
+      "useCallback(() => fn(), [deps]) — function reference stable",
+      "memo + useCallback = child optimization combo",
+      "React DevTools Profiler — re-renders visualize karo",
+    ],
+    revision: [
+      "Re-render: state/props/context change, parent re-render",
+      "React.memo = shallow props compare, skip if same",
+      "useMemo = expensive computations cache karo",
+      "useCallback = stable function reference for memo children",
+      "Premature optimization mat karo — profile first!",
+    ],
+  },
+  {
+    id: "react-custom-hooks",
+    title: "Custom Hooks",
+    emoji: "🪝",
+    category: "Intermediate",
+    description: "Logic reuse karo custom hooks se — useFetch, useLocalStorage, useDebounce aur more",
+    sections: [
+      {
+        heading: "Custom Hook Kya Hai?",
+        content: `Custom hook = "use" se shuru hone wala function jo React hooks use karta hai. Logic reuse ka best pattern — DRY code!
+
+**Rules:**
+- Naam hamesha "use" se shuru karo: useFetch, useAuth
+- Sirf React functions ke andar call karo
+- Conditionally mat call karo`,
+      },
+      {
+        heading: "useFetch — Data Fetching Hook",
+        content: `API calls ko reusable hook mein encapsulate karo:`,
+        code: `import { useState, useEffect, useCallback } from 'react';
+
+interface FetchState<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  refetch: () => void;
+}
+
+function useFetch<T>(url: string): FetchState<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [trigger, setTrigger] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetch(url)
+      .then(res => {
+        if (!res.ok) throw new Error(\`HTTP \${res.status}\`);
+        return res.json();
+      })
+      .then(json => { if (!cancelled) { setData(json); setLoading(false); } })
+      .catch(err => { if (!cancelled) { setError(err.message); setLoading(false); } });
+
+    return () => { cancelled = true; };
+  }, [url, trigger]);
+
+  const refetch = useCallback(() => setTrigger(t => t + 1), []);
+  return { data, loading, error, refetch };
+}
+
+// Usage — simple!
+function UserProfile({ userId }: { userId: number }) {
+  const { data, loading, error, refetch } = useFetch<User>(
+    \`/api/users/\${userId}\`
+  );
+
+  if (loading) return <Spinner />;
+  if (error) return <Error msg={error} onRetry={refetch} />;
+  return <div>{data?.name}</div>;
+}`,
+        language: "tsx",
+        tip: "Generic type <T> se useFetch kisi bhi data type ke saath kaam karta hai — type-safe aur reusable!",
+      },
+      {
+        heading: "useLocalStorage & useDebounce",
+        content: `Common utility hooks jo har app mein kaam aate hain:`,
+        code: `// ─── useLocalStorage ─────────────────────────────
+function useLocalStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      const item = localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch { return initialValue; }
+  });
+
+  const setValue = (value: T | ((val: T) => T)) => {
+    const valueToStore = value instanceof Function
+      ? value(storedValue) : value;
+    setStoredValue(valueToStore);
+    localStorage.setItem(key, JSON.stringify(valueToStore));
+  };
+
+  return [storedValue, setValue] as const;
+}
+
+// ─── useDebounce — search input ke liye ───────────
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);  // cleanup on value change
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// ─── Usage ────────────────────────────────────────
+function SearchBox() {
+  const [query, setQuery] = useState('');
+  const debouncedQuery = useDebounce(query, 500);  // 500ms wait
+  const { data } = useFetch(\`/api/search?q=\${debouncedQuery}\`);
+
+  const [theme, setTheme] = useLocalStorage('theme', 'light');
+
+  return (
+    <div>
+      <input onChange={e => setQuery(e.target.value)} />
+      <button onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>
+        {theme}
+      </button>
+    </div>
+  );
+}`,
+        language: "tsx",
+      },
+    ],
+    mcqs: [
+      { q: "Custom hook ka naam kis se shuru hona chahiye?", options: ["hook", "use", "custom", "get"], correct: 1, explain: "'use' prefix React ke liye signal hai ki yeh hook hai — rules of hooks apply honge. 'use' se shuru nahi kiya toh React hooks ke rules enforce nahi honge." },
+      { q: "Custom hooks ka main benefit kya hai?", options: ["Performance better hoti hai", "Logic reuse across components — DRY code", "Bundle size chhota hota hai", "TypeScript support milta hai"], correct: 1, explain: "Custom hooks stateful logic extract karte hain components se — same logic multiple components mein reuse ho sakti hai bina code duplication ke." },
+    ],
+    cheatsheet: [
+      "function useMyHook() { ... } — naam 'use' se shuru",
+      "Generic <T> — type-safe reusable hooks",
+      "cancelled flag — async cleanup",
+      "useCallback inside hook — stable references",
+      "useState + useEffect + return = custom hook pattern",
+    ],
+    revision: [
+      "Custom hooks = 'use' se shuru, React hooks use karein",
+      "useFetch = data, loading, error, refetch pattern",
+      "useDebounce = input delay — har keystroke pe API call mat karo",
+      "useLocalStorage = useState + localStorage sync",
+      "Hooks compose hote hain — hooks ke andar hooks use karo",
+    ],
+  },
+  {
+    id: "react-typescript",
+    title: "React with TypeScript",
+    emoji: "🔷",
+    category: "Intermediate",
+    description: "Props typing, generics, event handlers, useState/useRef types — TypeScript React mastery",
+    sections: [
+      {
+        heading: "Component Props Typing",
+        content: `TypeScript React mein props define karne ke patterns:`,
+        code: `import { ReactNode, FC, ComponentPropsWithoutRef } from 'react';
+
+// ─── Interface vs Type — dono kaam karte hain ─────
+interface ButtonProps {
+  label: string;
+  onClick: () => void;
+  variant?: 'primary' | 'secondary' | 'danger';
+  disabled?: boolean;
+  children?: ReactNode;  // JSX content
+}
+
+// FC<Props> ya function(props: Props) — dono ok hain
+// FC avoid karo React 18 mein — explicit typing better hai
+function Button({ label, onClick, variant = 'primary', disabled, children }: ButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={\`btn btn-\${variant}\`}
+    >
+      {children ?? label}
+    </button>
+  );
+}
+
+// ─── HTML element extend karo ─────────────────────
+interface InputProps extends ComponentPropsWithoutRef<'input'> {
+  label: string;
+  error?: string;
+}
+// Ab sare HTML input attributes automatically milenge!
+function Input({ label, error, ...rest }: InputProps) {
+  return (
+    <div>
+      <label>{label}</label>
+      <input {...rest} />
+      {error && <span className="error">{error}</span>}
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "ComponentPropsWithoutRef<'input'> se native HTML attributes inherit karo — sab HTML props automatically type-safe ho jaate hain.",
+      },
+      {
+        heading: "Hooks aur Events Typing",
+        content: `useState, useRef, event handlers — sab typed:`,
+        code: `import { useState, useRef, useEffect } from 'react';
+
+// ─── useState typing ─────────────────────────────
+const [count, setCount] = useState<number>(0);
+const [user, setUser] = useState<User | null>(null);
+const [items, setItems] = useState<string[]>([]);
+
+// ─── useRef typing ───────────────────────────────
+const inputRef = useRef<HTMLInputElement>(null);
+const timerRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+// ─── Event Handlers ──────────────────────────────
+// onClick
+const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+  e.preventDefault();
+};
+
+// onChange input
+const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setQuery(e.target.value);
+};
+
+// onSubmit
+const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  const formData = new FormData(e.currentTarget);
+};
+
+// ─── Generic Component ────────────────────────────
+interface ListProps<T> {
+  items: T[];
+  renderItem: (item: T) => ReactNode;
+  keyExtractor: (item: T) => string;
+}
+
+function List<T>({ items, renderItem, keyExtractor }: ListProps<T>) {
+  return (
+    <ul>
+      {items.map(item => (
+        <li key={keyExtractor(item)}>{renderItem(item)}</li>
+      ))}
+    </ul>
+  );
+}
+
+// Usage — fully type-safe
+<List
+  items={users}
+  keyExtractor={u => u.id.toString()}
+  renderItem={u => <span>{u.name}</span>}
+/>`,
+        language: "tsx",
+      },
+    ],
+    mcqs: [
+      { q: "ReactNode aur ReactElement mein kya fark hai?", options: ["Koi fark nahi", "ReactNode = string/number/null/JSX sab kuch, ReactElement = sirf JSX", "ReactElement broader hai", "Dono same hain"], correct: 1, explain: "ReactNode = ReactElement | string | number | boolean | null | undefined — kuch bhi jo render ho sakta hai. ReactElement = sirf JSX element ({type, props, key}). children prop ke liye ReactNode use karo." },
+      { q: "ComponentPropsWithoutRef<'input'> kya karta hai?", options: ["Input banata hai", "All native HTML input attributes type mein include karta hai", "Event handlers add karta hai", "CSS classes add karta hai"], correct: 1, explain: "ComponentPropsWithoutRef<'button'/'input'/etc.> native HTML element ke saare props extract karta hai — aap apne custom props extend kar sakte ho without repeating all HTML attributes." },
+    ],
+    cheatsheet: [
+      "interface Props { name: string; age?: number }",
+      "function Comp({ name }: Props) — destructured",
+      "useState<Type>(initial) — typed state",
+      "useRef<HTMLInputElement>(null) — typed ref",
+      "React.ChangeEvent<HTMLInputElement> — input event",
+      "React.MouseEvent<HTMLButtonElement> — click event",
+      "ReactNode — children prop type",
+      "ComponentPropsWithoutRef<'button'> — extend HTML element",
+    ],
+    revision: [
+      "Interface ya type dono kaam karte hain props ke liye",
+      "ReactNode = kuch bhi renderable (string, JSX, null)",
+      "Generic components <T> = type-safe reusable components",
+      "Events: ChangeEvent, MouseEvent, FormEvent — generics mein element type do",
+      "ComponentPropsWithoutRef se HTML attributes extend karo",
+    ],
+  },
+  {
+    id: "react-patterns",
+    title: "Design Patterns",
+    emoji: "🧩",
+    category: "Advanced",
+    description: "Compound Components, Render Props, HOC, aur Composition patterns",
+    sections: [
+      {
+        heading: "Compound Components Pattern",
+        content: `Compound components = related components jo saath kaam karte hain, state internally share karke. Jaise HTML <select> + <option>.`,
+        code: `import { createContext, useContext, useState, ReactNode } from 'react';
+
+// ─── Compound Components — Tabs example ──────────
+interface TabsContextType {
+  activeTab: string;
+  setActiveTab: (id: string) => void;
+}
+const TabsContext = createContext<TabsContextType | null>(null);
+
+function Tabs({ children, defaultTab }: { children: ReactNode; defaultTab: string }) {
+  const [activeTab, setActiveTab] = useState(defaultTab);
+  return (
+    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+      <div className="tabs">{children}</div>
+    </TabsContext.Provider>
+  );
+}
+
+function TabList({ children }: { children: ReactNode }) {
+  return <div className="tab-list">{children}</div>;
+}
+
+function Tab({ id, children }: { id: string; children: ReactNode }) {
+  const ctx = useContext(TabsContext)!;
+  return (
+    <button
+      className={ctx.activeTab === id ? 'active' : ''}
+      onClick={() => ctx.setActiveTab(id)}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TabPanel({ id, children }: { id: string; children: ReactNode }) {
+  const { activeTab } = useContext(TabsContext)!;
+  return activeTab === id ? <div>{children}</div> : null;
+}
+
+// Attach as static properties (optional but common)
+Tabs.List = TabList;
+Tabs.Tab = Tab;
+Tabs.Panel = TabPanel;
+
+// ─── Clean Usage! ─────────────────────────────────
+function App() {
+  return (
+    <Tabs defaultTab="home">
+      <Tabs.List>
+        <Tabs.Tab id="home">Home</Tabs.Tab>
+        <Tabs.Tab id="profile">Profile</Tabs.Tab>
+      </Tabs.List>
+      <Tabs.Panel id="home"><HomeContent /></Tabs.Panel>
+      <Tabs.Panel id="profile"><ProfileContent /></Tabs.Panel>
+    </Tabs>
+  );
+}`,
+        language: "tsx",
+        tip: "Compound components internal state share karte hain Context ke through — consumer ko state manage nahi karna padta.",
+      },
+      {
+        heading: "Higher-Order Components (HOC) & Render Props",
+        content: `HOC = component leta hai, enhanced component return karta hai. Render Props = function as prop pattern.`,
+        code: `// ─── HOC Pattern ─────────────────────────────────
+function withAuth<P extends object>(Component: React.ComponentType<P>) {
+  return function AuthenticatedComponent(props: P) {
+    const { user, loading } = useAuth();
+    if (loading) return <Spinner />;
+    if (!user) return <Navigate to="/login" />;
+    return <Component {...props} />;
+  };
+}
+
+// Usage
+const ProtectedDashboard = withAuth(Dashboard);
+
+// ─── Render Props Pattern ─────────────────────────
+function MouseTracker({
+  render
+}: {
+  render: (pos: { x: number; y: number }) => ReactNode
+}) {
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  return (
+    <div onMouseMove={e => setPos({ x: e.clientX, y: e.clientY })}>
+      {render(pos)}  {/* consumer decides what to render */}
+    </div>
+  );
+}
+
+// Usage
+<MouseTracker render={({ x, y }) => (
+  <p>Mouse: {x}, {y}</p>
+)} />
+
+// Modern alternative — Custom Hook (simpler!)
+function useMousePosition() {
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    const handler = (e: MouseEvent) => setPos({ x: e.clientX, y: e.clientY });
+    window.addEventListener('mousemove', handler);
+    return () => window.removeEventListener('mousemove', handler);
+  }, []);
+  return pos;
+}`,
+        language: "tsx",
+        tip: "Modern React mein Custom Hooks > Render Props > HOC. HOC aaj bhi useful hai for cross-cutting concerns (auth, logging). Render Props component rendering flexibility deta hai.",
+      },
+    ],
+    mcqs: [
+      { q: "Compound Components pattern ka main benefit kya hai?", options: ["Better performance", "Internal state share — consumer ko state manage nahi karna", "Less code", "Better TypeScript support"], correct: 1, explain: "Compound components Context ke through internal state share karte hain. User ko low-level state management nahi karna padta — bas components compose karo." },
+      { q: "Modern React mein HOC ko mostly kis se replace kiya gaya?", options: ["Render Props se", "Class Components se", "Custom Hooks se", "Context API se"], correct: 2, explain: "Custom Hooks HOC aur Render Props dono ko mostly replace kar dete hain — simpler, composable, no wrapper hell. HOC abhi bhi auth/logging jaise cross-cutting concerns mein useful hai." },
+    ],
+    cheatsheet: [
+      "Compound: Context + sub-components sharing state",
+      "HOC: function(Component) => EnhancedComponent",
+      "Render Props: render={(data) => <JSX />}",
+      "Custom Hooks > Render Props > HOC (modern preference)",
+      "withAuth(Component) = HOC for route protection",
+    ],
+    revision: [
+      "Compound = related components internally share state via Context",
+      "HOC = component enhance karo — auth, logging, analytics",
+      "Render Props = rendering control consumer ko do",
+      "Custom Hooks = modern way to share stateful logic",
+      "Composition over inheritance — React ka core philosophy",
+    ],
+  },
+  {
+    id: "react-suspense",
+    title: "Suspense, Error Boundaries & Portals",
+    emoji: "🌀",
+    category: "Advanced",
+    description: "React.Suspense, Error Boundaries, Portals, aur lazy loading",
+    sections: [
+      {
+        heading: "React.lazy & Suspense — Code Splitting",
+        content: `Lazy loading = component pehle load mat karo — pehli baar use hone par fetch karo. Bundle size chhoti hoti hai!`,
+        code: `import { lazy, Suspense } from 'react';
+
+// ─── Lazy Import ───────────────────────────────────
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Profile = lazy(() => import('./pages/Profile'));
+
+// ─── Suspense Boundary ────────────────────────────
+function App() {
+  return (
+    <Router>
+      <Suspense fallback={<PageLoader />}>  {/* loading UI */}
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/profile" element={<Profile />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
+}
+
+// ─── Nested Suspense ──────────────────────────────
+function ProfilePage() {
+  return (
+    <div>
+      <ProfileHeader />  {/* eager loaded */}
+      <Suspense fallback={<Skeleton />}>
+        <ProfilePosts />   {/* lazy — posts load hone tak skeleton */}
+      </Suspense>
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "Route-level lazy loading = biggest bundle size win. Har route apni chunk hogi — initial load fast!",
+      },
+      {
+        heading: "Error Boundaries",
+        content: `Error Boundaries JavaScript errors catch karte hain component tree mein — class component hai (hooks nahi).`,
+        code: `import { Component, ReactNode, ErrorInfo } from 'react';
+
+interface Props { children: ReactNode; fallback?: ReactNode; }
+interface State { hasError: boolean; error?: Error; }
+
+class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('Error caught:', error, info.componentStack);
+    // Sentry/monitoring pe bhejo
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback ?? (
+        <div className="error-ui">
+          <h2>Kuch galat ho gaya!</h2>
+          <button onClick={() => this.setState({ hasError: false })}>
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ─── Portals — render outside root div ────────────
+import { createPortal } from 'react-dom';
+
+function Modal({ isOpen, children, onClose }) {
+  if (!isOpen) return null;
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>,
+    document.body  // body mein render hoga, not inside component tree
+  );
+}`,
+        language: "tsx",
+        tip: "Portals modals, tooltips, dropdowns ke liye perfect hain — CSS z-index aur overflow issues automatically solve ho jaate hain kyunki DOM mein body ke andar render hota hai.",
+      },
+    ],
+    mcqs: [
+      { q: "React.lazy kab use karte hain?", options: ["Performance optimize karne ke liye hamesha", "Route-level code splitting — initial bundle size chhoti karo", "Testing ke liye", "SSR ke liye"], correct: 1, explain: "React.lazy + Suspense = code splitting. Har lazy import alag chunk banta hai — sirf tab load hota hai jab chahiye. Routes ke liye most effective." },
+      { q: "Error Boundary class component kyun hai?", options: ["Hooks se fast hai", "getDerivedStateFromError aur componentDidCatch hooks mein available nahi hain", "TypeScript support", "Performance"], correct: 1, explain: "Error boundaries ke liye required lifecycle methods (getDerivedStateFromError, componentDidCatch) React hooks mein equivalent nahi hain abhi tak. Class component rakhna padta hai." },
+    ],
+    cheatsheet: [
+      "lazy(() => import('./Component')) — dynamic import",
+      "<Suspense fallback={<Loader />}> — loading UI",
+      "ErrorBoundary class component — errors catch karo",
+      "getDerivedStateFromError — error state set karo",
+      "createPortal(jsx, document.body) — DOM mein bahar render",
+    ],
+    revision: [
+      "React.lazy = dynamic import, Suspense = loading fallback",
+      "Route-level lazy loading = fastest initial load",
+      "Error Boundary = crash se UI protect karo",
+      "Portals = DOM hierarchy se bahar render (modals)",
+      "Nested Suspense = different loading states per section",
+    ],
+  },
+  {
+    id: "react-query",
+    title: "Data Fetching — TanStack Query",
+    emoji: "📡",
+    category: "Advanced",
+    description: "TanStack Query (React Query) se server state manage karo — caching, background refresh, mutations",
+    sections: [
+      {
+        heading: "Server State vs Client State",
+        content: `**Client State** = UI state (modal open, form values, theme) → useState/Zustand
+**Server State** = server se data (users, products) → TanStack Query
+
+Server state mein challenges:
+- Caching (baar baar API call mat karo)
+- Background refetching (stale data update karo)
+- Loading/error states har jagah
+- Optimistic updates`,
+      },
+      {
+        heading: "useQuery — Data Fetch Karo",
+        content: `TanStack Query setup aur useQuery hook:`,
+        code: `// ─── Setup ────────────────────────────────────────
+import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,  // 5 min stale
+      retry: 2,
+    },
+  },
+});
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <MyApp />
+    </QueryClientProvider>
+  );
+}
+
+// ─── useQuery ─────────────────────────────────────
+function UserList() {
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['users'],  // cache key — unique identifier
+    queryFn: () => fetch('/api/users').then(r => r.json()),
+    staleTime: 60_000,    // 1 min fresh maan lo
+    gcTime: 5 * 60_000,  // 5 min cache mein rakho
+  });
+
+  if (isLoading) return <Spinner />;
+  if (isError) return <Error msg={error.message} />;
+  return <ul>{data.map(u => <li key={u.id}>{u.name}</li>)}</ul>;
+}
+
+// Dynamic query (id pe depend kare)
+function UserDetail({ userId }: { userId: number }) {
+  const { data: user } = useQuery({
+    queryKey: ['users', userId],  // userId change = new cache entry
+    queryFn: () => fetchUser(userId),
+    enabled: !!userId,  // userId ho tabhi fetch karo
+  });
+  return <div>{user?.name}</div>;
+}`,
+        language: "tsx",
+        tip: "queryKey = cache ka address. Same key pe koi bhi component useQuery karega toh cached data milega — no duplicate API calls!",
+      },
+      {
+        heading: "useMutation — Data Update Karo",
+        content: `Create/update/delete operations ke liye useMutation:`,
+        code: `function CreateUser() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: (newUser: { name: string; email: string }) =>
+      fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser),
+      }).then(r => r.json()),
+
+    // Success pe users list invalidate karo → auto refetch
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+
+    // Optimistic update pattern
+    onMutate: async (newUser) => {
+      await queryClient.cancelQueries({ queryKey: ['users'] });
+      const previous = queryClient.getQueryData(['users']);
+      queryClient.setQueryData(['users'], (old: User[]) => [
+        ...old, { ...newUser, id: Date.now() }  // temp id
+      ]);
+      return { previous };  // rollback ke liye
+    },
+    onError: (err, newUser, context) => {
+      queryClient.setQueryData(['users'], context?.previous);  // rollback!
+    },
+  });
+
+  return (
+    <form onSubmit={e => {
+      e.preventDefault();
+      mutation.mutate({ name: 'Alice', email: 'alice@test.com' });
+    }}>
+      <button disabled={mutation.isPending}>
+        {mutation.isPending ? 'Creating...' : 'Create User'}
+      </button>
+    </form>
+  );
+}`,
+        language: "tsx",
+      },
+    ],
+    mcqs: [
+      { q: "TanStack Query ka main benefit kya hai?", options: ["TypeScript support", "Server state management — caching, background sync, loading/error states automatic", "Bundle size chhoti", "CSS management"], correct: 1, explain: "TanStack Query server state (API data) ke complex problems solve karta hai — caching, deduplication, background refetching, stale-while-revalidate. Manual useEffect + useState se much better." },
+      { q: "queryKey kya karta hai?", options: ["API endpoint define karta hai", "Cache identifier — same key = same cached data", "Authentication handle karta hai", "Error handling"], correct: 1, explain: "queryKey = cache key. ['users'] se start hokar ['users', 1] tak — hierarchical. invalidateQueries(['users']) = sab 'users' queries invalidate. Component mount pe same key = cache se data, no re-fetch." },
+    ],
+    cheatsheet: [
+      "QueryClientProvider + QueryClient — setup",
+      "useQuery({ queryKey, queryFn }) — data fetch",
+      "queryKey: ['resource', id] — dynamic cache key",
+      "enabled: !!id — conditional fetch",
+      "useMutation({ mutationFn, onSuccess }) — create/update",
+      "queryClient.invalidateQueries(['key']) — refetch trigger",
+      "staleTime = fresh data kitni der, gcTime = cache kitni der",
+    ],
+    revision: [
+      "Server state ≠ Client state — TanStack Query server ke liye",
+      "queryKey = cache address, same key = shared cache",
+      "useQuery = fetch + cache + loading/error automatic",
+      "useMutation = POST/PUT/DELETE + invalidate on success",
+      "Optimistic update = UI pehle update, API ke baad confirm/rollback",
+    ],
+  },
+  {
+    id: "react-testing",
+    title: "Testing — Jest & React Testing Library",
+    emoji: "🧪",
+    category: "Advanced",
+    description: "Unit tests, integration tests, mocking — RTL philosophy aur practical patterns",
+    sections: [
+      {
+        heading: "Testing Philosophy — RTL Way",
+        content: `React Testing Library philosophy: **Test your app the way users use it** — not implementation details.
+
+❌ **Avoid:** Testing component state, refs, internal methods
+✅ **Test:** What user sees (text, buttons, inputs), behavior (click → result)
+
+**Selectors priority (best to worst):**
+1. getByRole (accessibility-first)
+2. getByLabelText (forms)
+3. getByText (visible text)
+4. getByTestId (last resort)`,
+      },
+      {
+        heading: "Component Testing — Practical Examples",
+        content: `Practical testing patterns:`,
+        code: `import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+
+// ─── Simple Component Test ─────────────────────────
+describe('Button', () => {
+  it('click pe onClick call ho', async () => {
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick}>Click Me</Button>);
+
+    await userEvent.click(screen.getByRole('button', { name: /click me/i }));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('disabled hone pe click work na kare', async () => {
+    const handleClick = jest.fn();
+    render(<Button onClick={handleClick} disabled>Disabled</Button>);
+    await userEvent.click(screen.getByRole('button'));
+    expect(handleClick).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Async — API Call Test ─────────────────────────
+describe('UserList', () => {
+  it('users fetch karke display kare', async () => {
+    // API mock karo
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { id: 1, name: 'Alice' },
+        { id: 2, name: 'Bob' },
+      ],
+    });
+
+    render(<UserList />);
+
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByText('Bob')).toBeInTheDocument();
+    });
+  });
+});
+
+// ─── Form Test ────────────────────────────────────
+it('form submit pe correct data bheje', async () => {
+  const onSubmit = jest.fn();
+  render(<LoginForm onSubmit={onSubmit} />);
+
+  await userEvent.type(screen.getByLabelText(/email/i), 'test@test.com');
+  await userEvent.type(screen.getByLabelText(/password/i), 'secret123');
+  await userEvent.click(screen.getByRole('button', { name: /login/i }));
+
+  expect(onSubmit).toHaveBeenCalledWith({
+    email: 'test@test.com',
+    password: 'secret123',
+  });
+});`,
+        language: "tsx",
+        tip: "userEvent > fireEvent — userEvent real browser events simulate karta hai (pointer events, focus, etc.). More realistic testing.",
+      },
+    ],
+    mcqs: [
+      { q: "RTL mein best selector kaun sa hai?", options: ["getByTestId", "getByClassName", "getByRole", "getByRef"], correct: 2, explain: "getByRole accessibility-first hai — screenreader jaise dhundho. Semantic HTML force karta hai. getByTestId last resort — test IDs add karne padte hain markup mein." },
+      { q: "waitFor() kab use karte hain?", options: ["Sync operations ke liye", "Async operations — API calls, state updates ke liye", "Error testing ke liye", "Mock ke liye"], correct: 1, explain: "waitFor async operations complete hone tak wait karta hai. API calls, setTimeout, promises ke baad DOM updates check karne ke liye use karo." },
+    ],
+    cheatsheet: [
+      "render(<Component />) — component mount",
+      "screen.getByRole('button', {name: /text/i}) — selector",
+      "await userEvent.click(element) — click simulate",
+      "await userEvent.type(input, 'text') — typing simulate",
+      "jest.fn() — mock function",
+      "waitFor(() => expect(...)) — async assertions",
+      "jest.mock('./api') — module mock",
+    ],
+    revision: [
+      "Test user behavior, not implementation details",
+      "getByRole > getByText > getByTestId (selector priority)",
+      "userEvent = realistic events, fireEvent = low-level",
+      "jest.fn() = mock functions, mockResolvedValue = async mock",
+      "waitFor = async DOM updates ka wait karo",
+    ],
+  },
+  {
+    id: "react-styling",
+    title: "Styling — Tailwind, CSS Modules & Animations",
+    emoji: "🎨",
+    category: "Intermediate",
+    description: "Tailwind CSS, CSS Modules, conditional classes, aur Framer Motion basics",
+    sections: [
+      {
+        heading: "Tailwind CSS in React",
+        content: `Tailwind = utility-first CSS — classes directly HTML mein. Fast prototyping, consistent design system.`,
+        code: `// ─── Basic Tailwind ───────────────────────────────
+function Card({ title, desc, featured }: CardProps) {
+  return (
+    <div className="rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow">
+      <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+      <p className="mt-2 text-gray-600">{desc}</p>
+    </div>
+  );
+}
+
+// ─── Conditional Classes — clsx/cn utility ─────────
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+// cn = clsx + tailwind-merge (conflicts resolve karta hai)
+const cn = (...inputs) => twMerge(clsx(inputs));
+
+function Button({ variant, size, className, ...props }) {
+  return (
+    <button
+      className={cn(
+        "rounded-lg font-medium transition-colors",
+        // variant classes
+        variant === 'primary' && "bg-blue-600 text-white hover:bg-blue-700",
+        variant === 'secondary' && "bg-gray-100 text-gray-900 hover:bg-gray-200",
+        variant === 'danger' && "bg-red-600 text-white hover:bg-red-700",
+        // size classes
+        size === 'sm' && "px-3 py-1.5 text-sm",
+        size === 'md' && "px-4 py-2 text-base",
+        size === 'lg' && "px-6 py-3 text-lg",
+        className  // caller ki custom classes override kar sakti hain
+      )}
+      {...props}
+    />
+  );
+}
+
+// ─── CSS Modules (scoped CSS) ──────────────────────
+// Button.module.css — class names auto-scoped hote hain
+import styles from './Button.module.css';
+
+function ButtonCSS({ children }) {
+  return <button className={styles.button}>{children}</button>;
+}`,
+        language: "tsx",
+        tip: "clsx + tailwind-merge = best combo. clsx conditional classes handle karta hai, twMerge conflicting Tailwind classes resolve karta hai (e.g., p-2 aur p-4 dono ho toh p-4 wins).",
+      },
+      {
+        heading: "Framer Motion — Animations",
+        content: `Framer Motion = production-grade animations React ke liye.`,
+        code: `import { motion, AnimatePresence } from 'framer-motion';
+
+// ─── Basic Animation ───────────────────────────────
+<motion.div
+  initial={{ opacity: 0, y: -20 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: 20 }}
+  transition={{ duration: 0.3 }}
+>
+  Content
+</motion.div>
+
+// ─── AnimatePresence — mount/unmount animations ────
+function Notification({ message, visible }) {
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div
+          key="notification"
+          initial={{ opacity: 0, x: 100 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 100 }}
+          className="notification"
+        >
+          {message}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ─── List animations ─────────────────────────────
+const container = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+};
+const item = {
+  hidden: { opacity: 0, x: -20 },
+  show: { opacity: 1, x: 0 }
+};
+
+<motion.ul variants={container} initial="hidden" animate="show">
+  {items.map(i => (
+    <motion.li key={i.id} variants={item}>{i.name}</motion.li>
+  ))}
+</motion.ul>`,
+        language: "tsx",
+      },
+    ],
+    mcqs: [
+      { q: "tailwind-merge kyun use karte hain?", options: ["Performance ke liye", "Conflicting Tailwind classes resolve karne ke liye", "Bundle size ke liye", "TypeScript support"], correct: 1, explain: "twMerge conflicting Tailwind classes handle karta hai — agar 'p-2 p-4' do toh p-4 win karta hai. Without merge dono classes apply honge aur CSS specificity issues aate hain." },
+      { q: "AnimatePresence kab zaruri hai?", options: ["Hamesha", "Jab component unmount hone pe animation chahiye (exit animation)", "Mount pe animation ke liye", "Loops ke liye"], correct: 1, explain: "AnimatePresence exit animations enable karta hai. Without it, component unmount hote hi gayab ho jaata hai — exit animation play nahi hoti. Modals, notifications, page transitions ke liye essential." },
+    ],
+    cheatsheet: [
+      "cn(clsx, twMerge) — conditional + merge classes",
+      "styles.className — CSS Modules scoped",
+      "motion.div — animated element",
+      "initial/animate/exit — animation states",
+      "AnimatePresence — unmount animations",
+      "variants + staggerChildren — list animations",
+      "transition={{ duration, ease }} — timing control",
+    ],
+    revision: [
+      "Tailwind = utility classes, fast development, consistent design",
+      "clsx = conditional classes, twMerge = conflict resolution",
+      "CSS Modules = scoped CSS, no global conflicts",
+      "Framer Motion = initial→animate→exit lifecycle",
+      "AnimatePresence = exit animations enable karta hai",
+    ],
+  },
+  {
+    id: "react-nextjs",
+    title: "Next.js Fundamentals",
+    emoji: "▲",
+    category: "Advanced",
+    description: "Next.js App Router, Server Components, SSR vs SSG, routing, aur data fetching",
+    sections: [
+      {
+        heading: "Next.js Kya Hai aur Kyun?",
+        content: `Next.js = React framework with:
+- **File-based routing** — folder = route
+- **Server Components** — server pe render, client ko HTML
+- **SSR/SSG** — SEO friendly
+- **Image optimization, API routes, middleware** — batteries included
+
+**React vs Next.js:**
+- React: SPA — client pe render, SEO weak
+- Next.js: Server side rendering — fast first load, SEO strong`,
+        diagram: `Next.js App Router Structure:
+
+app/
+  layout.tsx          ← root layout (always renders)
+  page.tsx            ← / route
+  about/
+    page.tsx          ← /about
+  blog/
+    [slug]/
+      page.tsx        ← /blog/anything (dynamic)
+  api/
+    users/
+      route.ts        ← /api/users (API endpoint)`,
+      },
+      {
+        heading: "Server vs Client Components",
+        content: `App Router mein default = Server Component. 'use client' directive se Client Component banate hain.`,
+        code: `// ─── Server Component (default) ──────────────────
+// app/users/page.tsx
+// - Server pe run hota hai
+// - Database/API directly access kar sakta hai
+// - No useState, useEffect, onClick, browser APIs
+async function UsersPage() {
+  // Server pe directly fetch — no API needed!
+  const users = await db.query('SELECT * FROM users');
+  // Ya external API
+  const data = await fetch('https://api.example.com/users').then(r => r.json());
+
+  return (
+    <div>
+      <h1>Users</h1>
+      {users.map(u => <UserCard key={u.id} user={u} />)}
+    </div>
+  );
+}
+
+// ─── Client Component ─────────────────────────────
+// components/SearchBox.tsx
+'use client';  // ← yeh directive client component banata hai
+
+import { useState } from 'react';
+
+function SearchBox() {
+  const [query, setQuery] = useState('');  // useState OK hai ab
+  return (
+    <input
+      value={query}
+      onChange={e => setQuery(e.target.value)}
+      placeholder="Search..."
+    />
+  );
+}
+
+// ─── Mixed: Server + Client ────────────────────────
+// app/products/page.tsx (Server Component)
+async function ProductsPage() {
+  const products = await fetchProducts();  // server pe
+  return (
+    <div>
+      <SearchBox />       {/* Client Component */}
+      <ProductList products={products} />  {/* Server Component */}
+    </div>
+  );
+}`,
+        language: "tsx",
+        tip: "Server Components tree ke upar rakho, Client Components tree ke neeche (leaves). Client boundary mein sirf interactive parts aane chahiye.",
+      },
+    ],
+    mcqs: [
+      { q: "Next.js App Router mein default component type kya hai?", options: ["Client Component", "Server Component", "Hybrid Component", "Static Component"], correct: 1, explain: "App Router mein components by default Server Components hain. 'use client' directive se Client Component banate hain. Server Components = no React hooks, but direct server access." },
+      { q: "Next.js ko React se kaun sa main advantage hai SEO ke liye?", options: ["Better CSS", "Server-side rendering — initial HTML server pe generate hota hai, crawler readable", "Faster JavaScript", "Better TypeScript"], correct: 1, explain: "React SPA client pe render karta hai — crawler empty HTML dekhta hai, SEO suffer karta hai. Next.js SSR/SSG se server HTML send karta hai — Google properly index kar sakta hai." },
+    ],
+    cheatsheet: [
+      "app/page.tsx — / route",
+      "app/[slug]/page.tsx — dynamic route",
+      "'use client' — Client Component",
+      "async function Page() — Server Component",
+      "fetch() server component mein — direct API call",
+      "app/api/route.ts — API endpoint",
+      "layout.tsx — shared UI wrapper",
+    ],
+    revision: [
+      "Server Components = server pe render, no hooks, direct DB access",
+      "Client Components = 'use client', useState/useEffect OK",
+      "App Router = folder structure = routes",
+      "[slug] folder = dynamic route params",
+      "Server → Client pass karo props se, Client → Server nahi",
+    ],
+  },
+  {
+    id: "react-deployment",
+    title: "Build, Deploy & Production",
+    emoji: "🚀",
+    category: "Advanced",
+    description: "Vite build optimization, environment variables, Vercel/Netlify deploy, performance tips",
+    sections: [
+      {
+        heading: "Production Build & Optimization",
+        content: `Vite se production build karna aur optimize karna:`,
+        code: `// vite.config.ts — production optimization
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    // Code splitting — manual chunks
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],  // vendor chunk alag
+          router: ['react-router-dom'],
+          query: ['@tanstack/react-query'],
+        },
+      },
+    },
+    // Source maps production mein (optional, error tracking ke liye)
+    sourcemap: false,
+    // Chunk size warning
+    chunkSizeWarningLimit: 500,  // KB
+  },
+});
+
+// ─── Environment Variables ─────────────────────────
+// .env files:
+// .env              — hamesha
+// .env.development  — dev only
+// .env.production   — prod only
+
+// VITE_ prefix zaruri hai browser mein expose ke liye!
+// VITE_API_URL=https://api.myapp.com
+// VITE_STRIPE_KEY=pk_live_...
+
+// Code mein:
+const apiUrl = import.meta.env.VITE_API_URL;
+const isProd = import.meta.env.PROD;  // built-in
+
+// ─── Build Commands ───────────────────────────────
+// npm run build    → dist/ folder
+// npm run preview  → dist/ ko locally serve karo
+// npm run lint     → code quality check`,
+        language: "typescript",
+        tip: "manualChunks se vendor libraries alag chunk mein — user ko baar baar vendor JS download nahi karna padta (cached rehta hai).",
+      },
+      {
+        heading: "Vercel/Netlify Deploy",
+        content: `React app ko production mein deploy karna:`,
+        code: `# ─── Vercel (recommended for Next.js + React) ────────
+# 1. Install Vercel CLI
+npm i -g vercel
+
+# 2. Project connect karo
+vercel login
+vercel  # guided setup
+
+# 3. Auto-deploy: GitHub se connect karo Vercel dashboard mein
+# Every push to main = auto deploy!
+
+# ─── Netlify ──────────────────────────────────────
+# netlify.toml — config file
+[build]
+  command = "npm run build"
+  publish = "dist"    # Vite output folder
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+# ↑ SPA ke liye zaruri — sab routes index.html pe jaayein
+
+# ─── Performance Checklist ────────────────────────
+# 1. Lazy load routes
+# 2. Image optimization (next/image ya lazy loading)
+# 3. Bundle analyze: npx vite-bundle-visualizer
+# 4. Remove unused dependencies
+# 5. Enable gzip/brotli (hosting pe automatic hota hai)
+# 6. CDN ke liye static assets
+
+# ─── Bundle Analysis ──────────────────────────────
+npx vite-bundle-visualizer
+# Interactive treemap — konsa package kitna space le raha hai`,
+        language: "bash",
+        tip: "SPA deploy karte waqt Netlify/Apache mein redirect rule zaruri hai — /* → index.html. Bina iske direct URL navigate karne pe 404 aata hai.",
+      },
+    ],
+    mcqs: [
+      { q: "Vite environment variable VITE_ prefix kyun chahiye?", options: ["Convention hai", "Security — browser bundle mein sirf VITE_ prefix wale variables expose hote hain", "TypeScript requirement", "Build optimization"], correct: 1, explain: "Vite security ke liye sirf VITE_ prefix variables ko client bundle mein include karta hai. Without prefix variables server-side/build-time only rehte hain — accidentally secrets expose nahi hote." },
+      { q: "SPA ke liye /* → /index.html redirect kyun chahiye?", options: ["Performance", "SEO", "User /about pe directly jaaye toh hosting 404 na de — React router handle kare", "Caching"], correct: 2, explain: "React SPA mein routing client-side hai. /about koi physical file nahi hai. Direct navigate pe server 404 dega. Redirect se index.html serve hota hai → React Router URL handle karta hai." },
+    ],
+    cheatsheet: [
+      "npm run build → dist/ production bundle",
+      "VITE_KEY=value → import.meta.env.VITE_KEY",
+      "manualChunks → vendor libraries alag chunk",
+      "netlify.toml → /* redirect to index.html",
+      "vite-bundle-visualizer → bundle size analyze",
+      "vercel → zero-config React/Next deploy",
+    ],
+    revision: [
+      "VITE_ prefix = browser mein expose, without = hidden",
+      ".env.production = production pe auto load",
+      "manualChunks = vendor libraries cache-friendly",
+      "SPA deploy = /* → index.html redirect required",
+      "Bundle analyze karo pehle optimize karo",
+    ],
+  },
 ];

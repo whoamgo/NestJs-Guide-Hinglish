@@ -1170,7 +1170,13 @@ composer dump-autoload
 # Update packages
 composer update
 composer install  # composer.lock se (deployment)`,
-        code2: `<?php
+        language: "bash",
+        tip: "composer install vendor/autoload.php include karo — phir automatically sab classes load hongi. vendor/ folder git mein mat dalo (.gitignore mein add karo).",
+      },
+      {
+        heading: "Autoload Usage",
+        content: `vendor/autoload.php include karo — phir sab namespaced classes automatically load hongi.`,
+        code: `<?php
 // index.php — autoloader include
 require __DIR__ . '/vendor/autoload.php';
 
@@ -1182,8 +1188,6 @@ $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
 $service = new EmailService();`,
-        language: "bash",
-        tip: "composer install vendor/autoload.php include karo — phir automatically sab classes load hongi. vendor/ folder git mein mat dalo (.gitignore mein add karo).",
       },
     ],
     mcqs: [
