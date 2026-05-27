@@ -68,7 +68,7 @@ export const courses: CourseInfo[] = [
     level: "Beginner",
     topics: ["Classes", "Inheritance", "Polymorphism", "SOLID", "Design Patterns"],
     totalChapters: 8,
-    totalInterviews: 36,
+    totalInterviews: 38,
   },
   {
     id: "laravel",
@@ -96,7 +96,7 @@ export const courses: CourseInfo[] = [
     level: "Intermediate",
     topics: ["Modules", "Express.js", "Async/Await", "Streams", "WebSockets", "Redis", "GraphQL", "Microservices", "TypeScript", "Testing"],
     totalChapters: 21,
-    totalInterviews: 37,
+    totalInterviews: 40,
   },
   {
     id: "reactjs",
@@ -110,7 +110,7 @@ export const courses: CourseInfo[] = [
     level: "Intermediate",
     topics: ["JSX", "Hooks", "Performance", "Custom Hooks", "TypeScript", "Patterns", "Suspense", "TanStack Query", "Testing", "Next.js"],
     totalChapters: 21,
-    totalInterviews: 40,
+    totalInterviews: 42,
   },
   {
     id: "api",
