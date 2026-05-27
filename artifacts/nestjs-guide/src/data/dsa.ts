@@ -2990,6 +2990,1173 @@ INTERVIEW FRAMEWORK:
       "Think out loud — interviewers want to see your process",
     ],
   },
+  {
+    id: "dsa-trie",
+    title: "Trie — Prefix Tree",
+    titleEn: "Trie — Prefix Tree",
+    emoji: "🌲",
+    category: "Advanced DS",
+    description: "Trie data structure — word insert/search, prefix matching, autocomplete problems",
+    descriptionEn: "Trie data structure — word insert/search, prefix matching, autocomplete",
+    sections: [
+      {
+        heading: "Trie kya hai? Kab use karte hain?",
+        content: `**Trie (Prefix Tree)** ek tree-based data structure hai jisme strings store karte hain character by character.
+
+**Use cases:**
+- **Autocomplete** — Google search, IDE suggestions
+- **Spell check** — dictionary prefix matching
+- **IP routing** — longest prefix match
+- **Word games** — Boggle, Scrabble valid word check
+
+**Advantages over Hash Map for strings:**
+- Prefix search O(L) — hash map se better for prefixes
+- Common prefix share karte hain — memory efficient
+- Sorted iteration possible (alphabetical order)`,
+        diagram: `
+TRIE EXAMPLE — Words: ["cat", "car", "card", "care", "dog"]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+       root
+      / \\
+     c   d
+     |   |
+     a   o
+    / \\   \\
+   t*  r   g*
+       |
+       *  (car)
+      / \\
+     d*  e*
+    (card)(care)
+
+* = end of word marker
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        code: `class TrieNode:
+    def __init__(self):
+        self.children = {}   # char → TrieNode
+        self.is_end = False  # word end marker
+
+class Trie:
+    def __init__(self):
+        self.root = TrieNode()
+
+    def insert(self, word: str) -> None:
+        """Word insert karo — O(L) L=word length"""
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.is_end = True
+
+    def search(self, word: str) -> bool:
+        """Exact word search — O(L)"""
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                return False
+            node = node.children[char]
+        return node.is_end  # True only if word ends here
+
+    def starts_with(self, prefix: str) -> bool:
+        """Prefix check — O(L)"""
+        node = self.root
+        for char in prefix:
+            if char not in node.children:
+                return False
+            node = node.children[char]
+        return True  # reached end of prefix = exists
+
+    def get_words_with_prefix(self, prefix: str) -> list:
+        """Autocomplete — all words starting with prefix"""
+        node = self.root
+        for char in prefix:
+            if char not in node.children:
+                return []
+            node = node.children[char]
+
+        # DFS from prefix endpoint
+        results = []
+        def dfs(node, current):
+            if node.is_end:
+                results.append(current)
+            for char, child in node.children.items():
+                dfs(child, current + char)
+
+        dfs(node, prefix)
+        return results
+
+# Usage
+trie = Trie()
+for word in ["apple", "app", "application", "apply", "apt", "bat"]:
+    trie.insert(word)
+
+trie.search("app")          # True
+trie.search("ap")           # False (not a full word)
+trie.starts_with("app")     # True
+trie.get_words_with_prefix("app")  # ["app", "apple", "application", "apply"]`,
+        language: "python",
+        tip: "Trie insert/search O(L) hai L = word length. Dictionary mein 1M words bhi hoon, search L characters pe depend karta hai — n pe nahi!",
+      },
+      {
+        heading: "Classic Trie Problems",
+        content: `LeetCode pe ye Trie problems common hain — pattern yaad rakho:`,
+        code: `# PROBLEM 1: Word Search II (LeetCode 212)
+# Grid mein given words dhundo — Trie + DFS
+def find_words(board, words):
+    trie = Trie()
+    for word in words:
+        trie.insert(word)
+
+    rows, cols = len(board), len(board[0])
+    found = set()
+
+    def dfs(node, r, c, path):
+        if node.is_end:
+            found.add(path)
+        if r < 0 or r >= rows or c < 0 or c >= cols:
+            return
+        char = board[r][c]
+        if char not in node.children or char == '#':
+            return
+
+        # Visit
+        board[r][c] = '#'  # mark visited
+        next_node = node.children[char]
+        for dr, dc in [(0,1),(0,-1),(1,0),(-1,0)]:
+            dfs(next_node, r+dr, c+dc, path+char)
+        board[r][c] = char  # unmark
+
+    for r in range(rows):
+        for c in range(cols):
+            dfs(trie.root, r, c, "")
+    return list(found)
+
+# ─────────────────────────────────────
+# PROBLEM 2: Longest Word With All Prefixes
+# Sab prefixes trie mein hoon tabhi word valid hai
+def longest_word(words):
+    trie = Trie()
+    for word in words:
+        trie.insert(word)
+
+    result = ""
+    def dfs(node, current):
+        nonlocal result
+        if len(current) > len(result):
+            result = current
+        for char, child in node.children.items():
+            if child.is_end:  # prefix must be a complete word
+                dfs(child, current + char)
+
+    dfs(trie.root, "")
+    return result
+
+words = ["a", "banana", "app", "appl", "ap", "apply", "apple"]
+print(longest_word(words))  # "apple"
+
+# ─────────────────────────────────────
+# PROBLEM 3: Count Distinct Substrings
+# Suffix Trie approach
+def count_distinct_substrings(s):
+    trie = Trie()
+    n = len(s)
+    for i in range(n):
+        trie.insert(s[i:])  # every suffix insert karo
+
+    # Count all nodes except root = distinct substrings
+    def count_nodes(node):
+        count = 0
+        for child in node.children.values():
+            count += 1 + count_nodes(child)
+        return count
+
+    return count_nodes(trie.root)`,
+        language: "python",
+      },
+    ],
+    sectionsEn: [
+      {
+        heading: "Trie (Prefix Tree) — Theory & Implementation",
+        content: `A **Trie** stores strings by sharing common prefixes. Each node represents a character. Insert/search is O(L) where L = word length — independent of dictionary size!`,
+        code: `class TrieNode:
+    def __init__(self):
+        self.children = {}
+        self.is_end = False
+
+class Trie:
+    def __init__(self): self.root = TrieNode()
+
+    def insert(self, word):
+        node = self.root
+        for c in word:
+            node = node.children.setdefault(c, TrieNode())
+        node.is_end = True
+
+    def search(self, word):
+        node = self.root
+        for c in word:
+            if c not in node.children: return False
+            node = node.children[c]
+        return node.is_end
+
+    def starts_with(self, prefix):
+        node = self.root
+        for c in prefix:
+            if c not in node.children: return False
+            node = node.children[c]
+        return True`,
+        language: "python",
+        tip: "Trie excels at prefix operations — autocomplete, word validation, IP routing. O(L) regardless of vocabulary size.",
+      },
+    ],
+    mcqs: [
+      { q: "Trie mein word search ki time complexity kya hai?", options: ["O(n) n=total words", "O(L) L=word length", "O(log n)", "O(1)"], correct: 1, explain: "Trie mein search L characters traverse karta hai (word length). Total words n kitne bhi hoon, fark nahi padta — O(L).", },
+      { q: "Trie Hash Map se better kab hota hai?", options: ["Single word search mein", "Prefix matching aur autocomplete mein", "Integer keys ke liye", "Hamesha better hota hai"], correct: 1, explain: "Hash map prefix queries efficiently support nahi karta. Trie mein prefix ke baad sab words DFS se milte hain — autocomplete ka natural fit.", },
+    ],
+    mcqsEn: [
+      { q: "What is the time complexity of Trie search?", options: ["O(n) n=total words", "O(L) L=word length", "O(log n)", "O(1)"], correct: 1, explain: "Trie search traverses L characters (word length). Independent of total dictionary size — O(L).", },
+    ],
+    cheatsheet: [
+      "TrieNode: children dict + is_end flag",
+      "insert(word) — O(L), l=len(word)",
+      "search(word) — O(L), check is_end",
+      "starts_with(prefix) — O(L), no is_end check",
+      "Autocomplete = DFS from prefix endpoint",
+      "Word Search II = Trie + grid DFS",
+      "Suffix Trie = every suffix insert",
+    ],
+    cheatsheetEn: [
+      "TrieNode: children = {} + is_end = False",
+      "insert/search/startsWith — all O(L), L = word length",
+      "Autocomplete: DFS from prefix node",
+      "Word Search II: Trie + backtracking DFS on grid",
+    ],
+    revision: [
+      "Trie = prefix tree, characters node-by-node store",
+      "insert/search O(L) — n se independent",
+      "starts_with() = prefix check, is_end check nahi",
+      "Autocomplete = DFS from prefix endpoint",
+      "Use case: autocomplete, spell check, IP routing",
+    ],
+    revisionEn: [
+      "Trie = tree where each path = stored string",
+      "O(L) for insert/search/prefix — independent of n",
+      "is_end marks complete words",
+      "DFS from any node = all words with that prefix",
+    ],
+  },
+  {
+    id: "dsa-union-find",
+    title: "Union-Find (Disjoint Set Union)",
+    titleEn: "Union-Find (Disjoint Set Union)",
+    emoji: "🔗",
+    category: "Advanced DS",
+    description: "DSU — connected components, cycle detection, Kruskal's MST, path compression",
+    descriptionEn: "DSU — connected components, cycle detection, Kruskal's MST, path compression",
+    sections: [
+      {
+        heading: "Union-Find kya hai? Core Operations",
+        content: `**Union-Find (DSU)** ek data structure hai jo **disjoint sets** (alag groups) manage karta hai.
+
+**Core operations:**
+- **find(x)** — x kis group mein hai? (root return karo)
+- **union(x, y)** — x aur y ke groups merge karo
+
+**Use cases:**
+- Connected components in graph
+- Cycle detection (undirected graph)
+- Kruskal's Minimum Spanning Tree
+- Network connectivity
+
+**Optimizations:**
+- **Path Compression** — find pe chain flatten karo → O(α) amortized
+- **Union by Rank/Size** — chhota tree bada mein merge karo`,
+        diagram: `
+UNION-FIND VISUALIZATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Initial: {0} {1} {2} {3} {4}  (5 separate sets)
+parent = [0, 1, 2, 3, 4]
+
+union(0,1):  {0,1} {2} {3} {4}
+parent = [0, 0, 2, 3, 4]   (1's parent = 0)
+
+union(2,3):  {0,1} {2,3} {4}
+parent = [0, 0, 2, 2, 4]
+
+union(0,2):  {0,1,2,3} {4}
+parent = [0, 0, 0, 2, 4]
+
+PATH COMPRESSION (find(3)):
+Before: 3 → 2 → 0(root)
+After:  3 → 0 (direct link to root!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        code: `class UnionFind:
+    def __init__(self, n):
+        self.parent = list(range(n))  # har node apna parent
+        self.rank = [0] * n           # tree height estimate
+        self.size = [1] * n           # group size
+        self.components = n           # distinct components count
+
+    def find(self, x):
+        """Root dhundo with PATH COMPRESSION"""
+        if self.parent[x] != x:
+            # Path compression: directly root se link karo
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x, y):
+        """x aur y ko same set mein merge karo"""
+        root_x = self.find(x)
+        root_y = self.find(y)
+
+        if root_x == root_y:
+            return False  # already same set!
+
+        # Union by rank — chhota under bada
+        if self.rank[root_x] < self.rank[root_y]:
+            root_x, root_y = root_y, root_x
+
+        self.parent[root_y] = root_x  # root_y under root_x
+        self.size[root_x] += self.size[root_y]
+        if self.rank[root_x] == self.rank[root_y]:
+            self.rank[root_x] += 1
+
+        self.components -= 1
+        return True  # merge hua
+
+    def connected(self, x, y):
+        """x aur y same set mein hain?"""
+        return self.find(x) == self.find(y)
+
+    def get_size(self, x):
+        """x ke set ka size"""
+        return self.size[self.find(x)]
+
+# Usage
+uf = UnionFind(5)  # nodes: 0,1,2,3,4
+uf.union(0, 1)     # {0,1} {2} {3} {4}
+uf.union(2, 3)     # {0,1} {2,3} {4}
+uf.connected(0, 1)  # True
+uf.connected(0, 2)  # False
+uf.union(1, 3)      # {0,1,2,3} {4}
+uf.connected(0, 3)  # True (path compressed!)
+print(uf.components)  # 2`,
+        language: "python",
+        tip: "Path compression + union by rank ke saath DSU almost O(1) per operation hai (technically O(α(n)) — inverse Ackermann, practically constant).",
+      },
+      {
+        heading: "DSU Problems — Cycle Detection & Kruskal's MST",
+        code: `# PROBLEM 1: Cycle Detection in Undirected Graph
+def has_cycle(n, edges):
+    uf = UnionFind(n)
+    for u, v in edges:
+        if uf.connected(u, v):
+            return True   # already connected → adding edge = cycle!
+        uf.union(u, v)
+    return False
+
+# Test
+edges = [(0,1), (1,2), (2,0)]  # triangle
+print(has_cycle(3, edges))  # True
+
+# ─────────────────────────────────────
+# PROBLEM 2: Number of Connected Components
+def count_components(n, edges):
+    uf = UnionFind(n)
+    for u, v in edges:
+        uf.union(u, v)
+    return uf.components
+
+# ─────────────────────────────────────
+# PROBLEM 3: Kruskal's Minimum Spanning Tree
+def kruskal_mst(n, edges):
+    """
+    MST = minimum cost edges to connect all nodes
+    Greedy: sort by weight, add edge if it doesn't create cycle
+    """
+    edges.sort(key=lambda e: e[2])  # sort by weight
+    uf = UnionFind(n)
+    mst_edges = []
+    mst_cost = 0
+
+    for u, v, weight in edges:
+        if not uf.connected(u, v):  # won't create cycle?
+            uf.union(u, v)
+            mst_edges.append((u, v, weight))
+            mst_cost += weight
+            if len(mst_edges) == n - 1:  # n-1 edges = spanning tree
+                break
+
+    return mst_cost, mst_edges
+
+# n=4 nodes, edges (u, v, weight)
+edges = [(0,1,10), (0,2,6), (0,3,5), (1,3,15), (2,3,4)]
+cost, tree = kruskal_mst(4, edges)
+print(f"MST cost: {cost}")   # 19 (edges: 2-3, 0-3, 0-1)
+
+# ─────────────────────────────────────
+# PROBLEM 4: Redundant Connection (LeetCode 684)
+def find_redundant_connection(edges):
+    n = len(edges)
+    uf = UnionFind(n + 1)  # 1-indexed
+    for u, v in edges:
+        if not uf.union(u, v):  # already connected = redundant!
+            return [u, v]`,
+        language: "python",
+        content: `DSU se ye classic problems efficiently solve hoti hain:`,
+      },
+    ],
+    sectionsEn: [
+      {
+        heading: "Union-Find — Core Concept",
+        content: `Union-Find manages disjoint sets. find() returns group root, union() merges two groups. With path compression + union by rank: near O(1) per operation.`,
+        code: `class UnionFind:
+    def __init__(self, n):
+        self.parent = list(range(n))
+        self.rank = [0] * n
+
+    def find(self, x):  # path compression
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x, y):  # union by rank
+        rx, ry = self.find(x), self.find(y)
+        if rx == ry: return False
+        if self.rank[rx] < self.rank[ry]: rx, ry = ry, rx
+        self.parent[ry] = rx
+        if self.rank[rx] == self.rank[ry]: self.rank[rx] += 1
+        return True
+
+    def connected(self, x, y):
+        return self.find(x) == self.find(y)`,
+        language: "python",
+        tip: "DSU is ideal for: connected components, cycle detection (undirected), and Kruskal's MST. O(α(n)) ≈ O(1).",
+      },
+    ],
+    mcqs: [
+      { q: "Path compression DSU mein kya karta hai?", options: ["Graph ke sab edges compress karta hai", "find() ke dauraan nodes ko directly root se connect karta hai", "Rank reduce karta hai", "Memory save karta hai sirf"], correct: 1, explain: "Path compression: find(x) call pe, x se root tak sab nodes ko directly root se connect karo. Future find() calls O(1) ho jaate hain.", },
+      { q: "DSU se cycle detection kaise hoti hai undirected graph mein?", options: ["DFS use karta hai", "BFS use karta hai", "Edge (u,v) add karne se pehle check karo — agar same root hain toh cycle hai", "Topological sort use karta hai"], correct: 2, explain: "Agar edge (u, v) add karte waqt u aur v already same component mein hain (same root), toh ye edge cycle banati hai.", },
+    ],
+    mcqsEn: [
+      { q: "When does adding an edge create a cycle in Union-Find?", options: ["When the edge connects two different components", "When both nodes already have the same root (same component)", "When the edge weight is maximum", "When rank increases"], correct: 1, explain: "If find(u) == find(v) before union, both nodes are already connected — adding another edge between them creates a cycle.", },
+    ],
+    cheatsheet: [
+      "parent = list(range(n)) — init: each node = own parent",
+      "find(x) with path compression — root dhundo",
+      "union(x, y) with rank — merge sets",
+      "connected(x, y) — find(x) == find(y)",
+      "Cycle detection: union returns False = already connected",
+      "Kruskal's: sort edges, union if not connected",
+      "components counter — union successful hone pe decrease",
+    ],
+    cheatsheetEn: [
+      "Initialize: parent[i] = i, rank[i] = 0",
+      "find(x): path compression to root",
+      "union(x,y): merge by rank, return False if already connected",
+      "Cycle detection: union returns False",
+      "Kruskal's MST: sort edges by weight, greedy union",
+    ],
+    revision: [
+      "DSU = disjoint sets efficiently manage karo",
+      "find() = root, union() = merge groups",
+      "Path compression = nodes directly root se link karo",
+      "Union by rank = chhota under bada merge karo",
+      "O(α(n)) ≈ O(1) with both optimizations",
+      "Cycle = edge (u,v) jab find(u)==find(v)",
+    ],
+    revisionEn: [
+      "DSU: find() with path compression, union() with rank",
+      "O(α(n)) ≈ O(1) amortized per operation",
+      "Cycle detection: same root before union = cycle",
+      "Kruskal's: greedy + DSU = minimum spanning tree",
+    ],
+  },
+  {
+    id: "dsa-monotonic",
+    title: "Monotonic Stack & Queue",
+    titleEn: "Monotonic Stack & Queue",
+    emoji: "📚",
+    category: "Advanced DS",
+    description: "Monotonic stack/queue — next greater element, sliding window maximum, histogram problems",
+    descriptionEn: "Monotonic stack/queue — next greater element, sliding window maximum, histogram",
+    sections: [
+      {
+        heading: "Monotonic Stack — Next Greater/Smaller Pattern",
+        content: `**Monotonic Stack** = ek stack jo hamesha sorted order maintain karta hai (increasing ya decreasing).
+
+**Kab use karo:**
+- Next Greater/Smaller Element problems
+- Previous Greater/Smaller Element
+- Largest Rectangle in Histogram
+- Stock Span, Daily Temperatures
+
+**Pattern:** Array iterate karo. Stack mein sirf elements rakho jo "useful" hain — naya element zyada bada/chota hua toh purane pop karo.`,
+        code: `# PATTERN: Next Greater Element
+# Har element ke liye right mein pehla greater element dhundo
+def next_greater(arr):
+    n = len(arr)
+    result = [-1] * n   # default: koi greater nahi
+    stack = []           # indices stack (monotonic decreasing)
+
+    for i in range(n):
+        # Stack mein jo elements current se CHHOTE hain, unka answer milgaya!
+        while stack and arr[stack[-1]] < arr[i]:
+            idx = stack.pop()
+            result[idx] = arr[i]  # arr[i] is the next greater!
+        stack.append(i)
+
+    return result
+
+# arr = [4, 5, 2, 25]
+# result = [5, 25, 25, -1]
+print(next_greater([4, 5, 2, 25]))
+
+# ─────────────────────────────────────
+# PROBLEM: Daily Temperatures (LeetCode 739)
+# Har din ke liye — kitne din baad warmer temp aayega?
+def daily_temperatures(temps):
+    n = len(temps)
+    result = [0] * n
+    stack = []  # indices, decreasing temps (monotonic decreasing)
+
+    for i, temp in enumerate(temps):
+        while stack and temps[stack[-1]] < temp:
+            j = stack.pop()
+            result[j] = i - j  # days difference
+        stack.append(i)
+
+    return result
+
+print(daily_temperatures([73,74,75,71,69,72,76,73]))
+# [1, 1, 4, 2, 1, 1, 0, 0]
+
+# ─────────────────────────────────────
+# PROBLEM: Largest Rectangle in Histogram (LeetCode 84)
+# Histogram mein largest rectangle dhundo
+def largest_rectangle(heights):
+    stack = []  # indices, increasing heights (monotonic increasing)
+    max_area = 0
+    heights = heights + [0]  # sentinel to flush remaining
+
+    for i, h in enumerate(heights):
+        start = i
+        while stack and heights[stack[-1]] > h:
+            idx = stack.pop()
+            width = i - (stack[-1] + 1 if stack else 0)
+            max_area = max(max_area, heights[idx] * width)
+            start = idx
+        stack.append(start)  # extend left boundary
+
+    return max_area
+
+print(largest_rectangle([2, 1, 5, 6, 2, 3]))  # 10
+
+# ─────────────────────────────────────
+# PROBLEM: Trapping Rain Water (LeetCode 42)
+def trap(height):
+    stack = []  # monotonic decreasing
+    water = 0
+
+    for i, h in enumerate(height):
+        while stack and height[stack[-1]] < h:
+            bottom = stack.pop()
+            if not stack: break
+            width = i - stack[-1] - 1
+            bounded_h = min(height[stack[-1]], h) - height[bottom]
+            water += width * bounded_h
+        stack.append(i)
+
+    return water
+
+print(trap([0,1,0,2,1,0,1,3,2,1,2,1]))  # 6`,
+        language: "python",
+        tip: "Monotonic Stack pattern: 'naya element purane elements ka answer deta hai'. Increasing stack = next smaller, Decreasing stack = next greater.",
+      },
+      {
+        heading: "Monotonic Deque — Sliding Window Maximum",
+        content: `**Monotonic Deque** = double-ended queue jo sliding window problems efficiently solve karta hai. Window maximum/minimum O(n) mein.`,
+        code: `from collections import deque
+
+# Sliding Window Maximum (LeetCode 239)
+# Window size k mein maximum element dhundo — O(n)
+def max_sliding_window(nums, k):
+    result = []
+    dq = deque()  # indices, decreasing values (front = max)
+
+    for i, num in enumerate(nums):
+        # 1. Remove elements outside window
+        while dq and dq[0] <= i - k:
+            dq.popleft()
+
+        # 2. Remove smaller elements (they can never be max)
+        while dq and nums[dq[-1]] < num:
+            dq.pop()
+
+        dq.append(i)
+
+        # 3. Window complete hone pe result add karo
+        if i >= k - 1:
+            result.append(nums[dq[0]])  # front = max!
+
+    return result
+
+nums = [1,3,-1,-3,5,3,6,7]
+print(max_sliding_window(nums, 3))
+# [3, 3, 5, 5, 6, 7]
+
+# TRACE for window size 3:
+# [1,3,-1] → max=3
+# [3,-1,-3] → max=3
+# [-1,-3,5] → max=5
+# [-3,5,3] → max=5
+# [5,3,6] → max=6
+# [3,6,7] → max=7
+
+# ─────────────────────────────────────
+# Sliding Window Minimum — same but reverse
+def min_sliding_window(nums, k):
+    result = []
+    dq = deque()  # increasing values (front = min)
+
+    for i, num in enumerate(nums):
+        while dq and dq[0] <= i - k:
+            dq.popleft()
+        while dq and nums[dq[-1]] > num:  # only difference!
+            dq.pop()
+        dq.append(i)
+        if i >= k - 1:
+            result.append(nums[dq[0]])
+
+    return result`,
+        language: "python",
+        tip: "Deque front = current window max. Element ek baar deque mein aata hai, ek baar jaata hai → O(n) total.",
+      },
+    ],
+    sectionsEn: [
+      {
+        heading: "Monotonic Stack Pattern",
+        content: `A monotonic stack maintains elements in sorted order. Use when you need next/previous greater/smaller elements efficiently.`,
+        code: `# Next Greater Element — O(n)
+def next_greater(arr):
+    result, stack = [-1] * len(arr), []
+    for i, val in enumerate(arr):
+        while stack and arr[stack[-1]] < val:
+            result[stack.pop()] = val
+        stack.append(i)
+    return result
+
+# Key insight: when current element is greater than stack top,
+# that's the "next greater" for the popped element!`,
+        language: "python",
+        tip: "Decreasing stack → next greater. Increasing stack → next smaller. Front of deque in sliding window = extremum.",
+      },
+    ],
+    mcqs: [
+      { q: "Monotonic decreasing stack mein kya hota hai jab larger element milta hai?", options: ["Stack clear hoti hai", "Chhote elements pop hote hain — unka 'next greater' answer milgaya", "New element skip hota hai", "Stack reverse hoti hai"], correct: 1, explain: "Decreasing stack: new element arr[i] > stack top hai toh top pop karo — arr[i] hi uska 'next greater element' hai. Tab tak pop karo jab top ≥ arr[i].", },
+      { q: "Sliding window maximum ke liye deque kyun use karte hain?", options: ["Random access ke liye", "Both ends pe efficient add/remove — window maintain karo + useless elements remove karo", "Sorted order ke liye", "Memory save ke liye"], correct: 1, explain: "Deque front pe window se bahar old elements remove karo (popleft), rear se chhote/useless elements remove karo (pop). Both ends O(1) — total O(n).", },
+    ],
+    mcqsEn: [
+      { q: "What does the monotonic deque maintain in the sliding window maximum problem?", options: ["All window elements", "Indices of potentially maximum elements in decreasing order", "Sorted window elements", "Window boundaries only"], correct: 1, explain: "Deque holds indices of elements in decreasing value order. Front always = current window maximum. Smaller elements behind it are useless.", },
+    ],
+    cheatsheet: [
+      "Decreasing stack → Next Greater Element pattern",
+      "Increasing stack → Next Smaller Element",
+      "while stack and arr[stack[-1]] < curr: pop and record",
+      "Histogram: monotonic increasing, pop on smaller",
+      "Sliding window max: deque, popleft when out of window",
+      "Sliding window min: same but pop smaller from rear",
+    ],
+    cheatsheetEn: [
+      "Decreasing stack: when arr[i] > top, pop = found next greater",
+      "Histogram problem: monotonic increasing stack",
+      "Sliding window max: deque of indices, decreasing values",
+      "All elements pushed/popped at most once → O(n)",
+    ],
+    revision: [
+      "Monotonic stack = sorted order maintain karta hai",
+      "Decreasing stack = next greater element pattern",
+      "Increasing stack = next smaller element pattern",
+      "Deque = sliding window max/min O(n) — both ends O(1)",
+      "Histogram / Trapping Rain Water = monotonic stack applications",
+    ],
+    revisionEn: [
+      "Monotonic stack: maintain sorted invariant while scanning",
+      "Each element pushed/popped once = O(n) total",
+      "Deque sliding window: remove out-of-window from front, useless from back",
+      "Use stack for: next greater/smaller, histogram, rain water",
+    ],
+  },
+  {
+    id: "dsa-bit-manipulation",
+    title: "Bit Manipulation",
+    titleEn: "Bit Manipulation",
+    emoji: "⚙️",
+    category: "Advanced DS",
+    description: "Bitwise operators, XOR tricks, bit masking, power of 2 checks — interview bit problems",
+    descriptionEn: "Bitwise operators, XOR tricks, bit masking, interview bit problems",
+    sections: [
+      {
+        heading: "Bitwise Operators — Fundamentals",
+        content: `Bit manipulation = binary level pe operations. Very fast (hardware-level), interview mein zaroor aata hai.
+
+**Operators:**
+- **AND (&)** — dono bit 1 hoon tabhi 1
+- **OR (|)** — koi ek bit 1 hoon
+- **XOR (^)** — exactly ek bit 1 hona chahiye (different = 1)
+- **NOT (~)** — bits flip
+- **Left Shift (<<)** — bits left move = ×2^n
+- **Right Shift (>>)** — bits right move = ÷2^n`,
+        diagram: `
+BIT OPERATIONS REFERENCE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  a = 0101 (5)   b = 0011 (3)
+
+  a & b = 0001 (1)   AND — both 1
+  a | b = 0111 (7)   OR  — either 1
+  a ^ b = 0110 (6)   XOR — different
+  ~a    = ...11111010 (-6 in 2's complement)
+  a << 1 = 1010 (10)  ×2
+  a >> 1 = 0010 (2)   ÷2
+
+  USEFUL TRICKS:
+  n & (n-1)  → clear lowest set bit
+  n & (-n)   → isolate lowest set bit
+  n & 1      → check if odd (last bit)
+  n << 1     → multiply by 2
+  n >> 1     → divide by 2 (floor)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+        code: `# Bitwise basics
+a, b = 5, 3  # 0101, 0011
+
+print(a & b)   # 1  (0001)
+print(a | b)   # 7  (0111)
+print(a ^ b)   # 6  (0110)
+print(~a)      # -6 (bitwise NOT — 2's complement)
+print(a << 1)  # 10 (shift left = ×2)
+print(a >> 1)  # 2  (shift right = ÷2 floor)
+
+# ─── Common Bit Tricks ────────────────────────────
+n = 12  # 1100
+
+# Check if bit i is set
+def is_set(n, i): return (n >> i) & 1
+
+# Set bit i
+def set_bit(n, i): return n | (1 << i)
+
+# Clear bit i
+def clear_bit(n, i): return n & ~(1 << i)
+
+# Toggle bit i
+def toggle_bit(n, i): return n ^ (1 << i)
+
+# Count set bits (Brian Kernighan's algorithm)
+def count_bits(n):
+    count = 0
+    while n:
+        n &= n - 1  # clear lowest set bit
+        count += 1
+    return count
+
+count_bits(13)  # 13 = 1101 → 3 set bits
+
+# Power of 2 check — exactly one bit set
+def is_power_of_2(n): return n > 0 and (n & (n-1)) == 0
+is_power_of_2(16)  # True (10000)
+is_power_of_2(12)  # False (01100 — two bits)
+
+# Get lowest set bit
+def lowest_set_bit(n): return n & (-n)
+lowest_set_bit(12)  # 12=1100 → 4 (100)`,
+        language: "python",
+        tip: "n & (n-1) lowest set bit clear karta hai — power of 2 check aur bit count karne ke liye classic trick hai.",
+      },
+      {
+        heading: "XOR Tricks — Interview Favorites",
+        content: `**XOR properties jo interviews mein game-changer hain:**
+- **a ^ a = 0** (same values cancel)
+- **a ^ 0 = a** (0 se XOR = no change)
+- Commutative & Associative
+- Self-inverse: **a ^ b ^ b = a**`,
+        code: `# ─── XOR TRICK 1: Find Single Number ────────────────
+# Array mein sab numbers do baar hain except ek — O(n), O(1) space
+def single_number(nums):
+    result = 0
+    for n in nums:
+        result ^= n  # pairs cancel (a^a=0), single remains!
+    return result
+
+print(single_number([4, 1, 2, 1, 2]))  # 4
+# 4^1^2^1^2 = 4^(1^1)^(2^2) = 4^0^0 = 4
+
+# ─── XOR TRICK 2: Find Missing Number ───────────────
+# 0 to n mein ek number missing hai — O(n), O(1)
+def missing_number(nums):
+    n = len(nums)
+    expected_xor = 0
+    for i in range(n + 1):
+        expected_xor ^= i  # 0^1^2^...^n
+    actual_xor = 0
+    for num in nums:
+        actual_xor ^= num  # XOR of given array
+    return expected_xor ^ actual_xor  # missing number!
+
+print(missing_number([3, 0, 1]))  # 2
+
+# ─── XOR TRICK 3: Swap without temp ─────────────────
+a, b = 5, 3
+a ^= b   # a = a^b
+b ^= a   # b = b^(a^b) = a (original a)
+a ^= b   # a = (a^b)^a = b (original b)
+# a=3, b=5 (swapped!)
+
+# ─── BIT MASKING ─────────────────────────────────────
+# Integer ko bitmask ki tarah use karo — subsets represent karo
+# n elements ke 2^n subsets — integer mein bit i = element i included
+
+def generate_subsets(arr):
+    n = len(arr)
+    subsets = []
+    for mask in range(1 << n):  # 0 to 2^n - 1
+        subset = []
+        for i in range(n):
+            if mask & (1 << i):  # bit i set hai?
+                subset.append(arr[i])
+        subsets.append(subset)
+    return subsets
+
+print(generate_subsets([1, 2, 3]))
+# [[], [1], [2], [1,2], [3], [1,3], [2,3], [1,2,3]]
+
+# ─── Count Set Bits Efficiently ──────────────────────
+# Python built-in
+bin(13).count('1')   # 3  (13 = 1101)
+(13).bit_count()     # 3  (Python 3.10+)`,
+        language: "python",
+        tip: "XOR = 'find different/unique' problems ke liye. Bitmask = subset enumeration. n & (n-1) = lowest set bit clear.",
+      },
+    ],
+    sectionsEn: [
+      {
+        heading: "Bit Manipulation — Key Patterns",
+        content: `Bit manipulation enables O(1) operations that would otherwise require loops. Master these patterns for interviews.`,
+        code: `# Core patterns
+n & 1         # check odd/even (last bit)
+n & (n-1)     # clear lowest set bit (power of 2 check!)
+n & (-n)      # isolate lowest set bit
+n ^ n         # 0 — self-cancel (single number trick)
+n ^ 0         # n — identity
+1 << i        # 2^i (bit mask for position i)
+n | (1<<i)    # set bit i
+n & ~(1<<i)   # clear bit i
+n ^ (1<<i)    # toggle bit i
+
+# Key interview problems:
+# Single Number: XOR all → pairs cancel, answer remains
+# Missing Number: XOR 0..n and array → missing remains
+# Power of 2: n > 0 and (n & (n-1)) == 0
+# Count set bits: while n: n &= n-1; count++`,
+        language: "python",
+      },
+    ],
+    mcqs: [
+      { q: "n & (n-1) kya karta hai?", options: ["n ko double karta hai", "Lowest set bit clear karta hai", "n ka 2's complement", "n ke sab bits toggle karta hai"], correct: 1, explain: "n & (n-1): n-1 karne se lowest set bit 0 ho jaata hai aur neeche sab 1. AND se woh bit clear hoti hai. Power of 2 check: exactly 1 bit → n & (n-1) == 0.", },
+      { q: "XOR se Single Number problem kyun solve hoti hai?", options: ["XOR addition hai", "Same numbers XOR karne pe 0 milta hai, different numbers remain", "XOR modulo hai", "XOR se sorting hoti hai"], correct: 1, explain: "a^a = 0 (same values cancel). a^0 = a (0 se XOR = original). Sab pairs cancel ho jaate hain, sirf unpaired element bachta hai.", },
+    ],
+    mcqsEn: [
+      { q: "How do you check if a number is a power of 2 using bit manipulation?", options: ["n % 2 == 0", "n & (n-1) == 0 (and n > 0)", "n >> 1 == 0", "count_bits(n) == n"], correct: 1, explain: "Powers of 2 have exactly one bit set. n & (n-1) clears the lowest set bit. If result is 0, only one bit was set → power of 2.", },
+    ],
+    cheatsheet: [
+      "a & b — AND, a | b — OR, a ^ b — XOR, ~a — NOT",
+      "n << k — ×2^k, n >> k — ÷2^k",
+      "n & 1 — odd check",
+      "n & (n-1) == 0 — power of 2 check",
+      "n & (n-1) — clear lowest set bit",
+      "n & (-n) — isolate lowest set bit",
+      "a ^ a = 0, a ^ 0 = a — XOR identities",
+      "XOR all → single/missing number",
+      "mask & (1<<i) — bit i check karo",
+    ],
+    cheatsheetEn: [
+      "n & (n-1) = 0 → power of 2",
+      "XOR all elements → single unique number",
+      "1 << n → 2^n bitmask",
+      "Iterate subsets: for mask in range(1 << n)",
+      "Count set bits: while n: n &= n-1; count++",
+    ],
+    revision: [
+      "AND=both 1, OR=any 1, XOR=different=1, NOT=flip",
+      "n<<k = ×2^k, n>>k = ÷2^k",
+      "n & (n-1) = lowest set bit clear = power of 2 check",
+      "XOR self-inverse: a^b^b = a — find unique number",
+      "Bitmask = integer se subset represent karo",
+      "Power of 2: exactly 1 bit set → n & (n-1) == 0",
+    ],
+    revisionEn: [
+      "XOR: same=0, different=1, self-inverse property",
+      "n & (n-1): clears lowest set bit, key for power-of-2",
+      "Bitmask: integer to represent subsets of n elements",
+      "Bit shift: << = *2, >> = /2",
+    ],
+  },
+  {
+    id: "dsa-advanced-dp",
+    title: "Advanced DP Patterns",
+    titleEn: "Advanced Dynamic Programming Patterns",
+    emoji: "🧠",
+    category: "Advanced DS",
+    description: "LIS, LCS, Edit Distance, Knapsack, Matrix Chain, DP on intervals — advanced DP deep dive",
+    descriptionEn: "LIS, LCS, Edit Distance, 0/1 Knapsack, DP on strings and intervals",
+    sections: [
+      {
+        heading: "LIS aur LCS — Classic DP Problems",
+        content: `**LIS (Longest Increasing Subsequence)** aur **LCS (Longest Common Subsequence)** — DP ke sab se important patterns hain.`,
+        code: `# ─── LONGEST INCREASING SUBSEQUENCE (LIS) ──────────
+# O(n²) DP
+def lis_n2(nums):
+    n = len(nums)
+    dp = [1] * n  # dp[i] = LIS ending at i
+
+    for i in range(1, n):
+        for j in range(i):
+            if nums[j] < nums[i]:
+                dp[i] = max(dp[i], dp[j] + 1)
+
+    return max(dp)
+
+print(lis_n2([10, 9, 2, 5, 3, 7, 101, 18]))  # 4 (2,3,7,101 or 2,5,7,101)
+
+# O(n log n) with Binary Search — patience sorting
+import bisect
+def lis_nlogn(nums):
+    tails = []  # tails[i] = smallest tail of all IS of length i+1
+    for num in nums:
+        pos = bisect.bisect_left(tails, num)
+        if pos == len(tails):
+            tails.append(num)
+        else:
+            tails[pos] = num
+    return len(tails)
+
+print(lis_nlogn([10, 9, 2, 5, 3, 7, 101, 18]))  # 4
+
+# ─────────────────────────────────────
+# LONGEST COMMON SUBSEQUENCE (LCS) — O(m×n)
+def lcs(s1, s2):
+    m, n = len(s1), len(s2)
+    # dp[i][j] = LCS of s1[:i] and s2[:j]
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i-1] == s2[j-1]:
+                dp[i][j] = dp[i-1][j-1] + 1  # match!
+            else:
+                dp[i][j] = max(dp[i-1][j], dp[i][j-1])  # skip one
+
+    return dp[m][n]
+
+print(lcs("ABCBDAB", "BDCAB"))  # 4 (BCAB or BDAB)
+
+# LCS Table trace:
+#     ""  B  D  C  A  B
+#  ""  0  0  0  0  0  0
+#  A   0  0  0  0  1  1
+#  B   0  1  1  1  1  2
+#  C   0  1  1  2  2  2
+#  B   0  1  1  2  2  3
+#  D   0  1  2  2  2  3
+#  A   0  1  2  2  3  3
+#  B   0  1  2  2  3  4  ← answer!`,
+        language: "python",
+        tip: "LCS se aur bhi solve hota hai: Shortest Common Supersequence (m+n-LCS), minimum insertions/deletions to match strings.",
+      },
+      {
+        heading: "Edit Distance & 0/1 Knapsack",
+        code: `# ─── EDIT DISTANCE (Levenshtein) — O(m×n) ──────────
+# Minimum operations (insert, delete, replace) to convert s1 → s2
+def edit_distance(s1, s2):
+    m, n = len(s1), len(s2)
+    # dp[i][j] = edit distance of s1[:i] and s2[:j]
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+    # Base cases: empty string se/tak
+    for i in range(m + 1): dp[i][0] = i  # delete all chars
+    for j in range(n + 1): dp[0][j] = j  # insert all chars
+
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if s1[i-1] == s2[j-1]:
+                dp[i][j] = dp[i-1][j-1]  # no operation needed
+            else:
+                dp[i][j] = 1 + min(
+                    dp[i-1][j],    # delete from s1
+                    dp[i][j-1],    # insert into s1
+                    dp[i-1][j-1]   # replace
+                )
+
+    return dp[m][n]
+
+print(edit_distance("horse", "ros"))  # 3
+print(edit_distance("intention", "execution"))  # 5
+
+# ─────────────────────────────────────
+# 0/1 KNAPSACK — O(n×W)
+# n items, capacity W — max value without exceeding capacity
+# Each item ya toh lo (1) ya chodo (0)
+def knapsack(weights, values, W):
+    n = len(weights)
+    # dp[i][w] = max value using first i items with capacity w
+    dp = [[0] * (W + 1) for _ in range(n + 1)]
+
+    for i in range(1, n + 1):
+        for w in range(W + 1):
+            # Item i include mat karo
+            dp[i][w] = dp[i-1][w]
+            # Item i include karo (agar fit hota hai)
+            if weights[i-1] <= w:
+                dp[i][w] = max(dp[i][w],
+                               dp[i-1][w - weights[i-1]] + values[i-1])
+
+    return dp[n][W]
+
+weights = [1, 3, 4, 5]
+values  = [1, 4, 5, 7]
+print(knapsack(weights, values, 7))  # 9 (items 3+2 = weight 7, value 9)
+
+# Space optimized (1D DP) — O(W) space
+def knapsack_1d(weights, values, W):
+    dp = [0] * (W + 1)
+    for i in range(len(weights)):
+        for w in range(W, weights[i] - 1, -1):  # reverse! (0/1 ke liye)
+            dp[w] = max(dp[w], dp[w - weights[i]] + values[i])
+    return dp[W]`,
+        language: "python",
+        content: `Edit Distance aur Knapsack — do most important DP problems:`,
+        tip: "0/1 Knapsack 1D optimization mein loop reverse karo (W to 0) — otherwise same item baar baar use ho jaata hai (Unbounded Knapsack ban jaata).",
+      },
+      {
+        heading: "Interval DP & DP on Strings",
+        content: `Interval DP aur string DP — advanced patterns jo competitive programming aur FAANG interviews mein aate hain:`,
+        code: `# ─── PALINDROME PARTITIONING DP ────────────────────
+# String ko minimum cuts mein palindromes mein tod do
+def min_palindrome_cuts(s):
+    n = len(s)
+
+    # is_pal[i][j] = s[i..j] palindrome hai?
+    is_pal = [[False] * n for _ in range(n)]
+    for i in range(n): is_pal[i][i] = True  # single char
+    for length in range(2, n + 1):
+        for i in range(n - length + 1):
+            j = i + length - 1
+            if s[i] == s[j]:
+                is_pal[i][j] = (length == 2) or is_pal[i+1][j-1]
+
+    # dp[i] = min cuts for s[:i+1]
+    dp = list(range(n))  # worst case: cut before each char
+    for i in range(1, n):
+        if is_pal[0][i]:  # whole prefix is palindrome
+            dp[i] = 0
+            continue
+        for j in range(1, i + 1):
+            if is_pal[j][i]:
+                dp[i] = min(dp[i], dp[j-1] + 1)
+
+    return dp[n-1]
+
+print(min_palindrome_cuts("aab"))    # 1 ("aa" | "b")
+print(min_palindrome_cuts("abcba"))  # 0 (already palindrome)
+
+# ─── BURST BALLOONS — Interval DP ────────────────────
+# LeetCode 312 — tricky interval DP
+def max_coins(nums):
+    nums = [1] + nums + [1]  # boundary balloons
+    n = len(nums)
+    # dp[i][j] = max coins from bursting all balloons between i and j
+    dp = [[0] * n for _ in range(n)]
+
+    for length in range(2, n):  # window size
+        for left in range(n - length):
+            right = left + length
+            for k in range(left + 1, right):  # k = last to burst
+                coins = nums[left] * nums[k] * nums[right]
+                dp[left][right] = max(dp[left][right],
+                                      dp[left][k] + coins + dp[k][right])
+
+    return dp[0][n-1]
+
+print(max_coins([3, 1, 5, 8]))  # 167`,
+        language: "python",
+      },
+    ],
+    sectionsEn: [
+      {
+        heading: "Advanced DP Patterns",
+        content: `Master these DP patterns for senior-level interviews. Each involves filling a 2D table bottom-up.`,
+        code: `# LCS — O(m×n), foundation for many string DP
+def lcs(s1, s2):
+    m, n = len(s1), len(s2)
+    dp = [[0]*(n+1) for _ in range(m+1)]
+    for i in range(1, m+1):
+        for j in range(1, n+1):
+            dp[i][j] = dp[i-1][j-1]+1 if s1[i-1]==s2[j-1] else max(dp[i-1][j],dp[i][j-1])
+    return dp[m][n]
+
+# Edit Distance — O(m×n)
+# dp[i][j] = min ops to convert s1[:i] to s2[:j]
+# match: dp[i-1][j-1], else 1 + min(delete, insert, replace)
+
+# Knapsack 0/1 — O(n×W), reverse inner loop for 1D
+# dp[w] = max value at capacity w
+for i in range(n):
+    for w in range(W, wt[i]-1, -1):  # REVERSE!
+        dp[w] = max(dp[w], dp[w-wt[i]] + val[i])`,
+        language: "python",
+        tip: "Always draw the DP table with base cases first, then identify the recurrence relation by thinking about 'what is the last choice made?'",
+      },
+    ],
+    mcqs: [
+      { q: "LIS ka O(n log n) solution kaise kaam karta hai?", options: ["Merge sort use karta hai", "tails array maintain karta hai — binary search se position dhundta hai", "DP table 2D use karta hai", "Memoization use karta hai"], correct: 1, explain: "tails[i] = smallest tail element of all increasing subsequences of length i+1. Har element ke liye binary search se position milti hai — O(log n). Total O(n log n).", },
+      { q: "0/1 Knapsack 1D optimization mein inner loop reverse kyun karte hain?", options: ["Performance ke liye", "Same item baar baar na use ho — forward loop se unbounded knapsack ban jaata hai", "Array bounds ke liye", "Base case ke liye"], correct: 1, explain: "Forward loop mein dp[w - wt[i]] already updated hota hai (same item use hua) — multiple times same item select ho jaata. Reverse loop mein previous row values use hoti hain — 0/1 ensure hota.", },
+    ],
+    mcqsEn: [
+      { q: "What is the recurrence for Edit Distance when characters don't match?", options: ["dp[i][j] = dp[i-1][j-1]", "dp[i][j] = 1 + min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1])", "dp[i][j] = dp[i-1][j] + dp[i][j-1]", "dp[i][j] = dp[i][j-1] + 1"], correct: 1, explain: "When chars don't match: delete (dp[i-1][j]), insert (dp[i][j-1]), or replace (dp[i-1][j-1]) — take minimum and add 1.", },
+    ],
+    cheatsheet: [
+      "LIS O(n²): dp[i] = max(dp[j]+1) for j<i if nums[j]<nums[i]",
+      "LIS O(n log n): tails array + bisect_left",
+      "LCS: match → dp[i-1][j-1]+1, else max(up, left)",
+      "Edit distance: match → diagonal, else 1+min(3 neighbors)",
+      "Knapsack 0/1: 1D reverse loop",
+      "Interval DP: iterate by length, then left boundary",
+      "Palindrome DP: is_pal[i][j] = (s[i]==s[j] and is_pal[i+1][j-1])",
+    ],
+    cheatsheetEn: [
+      "LCS: dp[i][j] = dp[i-1][j-1]+1 if match, else max(dp[i-1][j], dp[i][j-1])",
+      "Edit: dp[i][j] = dp[i-1][j-1] if match, else 1+min(del,ins,rep)",
+      "Knapsack 1D: reverse inner loop to prevent reuse",
+      "Interval DP: enumerate by length, then enumerate k as 'last operation'",
+    ],
+    revision: [
+      "LIS O(n²) DP, O(n log n) patience sorting (tails + bisect)",
+      "LCS = 2D DP, match diagonal, else max of up/left",
+      "Edit distance = delete/insert/replace — min 3 neighbors + 1",
+      "0/1 Knapsack 1D: reverse loop = each item used at most once",
+      "Interval DP: enumerate by window length first",
+    ],
+    revisionEn: [
+      "LIS O(n log n): maintain tails array with binary search",
+      "LCS: classic 2D string DP, O(m×n)",
+      "Edit distance: three operations map to three neighbors in DP table",
+      "Knapsack 1D with reverse loop = 0/1 constraint",
+    ],
+  },
 ];
 
 export const dsaInterviews = [
