@@ -3961,4 +3961,770 @@ const d = new Dog();
 // Animal.prototype.__proto__ === Object.prototype
 // Object.prototype.__proto__ === null`,
   },
+
+  // ─── PRACTICAL / LOGICAL INTERVIEW QUESTIONS ───────────────────────────────
+
+  {
+    id: 628,
+    level: "Beginner" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Array se duplicate values kaise remove karein? (3 tarike)",
+    answer: `Ye ek bahut common interview question hai. Teen popular tarike:
+
+**1. Set (Fastest & Modern):**
+- Set automatically unique values rakhta hai
+- Spread (\`...\`) se wapas array banao
+
+**2. filter + indexOf:**
+- Har element ka first occurrence check karo
+- Agar current index first occurrence hai, rakho
+
+**3. reduce:**
+- Accumulator mein check karo pehle se hai ya nahi
+
+**Best practice:** \`Set\` use karo — O(n) time, clean code.`,
+    code: `const arr = [1, 2, 2, 3, 4, 4, 5, 1];
+
+// Method 1: Set (recommend)
+const unique1 = [...new Set(arr)];
+console.log(unique1); // [1, 2, 3, 4, 5]
+
+// Method 2: filter + indexOf
+const unique2 = arr.filter((item, index) => arr.indexOf(item) === index);
+console.log(unique2); // [1, 2, 3, 4, 5]
+
+// Method 3: reduce
+const unique3 = arr.reduce((acc, item) => {
+  if (!acc.includes(item)) acc.push(item);
+  return acc;
+}, []);
+console.log(unique3); // [1, 2, 3, 4, 5]
+
+// Objects ke liye (by property)
+const users = [
+  { id: 1, name: "Ali" },
+  { id: 2, name: "Sara" },
+  { id: 1, name: "Ali" }, // duplicate
+];
+const uniqueUsers = [...new Map(users.map(u => [u.id, u])).values()];
+console.log(uniqueUsers.length); // 2`,
+  },
+  {
+    id: 629,
+    level: "Beginner" as const,
+    tags: ["array", "practical", "logic"],
+    question: "String ko reverse kaise karein? (without reverse())",
+    answer: `Interviewer aksar reverse() use karne se mana karta hai — tabhi ye methods kaam aate hain:
+
+**1. split + reverse + join** — simplest approach  
+**2. for loop backward** — manual traversal, O(n)  
+**3. reduce** — functional approach  
+**4. Spread + reverse** — spread se array banao
+
+**Edge cases dhyan rakhna:**
+- Empty string handle karo
+- Unicode characters (emoji) split galat ho sakta hai`,
+    code: `// Method 1: split + reverse + join
+function reverseStr1(str) {
+  return str.split("").reverse().join("");
+}
+
+// Method 2: for loop (without built-in reverse)
+function reverseStr2(str) {
+  let result = "";
+  for (let i = str.length - 1; i >= 0; i--) {
+    result += str[i];
+  }
+  return result;
+}
+
+// Method 3: reduce
+function reverseStr3(str) {
+  return str.split("").reduce((rev, char) => char + rev, "");
+}
+
+// Method 4: two pointer (in-place on array)
+function reverseStr4(str) {
+  const arr = str.split("");
+  let left = 0, right = arr.length - 1;
+  while (left < right) {
+    [arr[left], arr[right]] = [arr[right], arr[left]]; // swap
+    left++;
+    right--;
+  }
+  return arr.join("");
+}
+
+console.log(reverseStr1("hello")); // "olleh"
+console.log(reverseStr2("Pakistan")); // "natsikaP"
+console.log(reverseStr3("12345")); // "54321"`,
+  },
+  {
+    id: 630,
+    level: "Beginner" as const,
+    tags: ["string", "practical", "logic"],
+    question: "Check karo string palindrome hai ya nahi",
+    answer: `Palindrome = string jo ulti aur seedhi same hoti hai. Jaise: "racecar", "madam", "level".
+
+**Approach 1:** Reverse karke original se compare karo  
+**Approach 2:** Two Pointer — dono sides se compare karo (efficient)  
+**Approach 3:** Recursive — pehla aur aakhri character match karo
+
+**Interview tip:**
+- Case insensitive check bhi pucha jaata hai ("Racecar" → true)
+- Spaces aur special chars strip karne ki bhi condition ho sakti hai`,
+    code: `// Method 1: reverse comparison
+function isPalindrome1(str) {
+  const clean = str.toLowerCase().replace(/[^a-z0-9]/g, ""); // remove spaces/special
+  return clean === clean.split("").reverse().join("");
+}
+
+// Method 2: two pointer (without reverse)
+function isPalindrome2(str) {
+  const s = str.toLowerCase().replace(/[^a-z0-9]/g, "");
+  let left = 0, right = s.length - 1;
+  while (left < right) {
+    if (s[left] !== s[right]) return false;
+    left++;
+    right--;
+  }
+  return true;
+}
+
+// Method 3: recursive
+function isPalindrome3(str) {
+  if (str.length <= 1) return true;
+  if (str[0] !== str[str.length - 1]) return false;
+  return isPalindrome3(str.slice(1, -1));
+}
+
+console.log(isPalindrome1("racecar")); // true
+console.log(isPalindrome2("A man a plan a canal Panama")); // true
+console.log(isPalindrome3("hello")); // false`,
+  },
+  {
+    id: 631,
+    level: "Intermediate" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Two Sum problem: array mein do numbers find karo jinka sum target ho",
+    answer: `Ye LeetCode ka #1 problem aur most asked interview question hai!
+
+**Brute Force O(n²):** Nested loops — har pair check karo  
+**HashMap O(n):** Complement store karo — ek hi pass mein solve  
+
+**HashMap approach samjho:**
+- Har element ke liye: \`complement = target - current\`
+- Agar complement already map mein hai → found!
+- Warna current ko map mein daalo
+
+**Interview mein:** HashMap approach batao — O(n) time, O(n) space.`,
+    code: `// Brute Force O(n²) — AVOID in interview
+function twoSumBrute(nums, target) {
+  for (let i = 0; i < nums.length; i++) {
+    for (let j = i + 1; j < nums.length; j++) {
+      if (nums[i] + nums[j] === target) return [i, j];
+    }
+  }
+  return [];
+}
+
+// Optimal: HashMap O(n) — RECOMMEND
+function twoSum(nums, target) {
+  const map = new Map(); // value → index
+
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+
+    if (map.has(complement)) {
+      return [map.get(complement), i]; // found!
+    }
+
+    map.set(nums[i], i); // store current
+  }
+
+  return []; // not found
+}
+
+console.log(twoSum([2, 7, 11, 15], 9));  // [0, 1] — 2+7=9
+console.log(twoSum([3, 2, 4], 6));       // [1, 2] — 2+4=6
+console.log(twoSum([3, 3], 6));          // [0, 1] — 3+3=6`,
+  },
+  {
+    id: 632,
+    level: "Beginner" as const,
+    tags: ["string", "practical", "logic"],
+    question: "String mein sabse zyada repeat hone wala character kaise find karein?",
+    answer: `**Approach:** Frequency Map — character ki count rakho, phir max dhundo.
+
+**Steps:**
+1. String ke har character ki count karo (object/Map use karo)
+2. Map iterate karo — max count wala character find karo
+
+**Variations jo interview mein poochi jaati hain:**
+- First non-repeating character (count = 1, first wala)
+- All characters with max frequency
+- Case sensitive vs insensitive`,
+    code: `// Most frequent character
+function mostFrequentChar(str) {
+  const freq = {};
+
+  // Step 1: count frequency
+  for (const char of str) {
+    freq[char] = (freq[char] || 0) + 1;
+  }
+
+  // Step 2: find max
+  let maxChar = "";
+  let maxCount = 0;
+
+  for (const [char, count] of Object.entries(freq)) {
+    if (count > maxCount) {
+      maxCount = count;
+      maxChar = char;
+    }
+  }
+
+  return { char: maxChar, count: maxCount };
+}
+
+console.log(mostFrequentChar("aabbccca")); // { char: 'a' or 'c', count: 3 }
+console.log(mostFrequentChar("interview")); // { char: 'i', count: 2 }
+
+// Bonus: First NON-repeating character
+function firstNonRepeating(str) {
+  const freq = {};
+  for (const c of str) freq[c] = (freq[c] || 0) + 1;
+  return str.split("").find(c => freq[c] === 1) || null;
+}
+
+console.log(firstNonRepeating("aabbcd")); // "c"
+console.log(firstNonRepeating("aabb"));   // null`,
+  },
+  {
+    id: 633,
+    level: "Intermediate" as const,
+    tags: ["string", "practical", "logic"],
+    question: "Do strings anagram hain ya nahi check karo",
+    answer: `**Anagram** = same characters, different order. Jaise: "listen" ↔ "silent", "race" ↔ "care"
+
+**Method 1:** Sort karke compare — simple  
+**Method 2:** Frequency map — O(n), sort nahi karna  
+
+**Edge cases:**
+- Length alag hai → false (shortcut check!)
+- Case insensitive hona chahiye
+- Spaces include/exclude?`,
+    code: `// Method 1: Sort (simple)
+function isAnagram1(str1, str2) {
+  const normalize = s => s.toLowerCase().replace(/\s/g, "").split("").sort().join("");
+  return normalize(str1) === normalize(str2);
+}
+
+// Method 2: Frequency map (O(n), no sorting)
+function isAnagram2(str1, str2) {
+  const s1 = str1.toLowerCase().replace(/\s/g, "");
+  const s2 = str2.toLowerCase().replace(/\s/g, "");
+
+  if (s1.length !== s2.length) return false; // quick check
+
+  const freq = {};
+
+  for (const c of s1) freq[c] = (freq[c] || 0) + 1; // count s1
+  for (const c of s2) {
+    if (!freq[c]) return false; // char not in s1
+    freq[c]--;                   // decrement
+  }
+
+  return true;
+}
+
+console.log(isAnagram1("listen", "silent")); // true
+console.log(isAnagram2("race", "care"));    // true
+console.log(isAnagram2("hello", "world"));  // false
+console.log(isAnagram1("Astronomer", "Moon starer")); // true`,
+  },
+  {
+    id: 634,
+    level: "Intermediate" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Array mein missing number kaise find karein? (1 to N range mein)",
+    answer: `**Problem:** Array mein 1 to N tak numbers hain, ek missing hai — woh find karo.
+
+**Method 1: Math formula — O(n), O(1) space (BEST)**
+- 1 to N ka sum = N*(N+1)/2
+- Array ka actual sum nikalo
+- Difference = missing number
+
+**Method 2: XOR — O(n), O(1) space**
+- XOR of 1..N XOR array elements = missing number
+
+**Interview mein:** Formula method batao — clean aur efficient.`,
+    code: `// Method 1: Math formula (BEST)
+function findMissing(nums) {
+  const n = nums.length + 1; // total should be n
+  const expectedSum = (n * (n + 1)) / 2;
+  const actualSum = nums.reduce((sum, num) => sum + num, 0);
+  return expectedSum - actualSum;
+}
+
+console.log(findMissing([1, 2, 4, 5, 6])); // 3
+console.log(findMissing([1, 3, 4, 5]));     // 2
+
+// Method 2: XOR approach
+function findMissingXOR(nums) {
+  const n = nums.length + 1;
+  let xor = 0;
+  for (let i = 1; i <= n; i++) xor ^= i;    // XOR 1 to N
+  for (const num of nums) xor ^= num;        // XOR with array
+  return xor; // remaining = missing
+}
+
+console.log(findMissingXOR([1, 2, 4, 5, 6])); // 3
+
+// Follow-up: Multiple missing numbers
+function findAllMissing(nums, n) {
+  const set = new Set(nums);
+  const missing = [];
+  for (let i = 1; i <= n; i++) {
+    if (!set.has(i)) missing.push(i);
+  }
+  return missing;
+}
+console.log(findAllMissing([1, 3, 5], 5)); // [2, 4]`,
+  },
+  {
+    id: 635,
+    level: "Intermediate" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Array ko bina sort() ke sort karo — Bubble Sort likho",
+    answer: `**Bubble Sort** = adjacent elements compare karo, wrong order mein hain toh swap karo. Repeat until sorted.
+
+**Complexity:** O(n²) time — large arrays ke liye slow, lekin concept samajhna important hai.
+
+**Optimization:** Agar ek full pass mein koi swap nahi hua → already sorted → early exit.
+
+**Interview mein ye bhi poochha jaata hai:**
+- Selection Sort (min element find karo, start mein daalo)
+- Insertion Sort (element uthao, sahi jagah daalo)`,
+    code: `// Bubble Sort
+function bubbleSort(arr) {
+  const a = [...arr]; // copy (original mutate na ho)
+  const n = a.length;
+
+  for (let i = 0; i < n - 1; i++) {
+    let swapped = false;
+
+    for (let j = 0; j < n - i - 1; j++) {
+      if (a[j] > a[j + 1]) {
+        [a[j], a[j + 1]] = [a[j + 1], a[j]]; // ES6 swap
+        swapped = true;
+      }
+    }
+
+    if (!swapped) break; // already sorted — optimization
+  }
+
+  return a;
+}
+
+console.log(bubbleSort([64, 34, 25, 12, 22, 11, 90]));
+// [11, 12, 22, 25, 34, 64, 90]
+
+// Selection Sort (bonus)
+function selectionSort(arr) {
+  const a = [...arr];
+  for (let i = 0; i < a.length - 1; i++) {
+    let minIdx = i;
+    for (let j = i + 1; j < a.length; j++) {
+      if (a[j] < a[minIdx]) minIdx = j;
+    }
+    if (minIdx !== i) [a[i], a[minIdx]] = [a[minIdx], a[i]];
+  }
+  return a;
+}
+console.log(selectionSort([29, 10, 14, 37, 13]));
+// [10, 13, 14, 29, 37]`,
+  },
+  {
+    id: 636,
+    level: "Beginner" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Array ko N positions se rotate kaise karein?",
+    answer: `**Rotate right by k:** Last k elements ko front mein le aao.
+
+**Method 1:** slice() use karo — simplest  
+**Method 2:** Pop + unshift loop — k times  
+**Method 3:** Reverse trick — O(n) time, O(1) space (in-place)
+
+**Interview tip:**
+- K array length se bada ho sakta hai → \`k = k % n\` (modulo!)
+- Left rotate = right rotate with \`n - k\``,
+    code: `// Right rotate by k
+const arr = [1, 2, 3, 4, 5];
+
+// Method 1: slice (clean, simple)
+function rotateRight(arr, k) {
+  k = k % arr.length; // handle k > length
+  return [...arr.slice(-k), ...arr.slice(0, -k)];
+}
+
+console.log(rotateRight([1,2,3,4,5], 2)); // [4, 5, 1, 2, 3]
+console.log(rotateRight([1,2,3,4,5], 7)); // [4, 5, 1, 2, 3] (7%5=2)
+
+// Left rotate by k
+function rotateLeft(arr, k) {
+  k = k % arr.length;
+  return [...arr.slice(k), ...arr.slice(0, k)];
+}
+
+console.log(rotateLeft([1,2,3,4,5], 2)); // [3, 4, 5, 1, 2]
+
+// Method 2: In-place reverse trick (O(1) space)
+function rotateInPlace(arr, k) {
+  k = k % arr.length;
+  const reverse = (a, l, r) => {
+    while (l < r) { [a[l], a[r]] = [a[r], a[l]]; l++; r--; }
+  };
+  const n = arr.length;
+  reverse(arr, 0, n - 1);     // reverse all
+  reverse(arr, 0, k - 1);     // reverse first k
+  reverse(arr, k, n - 1);     // reverse rest
+  return arr;
+}
+console.log(rotateInPlace([1,2,3,4,5], 2)); // [4,5,1,2,3]`,
+  },
+  {
+    id: 637,
+    level: "Intermediate" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Do arrays ka intersection aur union nikalo",
+    answer: `**Intersection** = dono arrays mein common elements  
+**Union** = dono arrays ke saare unique elements milake
+
+**Intersection approaches:**
+- filter + includes — readable
+- Set use karo — O(n) time
+
+**Union approaches:**
+- Spread dono, then Set — simplest`,
+    code: `const a = [1, 2, 3, 4, 5];
+const b = [3, 4, 5, 6, 7];
+
+// Intersection: common elements
+function intersection(arr1, arr2) {
+  const set = new Set(arr2);
+  return arr1.filter(x => set.has(x)); // O(n) with Set
+}
+console.log(intersection(a, b)); // [3, 4, 5]
+
+// Union: all unique elements
+function union(arr1, arr2) {
+  return [...new Set([...arr1, ...arr2])];
+}
+console.log(union(a, b)); // [1, 2, 3, 4, 5, 6, 7]
+
+// Difference: a mein hai, b mein nahi
+function difference(arr1, arr2) {
+  const set = new Set(arr2);
+  return arr1.filter(x => !set.has(x));
+}
+console.log(difference(a, b)); // [1, 2]
+console.log(difference(b, a)); // [6, 7]
+
+// With duplicates: intersection keeping frequency
+function intersectWithDups(arr1, arr2) {
+  const freq = {};
+  arr2.forEach(n => freq[n] = (freq[n] || 0) + 1);
+  return arr1.filter(n => {
+    if (freq[n] > 0) { freq[n]--; return true; }
+    return false;
+  });
+}
+console.log(intersectWithDups([1,2,2,1], [2,2])); // [2, 2]`,
+  },
+  {
+    id: 638,
+    level: "Beginner" as const,
+    tags: ["practical", "logic", "string"],
+    question: "FizzBuzz problem — classic interview question",
+    answer: `**FizzBuzz Rules:**
+- 3 ka multiple → "Fizz"
+- 5 ka multiple → "Buzz"  
+- 15 (3 aur 5 dono) ka multiple → "FizzBuzz"
+- Warna number
+
+**Common mistake:** FizzBuzz pehle check karo — agar pehle sirf 3 ya 5 check kiya toh FizzBuzz miss ho jaata hai.
+
+**Interview variations:**
+- Array return karo
+- Generator function use karo
+- Modulus avoid karo (bit manipulation se)`,
+    code: `// Classic FizzBuzz (1 to n)
+function fizzBuzz(n) {
+  const result = [];
+
+  for (let i = 1; i <= n; i++) {
+    if (i % 15 === 0) result.push("FizzBuzz"); // PEHLE check karo!
+    else if (i % 3 === 0) result.push("Fizz");
+    else if (i % 5 === 0) result.push("Buzz");
+    else result.push(String(i));
+  }
+
+  return result;
+}
+
+console.log(fizzBuzz(15));
+// ["1","2","Fizz","4","Buzz","Fizz","7","8","Fizz","Buzz",
+//  "11","Fizz","13","14","FizzBuzz"]
+
+// Clean version — string concatenation trick
+function fizzBuzzClean(n) {
+  for (let i = 1; i <= n; i++) {
+    let output = "";
+    if (i % 3 === 0) output += "Fizz";
+    if (i % 5 === 0) output += "Buzz"; // automatically "FizzBuzz" ban jaata hai
+    console.log(output || i);
+  }
+}
+
+// Generator (advanced)
+function* fizzBuzzGen(n) {
+  for (let i = 1; i <= n; i++) {
+    let s = "";
+    if (i % 3 === 0) s += "Fizz";
+    if (i % 5 === 0) s += "Buzz";
+    yield s || i;
+  }
+}
+console.log([...fizzBuzzGen(5)]); // [1, 2, "Fizz", 4, "Buzz"]`,
+  },
+  {
+    id: 639,
+    level: "Intermediate" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Nested array ko flat kaise karein (deep flatten)?",
+    answer: `**Problem:** \`[1, [2, [3, [4]]]] → [1, 2, 3, 4]\`
+
+**Methods:**
+1. \`flat(Infinity)\` — modern JS, simplest
+2. Recursive — custom depth control
+3. Stack-based — iterative (no recursion)
+4. \`reduce + concat\` — functional style
+
+**Interview mein:** flat() batao phir manually likhne ko bolo toh recursive likhao.`,
+    code: `const nested = [1, [2, [3, [4, [5]]]]];
+
+// Method 1: built-in flat()
+console.log(nested.flat(Infinity)); // [1, 2, 3, 4, 5]
+console.log(nested.flat(1));        // [1, 2, [3, [4, [5]]]] — depth=1
+
+// Method 2: Recursive (no built-in)
+function flatten(arr) {
+  return arr.reduce((flat, item) => {
+    return Array.isArray(item) ? [...flat, ...flatten(item)] : [...flat, item];
+  }, []);
+}
+console.log(flatten(nested)); // [1, 2, 3, 4, 5]
+
+// Method 3: with depth control
+function flattenDepth(arr, depth = 1) {
+  if (depth === 0) return arr.slice();
+  return arr.reduce((flat, item) => {
+    if (Array.isArray(item)) return flat.concat(flattenDepth(item, depth - 1));
+    return flat.concat(item);
+  }, []);
+}
+console.log(flattenDepth([1, [2, [3, [4]]]], 2)); // [1, 2, 3, [4]]
+
+// Method 4: Stack-based (iterative)
+function flattenStack(arr) {
+  const stack = [...arr];
+  const result = [];
+  while (stack.length) {
+    const item = stack.pop();
+    if (Array.isArray(item)) stack.push(...item); // push back
+    else result.unshift(item);
+  }
+  return result;
+}
+console.log(flattenStack(nested)); // [1, 2, 3, 4, 5]`,
+  },
+  {
+    id: 640,
+    level: "Intermediate" as const,
+    tags: ["string", "practical", "logic"],
+    question: "String mein vowels count karo aur consonants alag karo",
+    answer: `**Vowels:** a, e, i, o, u (aur uppercase versions)
+
+**Approaches:**
+1. Regex — fastest, one-liner
+2. Manual loop — clear logic
+3. Split + filter — functional
+
+**Follow-up questions:**
+- Count consonants
+- Remove all vowels from string
+- Reverse only consonants, vowels same position pe rakho`,
+    code: `// Count vowels — 3 methods
+const str = "Hello World Pakistan";
+
+// Method 1: Regex (fastest)
+function countVowels1(s) {
+  const matches = s.match(/[aeiou]/gi);
+  return matches ? matches.length : 0;
+}
+console.log(countVowels1(str)); // 6
+
+// Method 2: Manual loop
+function countVowels2(s) {
+  const vowels = new Set(["a","e","i","o","u","A","E","I","O","U"]);
+  let count = 0;
+  for (const c of s) {
+    if (vowels.has(c)) count++;
+  }
+  return count;
+}
+console.log(countVowels2(str)); // 6
+
+// Separate vowels & consonants
+function separateVowelsCons(s) {
+  const vowels = [];
+  const consonants = [];
+  const vowelSet = new Set("aeiouAEIOU");
+
+  for (const c of s) {
+    if (c === " ") continue;
+    if (vowelSet.has(c)) vowels.push(c);
+    else consonants.push(c);
+  }
+
+  return { vowels, consonants };
+}
+const { vowels, consonants } = separateVowelsCons("Pakistan");
+console.log("Vowels:", vowels);     // ['a', 'i', 'a']
+console.log("Consonants:", consonants); // ['P', 'k', 's', 't', 'n']
+
+// Remove vowels
+const noVowels = str.replace(/[aeiou]/gi, "");
+console.log(noVowels); // "Hll Wrld Pktstn"`,
+  },
+  {
+    id: 641,
+    level: "Intermediate" as const,
+    tags: ["array", "practical", "logic"],
+    question: "Array mein maximum subarray sum kaise find karein? (Kadane's Algorithm)",
+    answer: `**Kadane's Algorithm** — most famous array interview question!
+
+**Problem:** Contiguous subarray jiska sum maximum ho woh find karo.
+
+**Idea:**
+- Har position pe decide karo: naya subarray yahan se shuru karo, ya purane mein extend karo
+- \`currentSum = max(num, currentSum + num)\`
+- \`maxSum\` track karo
+
+**Complexity:** O(n) time, O(1) space — optimal!
+
+**Variations:**
+- Subarray bhi return karo (start, end index)
+- All positive → whole array`,
+    code: `// Kadane's Algorithm
+function maxSubarraySum(nums) {
+  let maxSum = nums[0];
+  let currentSum = nums[0];
+
+  for (let i = 1; i < nums.length; i++) {
+    // ya toh current num se fresh start, ya extend
+    currentSum = Math.max(nums[i], currentSum + nums[i]);
+    maxSum = Math.max(maxSum, currentSum);
+  }
+
+  return maxSum;
+}
+
+console.log(maxSubarraySum([-2, 1, -3, 4, -1, 2, 1, -5, 4]));
+// 6 → subarray [4, -1, 2, 1]
+
+console.log(maxSubarraySum([1, 2, 3, 4]));  // 10 (whole array)
+console.log(maxSubarraySum([-1, -2, -3])); // -1 (least negative)
+
+// Bonus: return the actual subarray too
+function maxSubarrayWithIndices(nums) {
+  let maxSum = nums[0], currentSum = nums[0];
+  let start = 0, end = 0, tempStart = 0;
+
+  for (let i = 1; i < nums.length; i++) {
+    if (nums[i] > currentSum + nums[i]) {
+      currentSum = nums[i];
+      tempStart = i;
+    } else {
+      currentSum += nums[i];
+    }
+    if (currentSum > maxSum) {
+      maxSum = currentSum;
+      start = tempStart;
+      end = i;
+    }
+  }
+
+  return { sum: maxSum, subarray: nums.slice(start, end + 1) };
+}
+console.log(maxSubarrayWithIndices([-2,1,-3,4,-1,2,1,-5,4]));
+// { sum: 6, subarray: [4, -1, 2, 1] }`,
+  },
+  {
+    id: 642,
+    level: "Advanced" as const,
+    tags: ["array", "string", "practical", "logic"],
+    question: "Group Anagrams — strings ko group karo jo anagrams hain",
+    answer: `**Problem:** Array of strings diya hua hai — jo anagrams hain unhe group karo.
+
+**Example:** \`["eat","tea","tan","ate","nat","bat"]\`  
+**Output:** \`[["eat","tea","ate"],["tan","nat"],["bat"]]\`
+
+**Key Insight:** Anagrams ko sort karo toh same string banti hai — woh use karo as HashMap key!
+
+**Complexity:** O(n × k log k) — n = words, k = max word length
+
+**This is a Google/Facebook interview favorite!**`,
+    code: `function groupAnagrams(strs) {
+  const map = new Map();
+
+  for (const str of strs) {
+    // sort karo — anagrams ka sorted version same hoga
+    const key = str.split("").sort().join("");
+
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(str);
+  }
+
+  return [...map.values()];
+}
+
+console.log(groupAnagrams(["eat","tea","tan","ate","nat","bat"]));
+// [["eat","tea","ate"], ["tan","nat"], ["bat"]]
+
+console.log(groupAnagrams([""]));   // [[""]]
+console.log(groupAnagrams(["a"]));  // [["a"]]
+
+// Approach 2: Character frequency as key (faster for large strings)
+function groupAnagramsFreq(strs) {
+  const map = new Map();
+
+  for (const str of strs) {
+    const freq = new Array(26).fill(0);
+    for (const c of str) {
+      freq[c.charCodeAt(0) - 97]++; // 'a' = 0, 'b' = 1 ...
+    }
+    const key = freq.join(","); // "1,0,0,...,1,..." unique key
+
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(str);
+  }
+
+  return [...map.values()];
+}
+
+console.log(groupAnagramsFreq(["eat","tea","tan","ate","nat","bat"]));
+// [["eat","tea","ate"], ["tan","nat"], ["bat"]]`,
+  },
 ];

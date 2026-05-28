@@ -40,7 +40,7 @@ export const courses: CourseInfo[] = [
     level: "Beginner",
     topics: ["Variables", "Functions", "DOM", "Events", "Promises", "ES6+", "Classes", "Closures", "Prototypes", "Generators"],
     totalChapters: 18,
-    totalInterviews: 27,
+    totalInterviews: 42,
   },
   {
     id: "php",
