@@ -4579,6 +4579,565 @@ def least_interval(tasks: list[str], n: int) -> int:
       "Meeting rooms = min-heap of end times = room reuse",
     ],
   },
+  {
+    id: "dsa-shortest-path",
+    title: "Shortest Path Algorithms",
+    titleEn: "Shortest Path Algorithms",
+    emoji: "🗺️",
+    category: "Advanced",
+    description: "Dijkstra's, Bellman-Ford, aur Floyd-Warshall — weighted graphs mein shortest path find karna",
+    descriptionEn: "Dijkstra's, Bellman-Ford, and Floyd-Warshall — finding shortest paths in weighted graphs",
+    sections: [
+      {
+        heading: "Dijkstra's Algorithm — Greedy Shortest Path",
+        content: `**Dijkstra's** = Single source shortest path — non-negative weights ke saath.
+
+**Approach:** Greedy + Min-heap — hamesha sabse chhoti distance wala node process karo.
+
+**Time:** O((V + E) log V) with min-heap
+**Limitation:** Negative edges handle nahi karta!
+
+**Real world:** Google Maps, GPS navigation, network routing.`,
+        code: `import heapq
+
+def dijkstra(graph: dict, start: str) -> dict:
+    """
+    graph = { 'A': [('B', 4), ('C', 2)], ... }
+    Returns shortest distances from start to all nodes
+    """
+    # Distance dict — infinity se shuru
+    dist = {node: float('inf') for node in graph}
+    dist[start] = 0
+    
+    # Min-heap: (distance, node)
+    heap = [(0, start)]
+    visited = set()
+    
+    while heap:
+        curr_dist, curr = heapq.heappop(heap)
+        
+        # Already processed? Skip
+        if curr in visited:
+            continue
+        visited.add(curr)
+        
+        # Neighbors explore karo
+        for neighbor, weight in graph[curr]:
+            new_dist = curr_dist + weight
+            
+            # Shorter path mila?
+            if new_dist < dist[neighbor]:
+                dist[neighbor] = new_dist
+                heapq.heappush(heap, (new_dist, neighbor))
+    
+    return dist
+
+# Path bhi track karo
+def dijkstra_with_path(graph: dict, start: str, end: str):
+    dist = {node: float('inf') for node in graph}
+    dist[start] = 0
+    prev = {node: None for node in graph}
+    heap = [(0, start)]
+    visited = set()
+    
+    while heap:
+        curr_dist, curr = heapq.heappop(heap)
+        if curr in visited:
+            continue
+        visited.add(curr)
+        if curr == end:
+            break
+        for neighbor, weight in graph[curr]:
+            new_dist = curr_dist + weight
+            if new_dist < dist[neighbor]:
+                dist[neighbor] = new_dist
+                prev[neighbor] = curr
+                heapq.heappush(heap, (new_dist, neighbor))
+    
+    # Path reconstruct karo
+    path = []
+    node = end
+    while node is not None:
+        path.append(node)
+        node = prev[node]
+    return dist[end], path[::-1]
+
+# Example
+graph = {
+    'A': [('B', 4), ('C', 2)],
+    'B': [('D', 5), ('C', 1)],
+    'C': [('B', 1), ('D', 8), ('E', 10)],
+    'D': [('E', 2)],
+    'E': []
+}
+print(dijkstra(graph, 'A'))
+# {'A': 0, 'B': 3, 'C': 2, 'D': 8, 'E': 10}`,
+        language: "python",
+      },
+      {
+        heading: "Bellman-Ford — Negative Edges bhi Handle Karo",
+        content: `**Bellman-Ford** = Single source shortest path — negative weights allowed, negative cycles detect karta hai.
+
+**Approach:** V-1 baar sab edges relax karo — every iteration mein shortest paths converge.
+
+**Time:** O(V × E) — Dijkstra se slow, lekin negative edges handle karta hai.
+
+**V-baar relax karna aur distance change ho = Negative cycle!**`,
+        code: `def bellman_ford(vertices: int, edges: list, start: int) -> tuple:
+    """
+    edges = [(u, v, weight), ...]
+    Returns (distances, has_negative_cycle)
+    """
+    dist = [float('inf')] * vertices
+    dist[start] = 0
+    
+    # V-1 iterations — sab shortest paths converge ho jayein
+    for i in range(vertices - 1):
+        updated = False
+        for u, v, w in edges:
+            if dist[u] != float('inf') and dist[u] + w < dist[v]:
+                dist[v] = dist[u] + w
+                updated = True
+        
+        if not updated:  # early termination
+            break
+    
+    # Negative cycle detect karo — V-waa iteration
+    for u, v, w in edges:
+        if dist[u] != float('inf') and dist[u] + w < dist[v]:
+            return dist, True  # negative cycle exists!
+    
+    return dist, False
+
+# Example with negative edges
+edges = [
+    (0, 1, 4),   # 0→1, weight 4
+    (0, 2, 5),   # 0→2, weight 5
+    (1, 2, -3),  # 1→2, weight -3 (negative!)
+    (2, 3, 4),
+    (1, 3, 6),
+]
+dist, neg_cycle = bellman_ford(4, edges, 0)
+print(dist)       # [0, 4, 1, 5]
+print(neg_cycle)  # False
+
+# Dijkstra vs Bellman-Ford comparison:
+# Dijkstra: O((V+E)logV), no negative edges
+# Bellman-Ford: O(VE), negative edges OK, slower
+
+# When to use:
+# Dijkstra = GPS, network routing (no negative weights)
+# Bellman-Ford = currency arbitrage, financial graphs (negative possible)`,
+        language: "python",
+      },
+      {
+        heading: "Floyd-Warshall — All Pairs Shortest Path",
+        content: `**Floyd-Warshall** = Sab node pairs ke beech shortest path — dynamic programming approach.
+
+**Time:** O(V³) — sab pairs compute karta hai
+**Space:** O(V²) — 2D matrix
+
+**Use case:** Dense graphs, negative edges OK (no negative cycles), small graphs (V ≤ 500).`,
+        code: `def floyd_warshall(n: int, edges: list) -> list:
+    """
+    All pairs shortest path
+    n = number of vertices (0 to n-1)
+    edges = [(u, v, weight), ...]
+    """
+    INF = float('inf')
+    
+    # Distance matrix initialize
+    dist = [[INF] * n for _ in range(n)]
+    
+    # Self distance = 0
+    for i in range(n):
+        dist[i][i] = 0
+    
+    # Direct edges add karo
+    for u, v, w in edges:
+        dist[u][v] = min(dist[u][v], w)  # min in case of duplicates
+    
+    # DP: k = intermediate vertex
+    for k in range(n):
+        for i in range(n):
+            for j in range(n):
+                if dist[i][k] + dist[k][j] < dist[i][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+    
+    # Negative cycle check — diagonal negative ho jaaye
+    for i in range(n):
+        if dist[i][i] < 0:
+            raise ValueError(f"Negative cycle at vertex {i}")
+    
+    return dist
+
+# Example
+n = 4
+edges = [
+    (0, 1, 3), (0, 3, 7),
+    (1, 0, 8), (1, 2, 2),
+    (2, 0, 5), (2, 3, 1),
+    (3, 0, 2),
+]
+dist = floyd_warshall(n, edges)
+# dist[i][j] = shortest path from i to j
+print(f"0→2: {dist[0][2]}")  # shortest from 0 to 2`,
+        language: "python",
+        tip: "Interview mein: Dijkstra = single source, no negative. Bellman-Ford = single source, negative OK. Floyd-Warshall = all pairs, O(V³). SSSP = Single Source Shortest Path.",
+      },
+    ],
+    cheatsheet: [
+      "Dijkstra = min-heap + greedy, O((V+E)logV), no negative",
+      "Bellman-Ford = V-1 relax iterations, O(VE), negative OK",
+      "Floyd-Warshall = all pairs, O(V³), DP approach",
+      "Negative cycle = Bellman-Ford V-th iteration mein change",
+      "Dijkstra real-world = GPS, routing protocols",
+      "Floyd-Warshall = dense graphs, small V",
+    ],
+    revision: [
+      "Dijkstra = greedy, min-heap, non-negative only",
+      "Bellman-Ford = V-1 passes, negative edges OK",
+      "Negative cycle = V-th pass mein update = cycle!",
+      "Floyd-Warshall = 3 nested loops, all pairs",
+      "dist[i][j] = intermediate vertex k se check karo",
+    ],
+  },
+  {
+    id: "dsa-mst",
+    title: "Minimum Spanning Tree",
+    titleEn: "Minimum Spanning Tree",
+    emoji: "🌲",
+    category: "Advanced",
+    description: "MST kya hai — Prim's aur Kruskal's algorithms se minimum cost spanning tree banana",
+    descriptionEn: "What is MST — building minimum cost spanning tree with Prim's and Kruskal's algorithms",
+    sections: [
+      {
+        heading: "MST kya hai? Prim's Algorithm",
+        content: `**Minimum Spanning Tree (MST):** Weighted undirected graph mein — sab vertices connect karo minimum total edge weight se, koi cycle nahi.
+
+**Properties:**
+- V vertices → V-1 edges in MST
+- No cycles
+- All vertices connected
+
+**Prim's Algorithm:** Greedy — ek vertex se shuru, har step mein minimum weight edge add karo.
+**Time:** O(E log V) with min-heap`,
+        code: `import heapq
+from collections import defaultdict
+
+def prims_mst(vertices: int, edges: list) -> tuple:
+    """
+    edges = [(weight, u, v), ...]
+    Returns (total_cost, mst_edges)
+    """
+    # Adjacency list banao
+    graph = defaultdict(list)
+    for w, u, v in edges:
+        graph[u].append((w, v))
+        graph[v].append((w, u))  # undirected!
+    
+    visited = set()
+    min_heap = [(0, 0, -1)]  # (weight, vertex, parent)
+    mst_edges = []
+    total_cost = 0
+    
+    while min_heap and len(visited) < vertices:
+        weight, curr, parent = heapq.heappop(min_heap)
+        
+        if curr in visited:
+            continue
+        visited.add(curr)
+        
+        if parent != -1:  # start vertex skip karo
+            mst_edges.append((parent, curr, weight))
+            total_cost += weight
+        
+        # Neighbors add karo
+        for edge_weight, neighbor in graph[curr]:
+            if neighbor not in visited:
+                heapq.heappush(min_heap, (edge_weight, neighbor, curr))
+    
+    return total_cost, mst_edges
+
+# Example: Network cables minimum cost
+vertices = 5
+edges = [
+    (2, 0, 1), (3, 0, 3), (6, 1, 2),
+    (8, 1, 4), (5, 2, 4), (7, 3, 4),
+    (9, 1, 3),
+]
+cost, mst = prims_mst(vertices, edges)
+print(f"MST Cost: {cost}")        # minimum total weight
+print(f"MST Edges: {mst}")        # V-1 edges
+
+# Real world: 
+# Network cable layout (minimum wire)
+# Pipeline design
+# Cluster analysis
+# Circuit board routing`,
+        language: "python",
+      },
+      {
+        heading: "Kruskal's Algorithm — Union-Find se MST",
+        content: `**Kruskal's Algorithm:** Edges ko weight se sort karo, smallest first — cycle nahi banta toh add karo.
+
+**Requires:** Union-Find (Disjoint Set Union) — cycle detection ke liye.
+
+**Time:** O(E log E) — edge sorting dominant.
+
+**Kruskal vs Prim's:**
+- Kruskal = sparse graphs (few edges)
+- Prim's = dense graphs (many edges)`,
+        code: `class UnionFind:
+    def __init__(self, n):
+        self.parent = list(range(n))
+        self.rank = [0] * n
+    
+    def find(self, x):
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])  # path compression
+        return self.parent[x]
+    
+    def union(self, x, y) -> bool:
+        px, py = self.find(x), self.find(y)
+        if px == py:
+            return False  # same component = cycle!
+        # Union by rank
+        if self.rank[px] < self.rank[py]:
+            px, py = py, px
+        self.parent[py] = px
+        if self.rank[px] == self.rank[py]:
+            self.rank[px] += 1
+        return True  # successfully merged
+
+def kruskals_mst(vertices: int, edges: list) -> tuple:
+    """
+    edges = [(weight, u, v), ...]
+    Returns (total_cost, mst_edges)
+    """
+    # Step 1: Sort edges by weight
+    edges.sort()
+    
+    uf = UnionFind(vertices)
+    mst_edges = []
+    total_cost = 0
+    
+    # Step 2: Edges ek-ek add karo — cycle check karo
+    for weight, u, v in edges:
+        if uf.union(u, v):  # no cycle?
+            mst_edges.append((u, v, weight))
+            total_cost += weight
+            
+            if len(mst_edges) == vertices - 1:  # V-1 edges ho gaye
+                break
+    
+    return total_cost, mst_edges
+
+# Example — same graph
+vertices = 5
+edges = [
+    (2, 0, 1), (3, 0, 3), (5, 2, 4),
+    (6, 1, 2), (7, 3, 4), (8, 1, 4),
+    (9, 1, 3),
+]
+cost, mst = kruskals_mst(vertices, edges)
+print(f"MST Cost: {cost}")   # same as Prim's result!
+print(f"MST Edges: {mst}")
+
+# Kruskal's trace:
+# Sort: (2,0,1), (3,0,3), (5,2,4), (6,1,2), (7,3,4)...
+# Add (2,0,1) — no cycle ✓
+# Add (3,0,3) — no cycle ✓
+# Add (5,2,4) — no cycle ✓
+# Add (6,1,2) — no cycle ✓ → 4 edges = V-1, DONE!`,
+        language: "python",
+        tip: "Kruskal's = sort edges + Union-Find. Prim's = min-heap + visited set. Dono O(E log E/V) — similar complexity. Interview: Kruskal's code karna thoda aur seed hota hai (sort + UF).",
+      },
+    ],
+    cheatsheet: [
+      "MST = V vertices, V-1 edges, no cycle, min total weight",
+      "Prim's = greedy, start vertex se grow karo, min-heap",
+      "Kruskal's = sort edges, add if no cycle (Union-Find)",
+      "Kruskal's = sparse graphs, Prim's = dense graphs",
+      "Union-Find = cycle detection efficiently O(α(n))",
+    ],
+    revision: [
+      "MST = minimum total weight, all vertices connected",
+      "Prim's = vertex-based greedy, min-heap",
+      "Kruskal's = edge-based, sort + Union-Find",
+      "Both produce same MST (may differ in edge choice)",
+      "V-1 edges = MST complete",
+    ],
+  },
+  {
+    id: "dsa-max-flow",
+    title: "Maximum Flow",
+    titleEn: "Maximum Flow",
+    emoji: "🌊",
+    category: "Advanced",
+    description: "Max flow problem — Ford-Fulkerson, Edmonds-Karp, aur real-world network flow applications",
+    descriptionEn: "Maximum flow problem — Ford-Fulkerson, Edmonds-Karp, and real-world network flow applications",
+    sections: [
+      {
+        heading: "Maximum Flow kya hai? Ford-Fulkerson",
+        content: `**Max Flow:** Source (S) se Sink (T) tak maximum flow kitna ja sakta hai — capacity constraints ke saath.
+
+**Key concepts:**
+- **Capacity:** Edge pe maximum flow allowed
+- **Residual graph:** Remaining capacity + backward edges
+- **Augmenting path:** S se T tak path jahan flow badhaya ja sake
+
+**Ford-Fulkerson:** DFS/BFS se augmenting path dhundho, flow badhao — jab koi path na mile = max flow.`,
+        code: `from collections import defaultdict, deque
+
+class MaxFlow:
+    def __init__(self, vertices: int):
+        self.V = vertices
+        # Capacity matrix
+        self.capacity = [[0] * vertices for _ in range(vertices)]
+    
+    def add_edge(self, u: int, v: int, cap: int):
+        self.capacity[u][v] += cap
+    
+    def bfs(self, source: int, sink: int, parent: list) -> bool:
+        """Edmonds-Karp: BFS se augmenting path dhundho"""
+        visited = set([source])
+        queue = deque([source])
+        
+        while queue:
+            u = queue.popleft()
+            
+            for v in range(self.V):
+                if v not in visited and self.capacity[u][v] > 0:
+                    visited.add(v)
+                    parent[v] = u
+                    queue.append(v)
+                    
+                    if v == sink:
+                        return True
+        return False
+    
+    def edmonds_karp(self, source: int, sink: int) -> int:
+        """Edmonds-Karp = Ford-Fulkerson with BFS"""
+        max_flow = 0
+        parent = [-1] * self.V
+        
+        # Augmenting paths dhundho
+        while self.bfs(source, sink, parent):
+            # Path pe minimum capacity dhundho (bottleneck)
+            path_flow = float('inf')
+            s = sink
+            while s != source:
+                u = parent[s]
+                path_flow = min(path_flow, self.capacity[u][s])
+                s = parent[s]
+            
+            # Flow update karo (forward + backward)
+            v = sink
+            while v != source:
+                u = parent[v]
+                self.capacity[u][v] -= path_flow   # forward edge reduce
+                self.capacity[v][u] += path_flow   # backward edge add
+                v = parent[v]
+            
+            max_flow += path_flow
+            parent = [-1] * self.V  # reset
+        
+        return max_flow
+
+# Example: Water pipe network
+# Nodes: 0=source, 1,2,3=intermediate, 4=sink
+mf = MaxFlow(6)
+mf.add_edge(0, 1, 16)
+mf.add_edge(0, 2, 13)
+mf.add_edge(1, 2, 10)
+mf.add_edge(1, 3, 12)
+mf.add_edge(2, 4, 14)
+mf.add_edge(3, 2, 9)
+mf.add_edge(3, 5, 20)
+mf.add_edge(4, 3, 7)
+mf.add_edge(4, 5, 4)
+
+print(mf.edmonds_karp(0, 5))  # 23 — max flow`,
+        language: "python",
+      },
+      {
+        heading: "Real-world Applications aur Min-Cut",
+        content: `**Max-Flow Min-Cut Theorem:** Maximum flow = Minimum cut capacity — network ko partition karne ka minimum cost.
+
+**Real-world uses:**
+- Network bandwidth optimization
+- Bipartite matching (job assignments)
+- Image segmentation
+- Airline scheduling
+- Supply chain optimization`,
+        code: `# Bipartite Matching — Max Flow se!
+# Workers aur Jobs assign karo — maximum assignments
+
+def max_bipartite_matching(workers: int, jobs: int, can_do: list) -> int:
+    """
+    can_do = [(worker_id, job_id), ...] — worker kaunse jobs kar sakta hai
+    Returns maximum matching (assignments)
+    """
+    # Super source (0) → workers (1..W) → jobs (W+1..W+J) → super sink (W+J+1)
+    total = workers + jobs + 2
+    source = 0
+    sink = workers + jobs + 1
+    
+    mf = MaxFlow(total)
+    
+    # Source → each worker (capacity 1)
+    for w in range(1, workers + 1):
+        mf.add_edge(source, w, 1)
+    
+    # Each job → sink (capacity 1)
+    for j in range(workers + 1, workers + jobs + 1):
+        mf.add_edge(j, sink, 1)
+    
+    # Worker → compatible jobs (capacity 1)
+    for worker, job in can_do:
+        mf.add_edge(worker, workers + job, 1)
+    
+    return mf.edmonds_karp(source, sink)
+
+# Example
+workers = 3  # 3 workers
+jobs = 3     # 3 jobs
+assignments = [(1, 1), (1, 2), (2, 1), (3, 2), (3, 3)]
+print(max_bipartite_matching(workers, jobs, assignments))  # 3
+
+# Complexity comparison:
+# Ford-Fulkerson DFS:  O(E * max_flow) — slow with large capacity
+# Edmonds-Karp BFS:   O(V * E²) — polynomial, better
+# Dinic's Algorithm:  O(V² * E) — faster, used in practice
+
+# Key concepts summary:
+# Augmenting path = S se T tak path with remaining capacity
+# Residual graph = forward (remaining) + backward (undo) edges
+# Bottleneck = path pe minimum remaining capacity
+# Max flow = no more augmenting paths exist
+# Min cut = minimum edges hataao → S aur T disconnect ho jaayein`,
+        language: "python",
+        tip: "Interview mein max flow concept zyada important hai implementation se. Key concepts: augmenting path, residual graph, bottleneck. Edmonds-Karp (BFS-based) most commonly asked implementation hai.",
+      },
+    ],
+    cheatsheet: [
+      "Max flow = S se T tak maximum bandwidth/flow",
+      "Augmenting path = remaining capacity wali path",
+      "Residual graph = forward (remaining) + backward edges",
+      "Ford-Fulkerson = DFS paths, O(E × max_flow)",
+      "Edmonds-Karp = BFS paths, O(V × E²)",
+      "Max-flow = Min-cut (theorem!)",
+      "Bipartite matching = max flow application",
+    ],
+    revision: [
+      "Max flow = source se sink tak maximum flow",
+      "Residual graph = flow undo karne ke liye backward edges",
+      "BFS (Edmonds-Karp) = polynomial complexity guarantee",
+      "Bottleneck = path pe minimum capacity",
+      "Min-cut = network partition minimum cost = max flow",
+    ],
+  },
 ];
 
 export const dsaInterviews = [

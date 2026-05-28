@@ -109,7 +109,7 @@ export const courses: CourseInfo[] = [
     description: "Facebook ka UI library — Hooks, TypeScript, Testing, Next.js, TanStack Query A to Z",
     level: "Intermediate",
     topics: ["JSX", "Hooks", "Performance", "Custom Hooks", "TypeScript", "Patterns", "Suspense", "TanStack Query", "Testing", "Next.js"],
-    totalChapters: 21,
+    totalChapters: 23,
     totalInterviews: 42,
   },
   {
@@ -165,7 +165,7 @@ export const courses: CourseInfo[] = [
     description: "Data Structures & Algorithms in Python — FAANG interview preparation with advanced topics",
     level: "Intermediate",
     topics: ["Arrays", "Linked List", "Stack/Queue", "Trees", "Graphs", "Trie", "Union-Find", "Monotonic Stack", "Bit Manipulation", "Advanced DP"],
-    totalChapters: 20,
+    totalChapters: 23,
     totalInterviews: 20,
   },
 ];

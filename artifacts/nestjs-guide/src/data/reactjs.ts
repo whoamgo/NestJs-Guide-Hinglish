@@ -1092,6 +1092,366 @@ function ProductList({ categoryId }: { categoryId: string }) {
       "Separation of concerns = test karna easy hota hai",
     ],
   },
+  {
+    id: "react-lists-conditionals",
+    title: "Lists, Keys aur Conditional Rendering",
+    titleEn: "Lists, Keys and Conditional Rendering",
+    emoji: "📋",
+    category: "Beginner",
+    description: "map() se lists render karna, keys ka importance, conditional rendering — &&, ternary, early return",
+    descriptionEn: "Rendering lists with map(), importance of keys, conditional rendering — &&, ternary, early return",
+    sections: [
+      {
+        heading: "Lists Render karna — map() aur Keys",
+        content: `**React mein lists** = JavaScript \`map()\` se render hoti hain — har item ek JSX element.
+
+**Key prop:** React ko unique identifier chahiye DOM efficiently update karne ke liye — keys changes track karta hai.
+
+**Key rules:**
+- Sibling mein unique honi chahiye (globally nahi)
+- Stable honi chahiye — index use karna avoid karo (order changes toh bugs)
+- String ya number — objects nahi`,
+        code: `// Basic list rendering
+const fruits = ['Apple', 'Banana', 'Cherry'];
+
+function FruitList() {
+  return (
+    <ul>
+      {fruits.map((fruit, index) => (
+        <li key={fruit}>{fruit}</li>  {/* key = unique string */}
+      ))}
+    </ul>
+  );
+}
+
+// Objects ki list — ID as key (best practice)
+const users = [
+  { id: 1, name: 'Ali Khan', role: 'admin' },
+  { id: 2, name: 'Sara Ahmed', role: 'user' },
+  { id: 3, name: 'Bilal Malik', role: 'user' },
+];
+
+function UserList() {
+  return (
+    <ul className="user-list">
+      {users.map(user => (
+        <li key={user.id}>
+          <strong>{user.name}</strong>
+          <span className={"badge " + user.role}>{user.role}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Component mein extract karo — clean!
+function UserCard({ user }) {
+  return (
+    <div className="card">
+      <h3>{user.name}</h3>
+      <p>{user.role}</p>
+    </div>
+  );
+}
+
+function UserGrid({ users }) {
+  return (
+    <div className="grid">
+      {users.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  );
+}
+
+// Filtering + mapping
+function ActiveUsers({ users }) {
+  return (
+    <ul>
+      {users
+        .filter(u => u.isActive)           // filter first
+        .sort((a, b) => a.name.localeCompare(b.name))  // sort
+        .map(u => <li key={u.id}>{u.name}</li>)        // render
+      }
+    </ul>
+  );
+}
+
+// ⚠️ Index as key — AVOID!
+// {items.map((item, index) => <li key={index}>{item}</li>)}
+// Problem: items reorder hon toh React confused ho jaata hai`,
+        language: "tsx",
+      },
+      {
+        heading: "Conditional Rendering — 4 Tarike",
+        content: `React mein condition ke basis pe kuch show/hide karne ke **4 main patterns** hain:
+
+1. **if/else** — simple, readable
+2. **Ternary (? :)** — inline, 2 options
+3. **&& (short circuit)** — sirf ek option
+4. **Early return** — complex conditions ke liye`,
+        code: `// 1. if/else — function level
+function UserGreeting({ user, isLoading, error }) {
+  if (isLoading) return <Spinner />;
+  if (error) return <ErrorMessage message={error} />;
+  if (!user) return <p>No user found</p>;
+  
+  return <h1>Welcome, {user.name}!</h1>;  // happy path
+}
+
+// 2. Ternary — inline, 2 options
+function LoginButton({ isLoggedIn }) {
+  return (
+    <div>
+      {isLoggedIn ? (
+        <button onClick={logout}>Logout</button>
+      ) : (
+        <button onClick={login}>Login</button>
+      )}
+    </div>
+  );
+}
+
+// 3. && — sirf show karo, hide nahi
+function Notification({ count, message }) {
+  return (
+    <div>
+      {count > 0 && <span className="badge">{count}</span>}
+      {message && <p className="alert">{message}</p>}
+      
+      {/* ⚠️ 0 && ... = "0" render karta hai! */}
+      {count !== 0 && <span>{count}</span>}  {/* safe */}
+    </div>
+  );
+}
+
+// 4. Switch pattern — multiple states
+function Status({ status }) {
+  const content = {
+    loading: <Spinner />,
+    error: <ErrorCard />,
+    empty: <EmptyState />,
+    success: <DataTable />,
+  }[status];
+  
+  return <div>{content}</div>;
+}
+
+// Real-world: Permission-based UI
+function AdminPanel({ user }) {
+  return (
+    <nav>
+      <Link to="/dashboard">Dashboard</Link>
+      {user.role === 'admin' && <Link to="/users">Users</Link>}
+      {user.permissions.includes('billing') && (
+        <Link to="/billing">Billing</Link>
+      )}
+      {(user.role === 'admin' || user.role === 'manager') && (
+        <Link to="/reports">Reports</Link>
+      )}
+    </nav>
+  );
+}`,
+        language: "tsx",
+        tip: "Early return pattern bahut clean hota hai — loading, error, empty states pehle handle karo. Main JSX sirf happy path ke liye rakhho. Ternary 2 options ke liye, && sirf ek option ke liye.",
+      },
+    ],
+    mcqs: [
+      {
+        q: "React lists mein key prop kyun zaroori hai?",
+        options: [
+          "CSS styling ke liye",
+          "React ko efficiently DOM update karne mein help karta hai — changes track karta hai",
+          "Server-side rendering ke liye",
+          "Performance optimization nahi karta",
+        ],
+        correct: 1,
+        explain: "Key prop React ko batata hai kaunsa item add/remove/reorder hua. Bina keys ke React puri list re-render karta hai — keys se sirf changed items update hote hain.",
+      },
+    ],
+    cheatsheet: [
+      "arr.map(item => <Li key={item.id} />)",
+      "key = stable unique ID — index avoid karo",
+      "&& — sirf show, 0 se bachne ke liye !== 0 check",
+      "? : — 2 options show/hide",
+      "Early return = loading/error pehle handle karo",
+      "filter().map() — filter phir render",
+    ],
+    revision: [
+      "Lists = map() — har item JSX return karo",
+      "Key = stable unique value (ID, not index)",
+      "&& short-circuit — 0 bug se savdhan!",
+      "Ternary = 2 options, && = 1 option",
+      "Early return = multiple states handle karo cleanly",
+    ],
+  },
+  {
+    id: "react-portals-transitions",
+    title: "Portals aur Transitions",
+    titleEn: "Portals and Transitions",
+    emoji: "🚪",
+    category: "Intermediate",
+    description: "ReactDOM.createPortal se modal render karna, useTransition aur useDeferredValue se smooth UX",
+    descriptionEn: "Render modals with ReactDOM.createPortal, smooth UX with useTransition and useDeferredValue",
+    sections: [
+      {
+        heading: "React Portals — DOM ke Bahar Render Karo",
+        content: `**Portal** = Component ko DOM tree ke kisi bhi node mein render karo — parent component ke bahar.
+
+**Kab use karein:**
+- Modals / Dialogs — z-index aur overflow issues avoid karo
+- Tooltips — parent overflow:hidden se bahar
+- Notifications / Toast — page ke upar fixed position
+- Dropdown menus — parent clipping se bahar
+
+**Key insight:** Portal ka event bubbling still kaam karta hai React tree se — DOM tree se nahi!`,
+        code: `// Basic Portal — document.body mein render karo
+import { createPortal } from 'react-dom';
+
+function Modal({ isOpen, onClose, children }) {
+  if (!isOpen) return null;
+  
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div 
+        className="modal-content" 
+        onClick={e => e.stopPropagation()}  // overlay click rok
+      >
+        <button className="close-btn" onClick={onClose}>✕</button>
+        {children}
+      </div>
+    </div>,
+    document.body  // portal target — body mein render hoga!
+  );
+}
+
+// Usage
+function App() {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <div style={{ overflow: 'hidden' }}>  {/* overflow hidden parent */}
+      <button onClick={() => setIsOpen(true)}>Open Modal</button>
+      
+      {/* Portal parent ke overflow se affect nahi hota! */}
+      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
+        <h2>Hello from Portal!</h2>
+        <p>Yeh DOM mein body ke andar hai, React tree mein App ke andar.</p>
+      </Modal>
+    </div>
+  );
+}
+
+// Dedicated portal container — best practice
+// index.html mein add karo:
+// <div id="modal-root"></div>
+
+function ModalPortal({ children }) {
+  const portalRoot = document.getElementById('modal-root')!;
+  return createPortal(children, portalRoot);
+}
+
+// Toast notification portal
+function ToastPortal({ toasts }) {
+  return createPortal(
+    <div className="toast-container">
+      {toasts.map(toast => (
+        <Toast key={toast.id} {...toast} />
+      ))}
+    </div>,
+    document.body
+  );
+}`,
+        language: "tsx",
+      },
+      {
+        heading: "useTransition aur useDeferredValue",
+        content: `**useTransition:** Non-urgent state updates mark karo — React urgent updates (typing) pehle handle kare.
+
+**useDeferredValue:** Value ka deferred copy — heavy re-renders delay karo.
+
+**Use case:** Search input — typing responsive rakhho, results rendering slow bhi ho toh theek.`,
+        code: `import { useState, useTransition, useDeferredValue, memo } from 'react';
+
+// useTransition — urgent vs non-urgent updates
+function SearchPage() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value;
+    
+    // Urgent: input update immediately
+    setQuery(value);
+    
+    // Non-urgent: results update mein delay theek hai
+    startTransition(() => {
+      const filtered = expensiveSearch(value);  // heavy operation
+      setResults(filtered);
+    });
+  }
+
+  return (
+    <div>
+      <input value={query} onChange={handleSearch} placeholder="Search..." />
+      
+      {isPending && <span className="loading">Searching...</span>}
+      
+      <ResultsList results={results} />  {/* slower update allowed */}
+    </div>
+  );
+}
+
+// useDeferredValue — value ka deferred copy
+function FilteredList({ items }: { items: string[] }) {
+  const [filter, setFilter] = useState('');
+  const deferredFilter = useDeferredValue(filter);  // lags behind filter
+  
+  // filter ke saath input responsive, deferredFilter se heavy rendering
+  const filtered = useMemo(
+    () => items.filter(item => item.toLowerCase().includes(deferredFilter.toLowerCase())),
+    [items, deferredFilter]  // deferred value use karo!
+  );
+  
+  const isStale = filter !== deferredFilter;  // pending ho toh stale
+  
+  return (
+    <div>
+      <input value={filter} onChange={e => setFilter(e.target.value)} />
+      
+      <ul style={{ opacity: isStale ? 0.5 : 1 }}>  {/* stale = dim */}
+        {filtered.map(item => <li key={item}>{item}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+// useTransition vs useDeferredValue:
+// useTransition = state update ko non-urgent mark karo (you control setter)
+// useDeferredValue = prop/value ko defer karo (you don't control setter)
+// Both prevent urgent updates (typing) from being blocked by heavy renders`,
+        language: "tsx",
+        tip: "useTransition = tumhare paas setter hai (state), useDeferredValue = prop aata hai bahar se. Dono Concurrent React features hain — React 18+. isPending se loading indicator dikhao user experience ke liye.",
+      },
+    ],
+    cheatsheet: [
+      "createPortal(jsx, domNode) — bahar render karo",
+      "Portal = z-index/overflow issues fix karo",
+      "useTransition → [isPending, startTransition]",
+      "startTransition(() => heavyStateUpdate())",
+      "useDeferredValue(val) — deferred copy",
+      "isPending = true jab transition pending ho",
+    ],
+    revision: [
+      "Portal = DOM mein kahin bhi render karo",
+      "Modal/Toast/Tooltip = common portal use cases",
+      "Event bubbling portal mein React tree se hota hai",
+      "useTransition = non-urgent state updates",
+      "useDeferredValue = prop/value defer karo",
+      "isPending se loading state dikhao",
+    ],
+  },
 ];
 
 export const reactInterviews = [
