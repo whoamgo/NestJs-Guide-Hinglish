@@ -39,7 +39,7 @@ export const courses: CourseInfo[] = [
     description: "Browser ki language — variables se async/await tak, closures, prototypes, DOM, ES6+ deep theory",
     level: "Beginner",
     topics: ["Variables", "Functions", "DOM", "Events", "Promises", "ES6+", "Classes", "Closures", "Prototypes", "Generators"],
-    totalChapters: 16,
+    totalChapters: 18,
     totalInterviews: 27,
   },
   {

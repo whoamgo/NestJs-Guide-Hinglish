@@ -2335,6 +2335,385 @@ try {
       "Try/catch = fetch errors handle karo",
     ],
   },
+  {
+    id: "js-dates",
+    title: "JavaScript Dates",
+    titleEn: "JavaScript Dates",
+    emoji: "📅",
+    category: "Beginner",
+    description: "Date object, date create karna, methods, formatting, aur date calculations JavaScript mein",
+    descriptionEn: "Date object, creating dates, methods, formatting, and date calculations in JavaScript",
+    sections: [
+      {
+        heading: "Date Object — Create aur Access",
+        content: `**Date object** = JavaScript mein date aur time represent karta hai — milliseconds since Jan 1, 1970 (Unix epoch) mein internally store hota hai.
+
+**4 ways to create Date:**`,
+        code: `// 4 ways to create a Date
+const now = new Date();                        // current date + time
+const fromMs = new Date(0);                    // Jan 1, 1970 UTC
+const fromStr = new Date("2024-08-15");        // string se
+const fromParts = new Date(2024, 7, 15, 10, 30, 0); // year, month(0-indexed!), day, h, m, s
+
+// ⚠️ Month is 0-indexed! January = 0, December = 11
+new Date(2024, 0, 1);   // January 1, 2024
+new Date(2024, 11, 31); // December 31, 2024
+
+// Get methods
+const d = new Date();
+d.getFullYear()    // 2024
+d.getMonth()       // 0-11 (0 = January)
+d.getDate()        // 1-31 (day of month)
+d.getDay()         // 0-6 (0 = Sunday, 1 = Monday...)
+d.getHours()       // 0-23
+d.getMinutes()     // 0-59
+d.getSeconds()     // 0-59
+d.getMilliseconds()// 0-999
+d.getTime()        // milliseconds since epoch
+
+// Set methods
+const d2 = new Date();
+d2.setFullYear(2025);
+d2.setMonth(5);    // June
+d2.setDate(15);
+d2.setHours(10, 30, 0); // hours, minutes, seconds
+
+// Quick timestamp
+Date.now()         // current timestamp (ms) — no new Date() needed
++new Date()        // same — unary + converts to number`,
+        language: "javascript",
+      },
+      {
+        heading: "Date Formatting aur Calculations",
+        content: `**Built-in formatting:** \`toLocaleDateString()\`, \`toLocaleTimeString()\`, \`toISOString()\`
+
+**Date math:** Timestamps subtract/add karo — milliseconds mein.`,
+        code: `const d = new Date("2024-08-15T10:30:00");
+
+// Built-in string methods
+d.toString()           // "Thu Aug 15 2024 10:30:00 GMT+0500"
+d.toDateString()       // "Thu Aug 15 2024"
+d.toTimeString()       // "10:30:00 GMT+0500"
+d.toISOString()        // "2024-08-15T05:30:00.000Z" (UTC)
+d.toLocaleDateString() // "8/15/2024" (locale dependent)
+d.toLocaleTimeString() // "10:30:00 AM"
+
+// Intl.DateTimeFormat — proper localization
+const formatter = new Intl.DateTimeFormat('en-PK', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  weekday: 'long',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+formatter.format(d);   // "Thursday, August 15, 2024 at 10:30 AM"
+
+// Urdu locale
+new Intl.DateTimeFormat('ur-PK').format(d);
+
+// Custom format — manual
+function formatDate(date) {
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0'); // +1!
+  const yyyy = date.getFullYear();
+  return \`\${dd}/\${mm}/\${yyyy}\`;  // "15/08/2024"
+}
+
+// Date calculations
+const start = new Date("2024-01-01");
+const end = new Date("2024-12-31");
+const diffMs = end - start;                    // difference in ms
+const diffDays = diffMs / (1000 * 60 * 60 * 24); // convert to days
+console.log(\`\${diffDays} days between dates\`); // 365
+
+// Add days to date
+function addDays(date, days) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+const nextWeek = addDays(new Date(), 7);
+
+// Days until a date
+function daysUntil(targetDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);  // midnight pe set karo
+  const diff = new Date(targetDate) - today;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+console.log(\`\${daysUntil("2024-12-31")} days until New Year!\`);
+
+// Compare dates
+const d1 = new Date("2024-01-15");
+const d2 = new Date("2024-03-20");
+d1 < d2   // true — d1 is earlier
+d1 > d2   // false
+d1.getTime() === d2.getTime()  // strict equality check`,
+        language: "javascript",
+        tip: "Dates ke saath kaam karte waqt timezone bahut important hai! new Date('2024-08-15') midnight UTC se create hota hai — timezone se alag ho sakta hai. Production apps mein dayjs ya date-fns library use karo.",
+      },
+    ],
+    mcqs: [
+      {
+        q: "new Date(2024, 1, 1) mein month 1 ka matlab kya hai?",
+        options: ["January", "February", "March", "Invalid"],
+        correct: 1,
+        explain: "JavaScript mein months 0-indexed hain — 0=January, 1=February... 11=December. Bahut common mistake hai yeh!",
+      },
+    ],
+    cheatsheet: [
+      "new Date() — current date/time",
+      "getFullYear(), getMonth() (0-indexed!), getDate()",
+      "getDay() — 0=Sunday, 6=Saturday",
+      "toISOString() — '2024-08-15T10:30:00.000Z'",
+      "date1 - date2 — difference in milliseconds",
+      "Date.now() — current timestamp (ms)",
+      "Intl.DateTimeFormat — proper locale formatting",
+    ],
+    revision: [
+      "Month 0-indexed — January = 0, December = 11",
+      "getDate() = day of month, getDay() = day of week",
+      "toISOString() = UTC format",
+      "Date math = timestamps subtract karo",
+      "Intl.DateTimeFormat = locale-aware formatting",
+    ],
+  },
+  {
+    id: "js-json",
+    title: "JSON Methods",
+    titleEn: "JSON Methods",
+    emoji: "📋",
+    category: "Beginner",
+    description: "JSON.parse(), JSON.stringify(), nested data handle karna, error handling, aur API data ke saath kaam karna",
+    descriptionEn: "JSON.parse(), JSON.stringify(), handling nested data, error handling, and working with API data",
+    sections: [
+      {
+        heading: "JSON.stringify() — JS to JSON",
+        content: `**JSON.stringify()** = JavaScript object/array → JSON string.
+
+**Parameters:** \`JSON.stringify(value, replacer, space)\`
+- **replacer:** Keys filter karo ya values transform karo
+- **space:** Indentation for pretty printing`,
+        code: `// Basic stringify
+const user = {
+  name: "Ali Khan",
+  age: 25,
+  skills: ["JavaScript", "Python"],
+  address: { city: "Lahore", country: "Pakistan" },
+  active: true,
+  score: null,
+};
+
+const jsonStr = JSON.stringify(user);
+// '{"name":"Ali Khan","age":25,"skills":["JavaScript","Python"],...}'
+
+// Pretty print — indent = 2 spaces
+const pretty = JSON.stringify(user, null, 2);
+console.log(pretty);
+// {
+//   "name": "Ali Khan",
+//   "age": 25,
+//   ...
+// }
+
+// Replacer — specific keys rakhho (whitelist)
+JSON.stringify(user, ['name', 'age']);
+// '{"name":"Ali Khan","age":25}'
+
+// Replacer function — values transform karo
+JSON.stringify(user, (key, value) => {
+  if (key === 'age') return undefined;  // age remove karo
+  if (typeof value === 'number') return value * 2;
+  return value;
+});
+
+// Type conversions in JSON
+JSON.stringify({
+  fn: function() {},    // undefined — removed!
+  sym: Symbol('x'),     // undefined — removed!
+  undef: undefined,     // undefined — removed!
+  nan: NaN,             // null
+  inf: Infinity,        // null
+  date: new Date(),     // string (ISO format)
+  regex: /abc/,         // {} (empty object!)
+});
+
+// toJSON() — custom serialization
+class User {
+  constructor(name, password) {
+    this.name = name;
+    this.password = password;
+  }
+  toJSON() {
+    return { name: this.name }; // password serialize nahi hogi!
+  }
+}
+JSON.stringify(new User("Ali", "secret123"));
+// '{"name":"Ali"}' — password gone!`,
+        language: "javascript",
+      },
+      {
+        heading: "JSON.parse() — JSON to JS",
+        content: `**JSON.parse()** = JSON string → JavaScript object/array.
+
+**Reviver:** Values transform karo parse ke waqt (opposite of replacer).
+
+**Error handling:** Invalid JSON = SyntaxError — hamesha try/catch use karo!`,
+        code: `// Basic parse
+const jsonStr = '{"name":"Ali","age":25,"skills":["JS","Python"]}';
+const user = JSON.parse(jsonStr);
+console.log(user.name);        // "Ali"
+console.log(user.skills[0]);   // "JS"
+
+// Nested objects bhi parse hote hain
+const data = JSON.parse('{"user":{"id":1,"name":"Ali"},"posts":[1,2,3]}');
+data.user.name;    // "Ali"
+data.posts.length; // 3
+
+// Reviver — values transform karo while parsing
+const withDates = JSON.parse(
+  '{"name":"Ali","createdAt":"2024-01-15T10:30:00.000Z"}',
+  (key, value) => {
+    // Date strings ko Date objects mein convert karo
+    if (key === 'createdAt') return new Date(value);
+    return value;
+  }
+);
+console.log(withDates.createdAt instanceof Date); // true!
+console.log(withDates.createdAt.getFullYear());   // 2024
+
+// Error handling — MUST use try/catch!
+function safeParseJSON(str) {
+  try {
+    return { data: JSON.parse(str), error: null };
+  } catch (e) {
+    return { data: null, error: e.message };
+  }
+}
+
+const { data, error } = safeParseJSON('{"invalid": json}');
+// error: "Unexpected token j in JSON at position 12"
+
+// Deep clone using JSON (simple objects ke liye)
+const original = { a: 1, b: { c: 2 }, d: [1, 2, 3] };
+const clone = JSON.parse(JSON.stringify(original)); // deep copy!
+clone.b.c = 999;
+console.log(original.b.c); // 2 — original unchanged!
+
+// Limitations of JSON clone:
+// ❌ Functions, undefined, Symbol, Date → lost/changed
+// ❌ Circular references → error
+// ✅ Use structuredClone() for better deep clone (modern browsers)
+const betterClone = structuredClone(original);
+
+// Real-world: API response handle karo
+async function fetchUser(id) {
+  const response = await fetch(\`/api/users/\${id}\`);
+  if (!response.ok) throw new Error(\`HTTP \${response.status}\`);
+
+  // response.json() internally JSON.parse() karta hai
+  const user = await response.json();
+  return user;
+}
+
+// localStorage ke saath JSON
+localStorage.setItem('cart', JSON.stringify([{id:1, qty:2}]));
+const cart = JSON.parse(localStorage.getItem('cart') || '[]');`,
+        language: "javascript",
+        tip: "JSON.parse() hamesha try/catch mein wrap karo — invalid JSON pe SyntaxError throw hoti hai. User input ya external API data kabhi bhi corrupt ho sakta hai. response.json() bhi internally JSON.parse() karta hai — yeh bhi fail ho sakta hai!",
+      },
+      {
+        heading: "JSON — Common Patterns aur Tips",
+        content: `**JSON valid types:** string, number, boolean, null, array, object — Functions/undefined/Symbol allowed nahi!
+
+**Common use cases:** API responses, localStorage, config files, data transfer.`,
+        code: `// JSON valid types sirf:
+// string, number, boolean, null, array, object
+'{"valid": true}'                           // ✓
+'{"str": "hello", "num": 42, "arr": [1,2]}'// ✓
+'{"fn": function(){}}' // ✗ INVALID JSON
+
+// Check if string is valid JSON
+function isValidJSON(str) {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Safely get nested value (optional chaining)
+const data = JSON.parse(apiResponse);
+const city = data?.user?.address?.city ?? 'Unknown';
+
+// API response normalize karo
+function normalizeUser(apiUser) {
+  return {
+    id: apiUser.id,
+    name: \`\${apiUser.first_name} \${apiUser.last_name}\`,
+    email: apiUser.email_address,
+    createdAt: new Date(apiUser.created_at),
+    isActive: apiUser.status === 'active',
+  };
+}
+
+// Batch API calls + JSON
+const [users, posts] = await Promise.all([
+  fetch('/api/users').then(r => r.json()),
+  fetch('/api/posts').then(r => r.json()),
+]);
+
+// JSON Schema validation (basic)
+function validateUser(obj) {
+  const required = ['name', 'email', 'age'];
+  for (const field of required) {
+    if (!(field in obj)) throw new Error(\`Missing field: \${field}\`);
+  }
+  if (typeof obj.age !== 'number') throw new Error('age must be number');
+  if (!obj.email.includes('@')) throw new Error('Invalid email');
+  return true;
+}
+
+// Config file pattern
+const config = JSON.parse(
+  document.getElementById('app-config')?.textContent || '{}'
+);`,
+        language: "javascript",
+      },
+    ],
+    mcqs: [
+      {
+        q: "JSON.stringify() undefined values ke saath kya karta hai?",
+        options: ["'undefined' string mein convert karta hai", "null mein convert karta hai", "Object se remove kar deta hai", "Error throw karta hai"],
+        correct: 2,
+        explain: "JSON.stringify() object properties ko remove kar deta hai jab value undefined, Function, ya Symbol ho. Array mein undefined ko null mein convert karta hai.",
+      },
+      {
+        q: "JSON.parse() invalid JSON string pe kya return karta hai?",
+        options: ["null", "undefined", "SyntaxError throw karta hai", "Empty object {}"],
+        correct: 2,
+        explain: "Invalid JSON pe JSON.parse() SyntaxError throw karta hai. Isliye hamesha try/catch use karna zaroori hai user input ya external data ke saath.",
+      },
+    ],
+    cheatsheet: [
+      "JSON.stringify(obj, null, 2) — pretty print",
+      "JSON.parse(str) — JSON to JS object",
+      "Try/catch — hamesha JSON.parse wrap karo",
+      "response.json() — fetch API ka JSON parse",
+      "JSON.parse(JSON.stringify(obj)) — basic deep clone",
+      "structuredClone(obj) — better deep clone",
+      "toJSON() method — custom serialization",
+    ],
+    revision: [
+      "JSON types: string, number, boolean, null, array, object only",
+      "undefined/Function/Symbol = stringify mein remove ho jaate hain",
+      "JSON.parse() SyntaxError throw karta hai — try/catch use karo",
+      "response.json() = async JSON parse",
+      "localStorage = hamesha stringify/parse karo",
+    ],
+  },
 ];
 
 export const jsInterviews: InterviewQ[] = [
