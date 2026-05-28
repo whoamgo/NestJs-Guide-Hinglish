@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { courses, allCourseData } from "../data/index";
-import type { ActiveView } from "../App";
+import type { ActiveView } from "../context";
 
 interface Props {
   onClose: () => void;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Chapter } from "../data/chapters";
-import type { ActiveView } from "../App";
-import { useApp } from "../App";
+import type { ActiveView } from "../context";
+import { useApp } from "../context";
 import { courses } from "../data/index";
 
 interface Props {

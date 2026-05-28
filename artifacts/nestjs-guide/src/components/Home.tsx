@@ -1,6 +1,6 @@
 import { courses } from "../data/index";
-import type { ActiveView } from "../App";
-import { useApp } from "../App";
+import type { ActiveView } from "../context";
+import { useApp } from "../context";
 
 interface Props {
   onNavigate: (view: ActiveView) => void;
