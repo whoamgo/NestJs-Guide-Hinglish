@@ -1620,6 +1620,373 @@ WHERE EXISTS (
       "Pivot table = CASE WHEN + conditional aggregation",
     ],
   },
+  {
+    id: "mysql-select-filtering",
+    title: "SELECT, WHERE aur Filtering",
+    titleEn: "SELECT, WHERE and Filtering",
+    emoji: "🔍",
+    category: "Beginner",
+    description: "SELECT DISTINCT, WHERE clauses, ORDER BY, AND/OR/NOT, LIMIT, NULL values handle karna",
+    descriptionEn: "SELECT DISTINCT, WHERE clauses, ORDER BY, AND/OR/NOT, LIMIT, NULL values",
+    sections: [
+      {
+        heading: "SELECT aur SELECT DISTINCT",
+        content: `**SELECT** = Database se data fetch karo.
+**SELECT DISTINCT** = Duplicate rows remove karo — unique values sirf.
+
+**SELECT columns:**
+- \`*\` = sab columns
+- Specific columns = performance better
+- Aliases = column/table ko rename karo`,
+        code: `-- Basic SELECT
+SELECT * FROM employees;
+SELECT name, salary, department FROM employees;
+
+-- Column alias — result mein different name
+SELECT 
+    name AS employee_name,
+    salary AS monthly_salary,
+    department AS dept
+FROM employees;
+
+-- Expression in SELECT
+SELECT 
+    name,
+    salary,
+    salary * 12 AS annual_salary,
+    UPPER(name) AS name_upper,
+    CONCAT(first_name, ' ', last_name) AS full_name
+FROM employees;
+
+-- SELECT DISTINCT — unique values only
+SELECT DISTINCT department FROM employees;
+-- Result: HR, IT, Finance (duplicates hatao)
+
+SELECT DISTINCT department, city FROM employees;
+-- department + city combination unique honi chahiye
+
+-- Count distinct
+SELECT COUNT(DISTINCT department) AS dept_count FROM employees;
+
+-- NULL handling in SELECT
+SELECT name, IFNULL(phone, 'No Phone') AS phone FROM employees;
+SELECT name, COALESCE(phone, mobile, 'N/A') AS contact FROM employees;`,
+        language: "sql",
+      },
+      {
+        heading: "WHERE — Filtering Rows",
+        content: `**WHERE** = Specific conditions pe rows filter karo.
+
+**Comparison operators:** =, !=, <>, <, >, <=, >=
+**Logical operators:** AND, OR, NOT
+**NULL check:** IS NULL, IS NOT NULL`,
+        code: `-- Basic WHERE
+SELECT * FROM employees WHERE department = 'IT';
+SELECT * FROM employees WHERE salary > 50000;
+SELECT * FROM employees WHERE salary != 30000;
+
+-- AND — dono conditions true honi chahiye
+SELECT * FROM employees 
+WHERE department = 'IT' AND salary > 60000;
+
+-- OR — koi ek condition true ho
+SELECT * FROM employees 
+WHERE department = 'IT' OR department = 'Finance';
+
+-- NOT — condition negate karo
+SELECT * FROM employees WHERE NOT department = 'HR';
+SELECT * FROM employees WHERE department <> 'HR';  -- same result
+
+-- Combined (parentheses use karo!)
+SELECT * FROM employees 
+WHERE (department = 'IT' OR department = 'Finance') 
+  AND salary > 50000
+  AND status = 'active';
+
+-- NULL values
+SELECT * FROM employees WHERE phone IS NULL;
+SELECT * FROM employees WHERE phone IS NOT NULL;
+
+-- NULL comparison — yeh WRONG hai!
+SELECT * FROM employees WHERE phone = NULL;   -- ❌ always 0 rows!
+SELECT * FROM employees WHERE phone IS NULL;  -- ✅ correct
+
+-- String comparison
+SELECT * FROM employees WHERE name = 'Ali Khan';  -- case insensitive (default)
+
+-- ORDER BY — results sort karo
+SELECT * FROM employees ORDER BY salary DESC;        -- high to low
+SELECT * FROM employees ORDER BY name ASC;           -- A to Z (default)
+SELECT * FROM employees ORDER BY department, salary DESC;  -- multiple columns
+
+-- LIMIT — rows limit karo
+SELECT * FROM employees LIMIT 10;            -- pehle 10
+SELECT * FROM employees LIMIT 10 OFFSET 20; -- page 3 (rows 21-30)
+SELECT * FROM employees ORDER BY salary DESC LIMIT 5;  -- top 5 earners`,
+        language: "sql",
+      },
+    ],
+    cheatsheet: [
+      "SELECT DISTINCT col — unique values",
+      "WHERE col = val AND col2 > val2",
+      "IS NULL / IS NOT NULL — null check karo",
+      "ORDER BY col DESC — descending sort",
+      "LIMIT N OFFSET M — pagination",
+      "IFNULL(col, default) — null replace karo",
+    ],
+    revision: [
+      "SELECT * = sab columns, expensive on big tables",
+      "DISTINCT = duplicate rows hataao",
+      "WHERE = row filter karo",
+      "NULL = IS NULL use karo (= NULL kaam nahi karta)",
+      "ORDER BY = sort, LIMIT = rows limit",
+    ],
+  },
+  {
+    id: "mysql-aggregate-functions",
+    title: "Aggregate Functions aur GROUP BY",
+    titleEn: "Aggregate Functions and GROUP BY",
+    emoji: "📊",
+    category: "Beginner",
+    description: "MIN, MAX, COUNT, AVG, SUM — GROUP BY aur HAVING ke saath data summarize karna",
+    descriptionEn: "MIN, MAX, COUNT, AVG, SUM — summarize data with GROUP BY and HAVING",
+    sections: [
+      {
+        heading: "Aggregate Functions — MIN, MAX, COUNT, AVG, SUM",
+        content: `**Aggregate functions** = Multiple rows pe operate karo — ek result return karo.
+
+| Function | Description |
+|----------|-------------|
+| COUNT() | Rows gino |
+| SUM() | Values add karo |
+| AVG() | Average nikalo |
+| MIN() | Sabse chhota value |
+| MAX() | Sabse bada value |`,
+        code: `-- Sample table: orders (id, customer_id, amount, product, city)
+
+-- COUNT — rows gino
+SELECT COUNT(*) AS total_orders FROM orders;
+SELECT COUNT(phone) AS has_phone FROM employees;  -- NULL skip karta hai!
+SELECT COUNT(DISTINCT customer_id) AS unique_customers FROM orders;
+
+-- SUM — total
+SELECT SUM(amount) AS total_revenue FROM orders;
+SELECT SUM(salary) AS payroll FROM employees WHERE department = 'IT';
+
+-- AVG — average
+SELECT AVG(amount) AS avg_order FROM orders;
+SELECT ROUND(AVG(salary), 2) AS avg_salary FROM employees;
+
+-- MIN / MAX
+SELECT MIN(amount) AS min_order, MAX(amount) AS max_order FROM orders;
+SELECT MIN(hire_date) AS oldest_employee FROM employees;
+SELECT MAX(salary) AS highest_salary FROM employees;
+
+-- Multiple aggregates ek saath
+SELECT 
+    COUNT(*) AS total_orders,
+    SUM(amount) AS total_revenue,
+    ROUND(AVG(amount), 2) AS avg_order,
+    MIN(amount) AS smallest_order,
+    MAX(amount) AS largest_order
+FROM orders
+WHERE status = 'completed';`,
+        language: "sql",
+      },
+      {
+        heading: "GROUP BY aur HAVING",
+        content: `**GROUP BY** = Groups mein divide karo — har group pe aggregate apply karo.
+**HAVING** = Groups ko filter karo (WHERE groups ke baad kaam karta hai).
+
+**Key rule:** SELECT mein jo bhi column ho, ya toh GROUP BY mein hona chahiye ya aggregate function mein.`,
+        code: `-- GROUP BY — department wise stats
+SELECT 
+    department,
+    COUNT(*) AS employee_count,
+    SUM(salary) AS total_salary,
+    ROUND(AVG(salary), 2) AS avg_salary,
+    MAX(salary) AS top_salary
+FROM employees
+GROUP BY department;
+
+-- Multiple GROUP BY columns
+SELECT 
+    department,
+    city,
+    COUNT(*) AS count
+FROM employees
+GROUP BY department, city
+ORDER BY department, count DESC;
+
+-- HAVING — group filter karo (WHERE nahi, HAVING!)
+-- Departments jo 5+ employees hain
+SELECT department, COUNT(*) AS emp_count
+FROM employees
+GROUP BY department
+HAVING emp_count >= 5;
+
+-- Average salary > 60000 wale departments
+SELECT department, AVG(salary) AS avg_sal
+FROM employees
+GROUP BY department
+HAVING avg_sal > 60000
+ORDER BY avg_sal DESC;
+
+-- WHERE + GROUP BY + HAVING — execution order!
+SELECT department, COUNT(*) AS count, AVG(salary) AS avg_sal
+FROM employees
+WHERE status = 'active'        -- pehle rows filter (WHERE)
+GROUP BY department             -- phir group karo
+HAVING avg_sal > 50000         -- phir groups filter (HAVING)
+ORDER BY avg_sal DESC;         -- phir sort karo
+
+-- Execution order: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT
+
+-- GROUP_CONCAT — group ke values ek string mein
+SELECT department, GROUP_CONCAT(name ORDER BY name SEPARATOR ', ') AS members
+FROM employees
+GROUP BY department;`,
+        language: "sql",
+        tip: "WHERE vs HAVING: WHERE = individual rows filter (GROUP BY se pehle), HAVING = groups filter (GROUP BY ke baad). Common mistake: aggregate conditions WHERE mein dena — HAVING use karo.",
+      },
+    ],
+    cheatsheet: [
+      "COUNT(*) = sab rows, COUNT(col) = non-NULL rows",
+      "SUM(col), AVG(col), MIN(col), MAX(col)",
+      "GROUP BY col — groups banao",
+      "HAVING count > 5 — groups filter karo",
+      "WHERE = row filter, HAVING = group filter",
+      "ROUND(AVG(col), 2) — 2 decimal places",
+    ],
+    revision: [
+      "Aggregates = COUNT, SUM, AVG, MIN, MAX",
+      "GROUP BY = har unique value ka group",
+      "HAVING = group conditions (aggregates pe)",
+      "WHERE = GROUP BY se pehle, HAVING = baad mein",
+      "NULL values aggregate functions mein skip hote hain",
+    ],
+  },
+  {
+    id: "mysql-string-ops",
+    title: "LIKE, IN, BETWEEN aur Aliases",
+    titleEn: "LIKE, IN, BETWEEN and Aliases",
+    emoji: "🔎",
+    category: "Beginner",
+    description: "Pattern matching (LIKE, Wildcards), range filtering (IN, BETWEEN), aur column/table Aliases",
+    descriptionEn: "Pattern matching (LIKE, Wildcards), range filtering (IN, BETWEEN), and Aliases",
+    sections: [
+      {
+        heading: "LIKE aur Wildcards — Pattern Matching",
+        content: `**LIKE** = String pattern se match karo.
+**Wildcards:**
+- \`%\` = Zero ya zyada characters (kuch bhi)
+- \`_\` = Exactly ek character
+
+**REGEXP** = Regular expression matching (advanced patterns).`,
+        code: `-- LIKE with % wildcard
+SELECT * FROM employees WHERE name LIKE 'Ali%';     -- "Ali" se shuru hone wale
+SELECT * FROM employees WHERE name LIKE '%Khan';     -- "Khan" pe khatam hone wale
+SELECT * FROM employees WHERE email LIKE '%@gmail%'; -- gmail wali emails
+SELECT * FROM employees WHERE name LIKE '%ali%';     -- "ali" kahi bhi (case insensitive)
+
+-- LIKE with _ wildcard (exactly 1 char)
+SELECT * FROM products WHERE code LIKE 'IT_001'; -- IT-001, ITA001 etc.
+SELECT * FROM users WHERE username LIKE '___';   -- exactly 3 char username
+SELECT * FROM phones WHERE number LIKE '0300_______'; -- 0300 + 7 digits
+
+-- NOT LIKE — pattern se match na kare
+SELECT * FROM employees WHERE email NOT LIKE '%@gmail%';
+SELECT * FROM products WHERE name NOT LIKE '%sale%';
+
+-- LIKE with special characters — escape karo
+SELECT * FROM prices WHERE description LIKE '%100\%%' ESCAPE '\';  -- literal %
+
+-- REGEXP — advanced patterns
+SELECT * FROM employees WHERE name REGEXP '^[Aa]li';   -- Ali ya ali se shuru
+SELECT * FROM emails WHERE email REGEXP '[0-9]+@';     -- number wali emails
+SELECT * FROM phones WHERE phone REGEXP '^03[0-9]{9}$'; -- Pakistani mobile format
+
+-- Case-sensitive LIKE
+SELECT * FROM employees WHERE name LIKE BINARY 'Ali%'; -- case sensitive!`,
+        language: "sql",
+      },
+      {
+        heading: "IN aur BETWEEN — Range Filtering",
+        content: `**IN** = Multiple values mein se koi ek match karo — OR ka shortcut.
+**BETWEEN** = Range mein value check karo — inclusive (start aur end dono included).`,
+        code: `-- IN — multiple values check
+SELECT * FROM employees WHERE department IN ('IT', 'Finance', 'HR');
+-- Same as:
+SELECT * FROM employees 
+WHERE department = 'IT' OR department = 'Finance' OR department = 'HR';
+
+-- NOT IN
+SELECT * FROM employees WHERE department NOT IN ('IT', 'Finance');
+
+-- IN with numbers
+SELECT * FROM orders WHERE status_id IN (1, 3, 5);
+
+-- IN with subquery
+SELECT * FROM employees 
+WHERE department_id IN (
+    SELECT id FROM departments WHERE location = 'Lahore'
+);
+
+-- BETWEEN — inclusive range
+SELECT * FROM employees WHERE salary BETWEEN 30000 AND 60000;
+-- Same as:
+SELECT * FROM employees WHERE salary >= 30000 AND salary <= 60000;
+
+-- NOT BETWEEN
+SELECT * FROM employees WHERE salary NOT BETWEEN 30000 AND 60000;
+
+-- BETWEEN with dates
+SELECT * FROM orders WHERE created_at BETWEEN '2024-01-01' AND '2024-12-31';
+SELECT * FROM orders 
+WHERE order_date BETWEEN '2024-01-01 00:00:00' AND '2024-03-31 23:59:59';
+
+-- BETWEEN with strings (alphabetical order)
+SELECT * FROM employees WHERE name BETWEEN 'A' AND 'M';
+
+-- Aliases — column aur table rename karo
+SELECT 
+    e.name AS employee_name,
+    d.name AS department_name,
+    e.salary AS monthly_pay,
+    e.salary * 12 AS annual_salary
+FROM employees AS e
+JOIN departments AS d ON e.dept_id = d.id
+WHERE e.salary BETWEEN 40000 AND 80000
+  AND d.name IN ('IT', 'Finance')
+ORDER BY e.salary DESC
+LIMIT 10;
+
+-- Table alias (AS optional)
+SELECT e.name, d.name
+FROM employees e          -- AS ke bina bhi chalega
+JOIN departments d ON e.dept_id = d.id;`,
+        language: "sql",
+        tip: "IN = OR shorthand (clean code), BETWEEN = range check (inclusive!). Performance tip: IN with indexed column = fast. LIKE '%text%' = slow (full table scan) — use FULLTEXT index for large tables.",
+      },
+    ],
+    cheatsheet: [
+      "LIKE 'Ali%' — Ali se shuru wale",
+      "LIKE '%Khan' — Khan pe khatam wale",
+      "LIKE '_bc' — exactly 1 char + 'bc'",
+      "IN ('IT', 'HR') — multiple values",
+      "BETWEEN 1000 AND 5000 — range (inclusive)",
+      "NOT LIKE, NOT IN, NOT BETWEEN — negate karo",
+      "AS alias — column/table rename",
+    ],
+    revision: [
+      "% = any chars (zero or more), _ = exactly 1 char",
+      "LIKE = case insensitive by default",
+      "IN = OR ka clean shorthand",
+      "BETWEEN = inclusive (>= AND <=)",
+      "Alias = column/table ko rename karo results mein",
+      "NOT LIKE / NOT IN / NOT BETWEEN = exclude karo",
+    ],
+  },
 ];
 
 export const mysqlInterviews = [

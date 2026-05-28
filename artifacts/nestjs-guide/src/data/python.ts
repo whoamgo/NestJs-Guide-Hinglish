@@ -5737,6 +5737,813 @@ sorter.sort([3,1,2])`,
       "Observer = event bus — loose coupling between components",
     ],
   },
+  {
+    id: "py-arrays-iterators",
+    title: "Arrays aur Iterators",
+    titleEn: "Arrays and Iterators",
+    emoji: "🔢",
+    category: "Beginner",
+    description: "Python arrays (list, array module, NumPy), Range, aur Iterator protocol — __iter__ aur __next__",
+    descriptionEn: "Python arrays (list, array module, NumPy), Range, and Iterator protocol — __iter__ and __next__",
+    sections: [
+      {
+        heading: "Python Arrays — Teen Tarike",
+        content: `Python mein arrays ke **3 main options** hain:
+
+1. **List** — built-in, mixed types, most common
+2. **array module** — typed array, memory efficient
+3. **NumPy array** — numerical computing, vectorized ops
+
+**Range:** Sequence of numbers generate karo — memory efficient (lazy), for loop mein use hota hai.`,
+        code: `# 1. List — most common "array" in Python
+fruits = ["apple", "banana", "cherry"]
+fruits.append("date")         # add at end
+fruits.insert(1, "avocado")   # insert at index
+fruits.remove("banana")       # remove by value
+fruits.pop(0)                 # remove by index → returns value
+print(fruits[0])              # indexing
+print(fruits[-1])             # last element
+print(fruits[1:3])            # slicing
+
+# List methods
+nums = [3, 1, 4, 1, 5, 9, 2, 6]
+nums.sort()                   # in-place sort
+nums.reverse()                # reverse in-place
+print(sorted(nums))           # returns new sorted list
+print(min(nums), max(nums))   # min/max
+print(nums.count(1))          # count occurrences
+print(nums.index(5))          # find index
+
+# 2. array module — typed, memory efficient
+import array
+int_arr = array.array('i', [1, 2, 3, 4, 5])  # 'i' = signed int
+float_arr = array.array('f', [1.1, 2.2, 3.3])
+int_arr.append(6)
+print(int_arr[0])  # 1
+
+# Type codes: 'i'=int, 'f'=float, 'd'=double, 'b'=byte
+
+# 3. NumPy array — numerical computing
+import numpy as np
+arr = np.array([1, 2, 3, 4, 5])
+matrix = np.array([[1, 2], [3, 4]])
+
+arr * 2           # [2, 4, 6, 8, 10] — vectorized!
+arr + arr         # [2, 4, 6, 8, 10]
+arr[arr > 2]      # [3, 4, 5] — boolean indexing
+np.mean(arr)      # 3.0
+np.sum(arr)       # 15
+matrix.shape      # (2, 2)
+matrix.T          # transpose`,
+        language: "python",
+      },
+      {
+        heading: "Range — Lazy Sequence Generator",
+        content: `**range()** = Start se stop tak integers generate karo — lazy (memory mein sab store nahi hote).
+
+**Syntax:** \`range(stop)\`, \`range(start, stop)\`, \`range(start, stop, step)\``,
+        code: `# range() — lazy sequence
+r = range(10)        # 0 to 9
+r = range(1, 11)     # 1 to 10
+r = range(0, 20, 2)  # even numbers: 0,2,4...18
+r = range(10, 0, -1) # countdown: 10,9,8...1
+
+# Memory efficient — doesn't store all values
+big_range = range(1_000_000)  # no memory issue!
+print(sys.getsizeof(big_range))  # 48 bytes always!
+print(sys.getsizeof(list(big_range)))  # 8MB+!
+
+# Common uses
+for i in range(5):
+    print(i)          # 0, 1, 2, 3, 4
+
+# List comprehension with range
+squares = [x**2 for x in range(1, 6)]  # [1, 4, 9, 16, 25]
+
+# Enumerate — index + value
+fruits = ["apple", "banana", "cherry"]
+for i, fruit in enumerate(fruits):
+    print(f"{i}: {fruit}")
+
+for i, fruit in enumerate(fruits, start=1):  # start from 1
+    print(f"{i}. {fruit}")
+
+# Convert range to list
+print(list(range(5)))   # [0, 1, 2, 3, 4]
+print(5 in range(10))   # True — O(1) membership test!`,
+        language: "python",
+      },
+      {
+        heading: "Iterators — __iter__ aur __next__",
+        content: `**Iterator protocol:** Ek object jo ek-ek item return kare — \`__iter__\` aur \`__next__\` methods.
+
+**Iterable:** Jo iterate ho sake — list, tuple, string, range, dict, file...
+**Iterator:** Jo \`next()\` call pe next item de — \`StopIteration\` jab khatam.
+
+**Generator:** Iterator banana aur asaan — \`yield\` use karo.`,
+        code: `# Built-in iterator use
+fruits = ["apple", "banana", "cherry"]
+it = iter(fruits)           # iterator banao
+print(next(it))             # "apple"
+print(next(it))             # "banana"
+print(next(it))             # "cherry"
+# next(it)                  # StopIteration!
+
+# for loop internally karta hai yahi
+for fruit in fruits:        # iter() + next() internally!
+    print(fruit)
+
+# Custom Iterator class
+class CountDown:
+    def __init__(self, start):
+        self.current = start
+
+    def __iter__(self):
+        return self  # self is the iterator
+
+    def __next__(self):
+        if self.current <= 0:
+            raise StopIteration
+        value = self.current
+        self.current -= 1
+        return value
+
+for num in CountDown(5):
+    print(num)  # 5, 4, 3, 2, 1
+
+# Generator — much simpler!
+def countdown(start):
+    while start > 0:
+        yield start     # pause here, return value
+        start -= 1
+
+for num in countdown(5):
+    print(num)
+
+# Generator expression — like list comp but lazy
+gen = (x**2 for x in range(1000000))  # no memory!
+print(next(gen))  # 0
+print(next(gen))  # 1
+
+# Useful iterator tools
+from itertools import chain, cycle, islice, enumerate
+
+# chain — multiple iterables join
+for item in chain([1,2], [3,4], [5,6]):
+    print(item)  # 1,2,3,4,5,6
+
+# islice — take first N from iterator
+first_5 = list(islice(countdown(100), 5))  # [100,99,98,97,96]`,
+        language: "python",
+        tip: "Generator functions (yield) itni powerful hain — infinite sequences, lazy evaluation, memory efficient. Real-world: file reading line by line, pagination, data pipelines.",
+      },
+    ],
+    mcqs: [
+      {
+        q: "Python mein array module ka type code 'f' kya represent karta hai?",
+        options: ["Float (single precision)", "Full integer", "Fixed point", "Fraction"],
+        correct: 0,
+        explain: "'f' = float (single precision, 4 bytes). 'd' = double (8 bytes). 'i' = signed int. 'b' = signed char.",
+      },
+    ],
+    cheatsheet: [
+      "list = dynamic array, mixed types",
+      "array.array('i', [...]) = typed array",
+      "range(start, stop, step) = lazy sequence",
+      "__iter__ + __next__ = iterator protocol",
+      "yield = generator function banao",
+      "iter(obj), next(obj) = manual iteration",
+    ],
+    revision: [
+      "List = Python ka default array",
+      "range() = lazy — memory efficient",
+      "Iterator = __iter__ + __next__ implement karo",
+      "Generator = yield se iterator banao",
+      "for loop = iter() + next() internally",
+    ],
+  },
+  {
+    id: "py-math-dates-json",
+    title: "Math, Dates aur JSON",
+    titleEn: "Math, Dates and JSON",
+    emoji: "📅",
+    category: "Beginner",
+    description: "Python math module, datetime module (dates, times, timedelta), aur JSON data handle karna",
+    descriptionEn: "Python math module, datetime (dates, times, timedelta), and JSON data handling",
+    sections: [
+      {
+        heading: "Math Module",
+        content: `Python \`math\` module = mathematical functions aur constants.
+
+**Common functions:** ceil, floor, sqrt, pow, log, trig functions, pi, e`,
+        code: `import math
+
+# Constants
+print(math.pi)        # 3.141592653589793
+print(math.e)         # 2.718281828459045
+print(math.inf)       # infinity
+print(math.tau)       # 2π = 6.283...
+
+# Rounding
+math.ceil(4.2)        # 5  — upar round
+math.floor(4.9)       # 4  — neeche round
+math.trunc(4.9)       # 4  — truncate (towards zero)
+round(4.567, 2)       # 4.57 — built-in round
+
+# Powers and roots
+math.sqrt(16)         # 4.0
+math.pow(2, 10)       # 1024.0  (float)
+2 ** 10               # 1024    (int, faster!)
+math.isqrt(17)        # 4       (integer sqrt)
+math.cbrt(27)         # 3.0     (cube root, Python 3.11+)
+
+# Logarithms
+math.log(100)         # 4.60... (natural log, base e)
+math.log(100, 10)     # 2.0     (log base 10)
+math.log10(1000)      # 3.0
+math.log2(8)          # 3.0
+
+# Trigonometry (radians mein)
+math.sin(math.pi/2)   # 1.0
+math.cos(0)           # 1.0
+math.tan(math.pi/4)   # 1.0
+math.degrees(math.pi) # 180.0
+math.radians(180)     # 3.14...
+
+# Other useful
+math.factorial(5)     # 120
+math.gcd(12, 8)       # 4
+math.lcm(4, 6)        # 12 (Python 3.9+)
+math.comb(10, 3)      # 120 (combinations nCr)
+math.perm(5, 2)       # 20  (permutations nPr)
+math.isnan(float('nan'))  # True
+math.isinf(float('inf'))  # True`,
+        language: "python",
+      },
+      {
+        heading: "Dates aur Times — datetime module",
+        content: `\`datetime\` module = dates, times, timedelta, timezone sab handle karo.
+
+**Key classes:** \`date\`, \`time\`, \`datetime\`, \`timedelta\`, \`timezone\``,
+        code: `from datetime import date, time, datetime, timedelta, timezone
+
+# Current date/time
+today = date.today()
+now = datetime.now()
+utc_now = datetime.now(timezone.utc)
+
+print(today)           # 2024-01-15
+print(now)             # 2024-01-15 10:30:45.123456
+print(now.year)        # 2024
+print(now.month)       # 1
+print(now.day)         # 15
+print(now.hour)        # 10
+print(now.weekday())   # 0=Monday, 6=Sunday
+
+# Create specific date/time
+birthday = date(1995, 8, 15)
+meeting = datetime(2024, 3, 20, 14, 30, 0)
+
+# timedelta — date arithmetic!
+delta = timedelta(days=7, hours=2, minutes=30)
+next_week = today + timedelta(weeks=1)
+yesterday = today - timedelta(days=1)
+
+diff = datetime(2024, 12, 31) - datetime.now()
+print(f"{diff.days} days until New Year!")
+
+# Formatting — strftime
+now.strftime("%Y-%m-%d")          # "2024-01-15"
+now.strftime("%d/%m/%Y %H:%M")   # "15/01/2024 10:30"
+now.strftime("%B %d, %Y")        # "January 15, 2024"
+now.strftime("%A")               # "Monday"
+
+# Parsing — strptime
+date_str = "25-12-2024"
+parsed = datetime.strptime(date_str, "%d-%m-%Y")
+
+# ISO format
+now.isoformat()       # "2024-01-15T10:30:45.123456"
+datetime.fromisoformat("2024-01-15T10:30:00")
+
+# Timezone aware
+from zoneinfo import ZoneInfo  # Python 3.9+
+pk_time = datetime.now(ZoneInfo("Asia/Karachi"))
+ist_time = datetime.now(ZoneInfo("Asia/Kolkata"))`,
+        language: "python",
+      },
+      {
+        heading: "JSON — Data Serialization",
+        content: `**JSON** (JavaScript Object Notation) = Python dict/list ko text mein convert karo aur wapas.
+
+**json.dumps()** = Python → JSON string (serialize)
+**json.loads()** = JSON string → Python (deserialize)
+**json.dump()** = Python → JSON file
+**json.load()** = JSON file → Python`,
+        code: `import json
+
+# Python dict → JSON string
+user = {
+    "name": "Ali Khan",
+    "age": 25,
+    "email": "ali@example.com",
+    "skills": ["Python", "SQL", "React"],
+    "address": {"city": "Lahore", "country": "Pakistan"},
+    "active": True,
+    "score": None  # Python None → JSON null
+}
+
+json_str = json.dumps(user)
+print(type(json_str))  # <class 'str'>
+print(json_str[:50])   # '{"name": "Ali Khan", "age": 25...'
+
+# Pretty print
+pretty = json.dumps(user, indent=2, ensure_ascii=False)
+print(pretty)
+
+# JSON string → Python dict
+data = json.loads(json_str)
+print(type(data))        # <class 'dict'>
+print(data["name"])      # "Ali Khan"
+print(data["skills"][0]) # "Python"
+
+# File mein write
+with open("user.json", "w", encoding="utf-8") as f:
+    json.dump(user, f, indent=2, ensure_ascii=False)
+
+# File se read
+with open("user.json", "r", encoding="utf-8") as f:
+    loaded = json.load(f)
+
+# Custom serialization (datetime etc.)
+from datetime import datetime
+
+def json_serializer(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+data_with_date = {"name": "Ali", "created": datetime.now()}
+json.dumps(data_with_date, default=json_serializer)
+
+# JSON type mapping
+# Python → JSON:  dict→object, list→array, str→string
+# int/float→number, True→true, False→false, None→null`,
+        language: "python",
+        tip: "API responses, config files, data storage — sab JSON use karte hain. requests library automatically JSON handle karta hai: response.json() — manually parse karne ki zaroorat nahi.",
+      },
+    ],
+    cheatsheet: [
+      "math.sqrt(x), math.pow(x,y), math.floor/ceil",
+      "math.pi, math.e — constants",
+      "datetime.now() — current datetime",
+      "timedelta(days=7) — date arithmetic",
+      "strftime('%Y-%m-%d') — format date",
+      "strptime(str, format) — parse string to date",
+      "json.dumps(obj) — Python to JSON string",
+      "json.loads(str) — JSON string to Python",
+    ],
+    revision: [
+      "math module = sqrt, floor, ceil, pi, factorial",
+      "datetime.now() = current date+time",
+      "timedelta = date/time arithmetic",
+      "strftime = format, strptime = parse",
+      "json.dumps/loads = serialize/deserialize",
+      "json.dump/load = file read/write",
+    ],
+  },
+  {
+    id: "py-django",
+    title: "Django Web Framework",
+    titleEn: "Django Web Framework",
+    emoji: "🌐",
+    category: "Advanced",
+    description: "Django se web apps banana — models, views, templates, ORM, URL routing, admin panel",
+    descriptionEn: "Build web apps with Django — models, views, templates, ORM, URL routing, admin panel",
+    sections: [
+      {
+        heading: "Django kya hai? Setup aur Project Structure",
+        content: `**Django** = Python ka most popular web framework — "batteries included".
+
+**Features:**
+- Built-in ORM (database layer)
+- Admin panel (auto-generated!)
+- Authentication system
+- Template engine
+- URL routing
+- Security (CSRF, XSS, SQL injection protection)
+
+**MVT Pattern:** Model → View → Template (Django ka MVC variant)`,
+        code: `# Install Django
+pip install django
+
+# Project create karo
+django-admin startproject myproject
+cd myproject
+
+# App create karo (apps = modules)
+python manage.py startapp blog
+
+# Project structure:
+# myproject/
+# ├── manage.py           ← CLI tool (run server, migrate, etc.)
+# ├── myproject/
+# │   ├── settings.py     ← Configuration
+# │   ├── urls.py         ← Root URL config
+# │   ├── wsgi.py         ← WSGI server entry point
+# │   └── asgi.py         ← ASGI (async) entry point
+# └── blog/               ← App folder
+#     ├── models.py       ← Database models
+#     ├── views.py        ← Business logic
+#     ├── urls.py         ← App URLs
+#     ├── admin.py        ← Admin panel config
+#     ├── forms.py        ← Forms
+#     └── templates/      ← HTML templates
+
+# Development server chalao
+python manage.py runserver  # http://127.0.0.1:8000
+
+# settings.py mein app add karo
+INSTALLED_APPS = [
+    # ...
+    'blog',  # apna app add karo!
+]`,
+        language: "python",
+      },
+      {
+        heading: "Models — Database Layer (ORM)",
+        content: `**Model** = Python class = Database table. Django ORM automatically SQL queries handle karta hai.
+
+**Migrations:** Code se database schema create/update karo.`,
+        code: `# blog/models.py
+from django.db import models
+from django.contrib.auth.models import User
+
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(unique=True)
+
+    class Meta:
+        verbose_name_plural = "categories"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class Post(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('published', 'Published'),
+    ]
+
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(unique=True)
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    content = models.TextField()
+    excerpt = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    views = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.title
+
+# Migrations chalao
+# python manage.py makemigrations  ← models se migration file banao
+# python manage.py migrate         ← DB pe apply karo
+
+# ORM queries
+Post.objects.all()                         # sab posts
+Post.objects.filter(status='published')    # filter
+Post.objects.get(slug='my-post')           # single
+Post.objects.create(title='Hello', ...)    # insert
+Post.objects.filter(id=1).update(views=5)  # update
+Post.objects.filter(id=1).delete()         # delete
+Post.objects.filter(author=user).count()   # count
+Post.objects.order_by('-created_at')[:10]  # latest 10`,
+        language: "python",
+      },
+      {
+        heading: "Views, URLs aur Templates",
+        content: `**View** = Request receive karo, data process karo, Response return karo.
+**URL** = URL patterns define karo — which view handle kare.
+**Template** = HTML + Django Template Language (DTL).`,
+        code: `# blog/views.py
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse, JsonResponse
+from .models import Post, Category
+
+# Function-based view
+def post_list(request):
+    posts = Post.objects.filter(status='published')
+    category = request.GET.get('category')
+    if category:
+        posts = posts.filter(category__slug=category)
+
+    context = {
+        'posts': posts,
+        'categories': Category.objects.all(),
+    }
+    return render(request, 'blog/post_list.html', context)
+
+def post_detail(request, slug):
+    post = get_object_or_404(Post, slug=slug, status='published')
+    post.views += 1
+    post.save()
+    return render(request, 'blog/post_detail.html', {'post': post})
+
+# API view
+def api_posts(request):
+    posts = list(Post.objects.filter(status='published').values(
+        'id', 'title', 'slug', 'created_at'
+    ))
+    return JsonResponse({'posts': posts})
+
+# blog/urls.py
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.post_list, name='post-list'),
+    path('<slug:slug>/', views.post_detail, name='post-detail'),
+    path('api/posts/', views.api_posts, name='api-posts'),
+]
+
+# myproject/urls.py — root URL config
+from django.urls import path, include
+from django.contrib import admin
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('blog/', include('blog.urls')),
+]
+
+# blog/admin.py — admin panel mein register karo
+from django.contrib import admin
+from .models import Post, Category
+
+@admin.register(Post)
+class PostAdmin(admin.ModelAdmin):
+    list_display = ['title', 'author', 'status', 'created_at']
+    list_filter = ['status', 'category']
+    search_fields = ['title', 'content']
+    prepopulated_fields = {'slug': ('title',)}`,
+        language: "python",
+      },
+      {
+        heading: "Templates — Django Template Language",
+        content: `**DTL (Django Template Language):** Variables, tags, filters — HTML mein dynamic content.`,
+        code: `{# blog/templates/blog/post_list.html #}
+<!DOCTYPE html>
+<html>
+<head><title>Blog</title></head>
+<body>
+  <h1>Blog Posts</h1>
+
+  {# Variables: {{ variable }} #}
+  <p>Total posts: {{ posts|length }}</p>
+
+  {# For loop: {% for %} #}
+  {% for post in posts %}
+    <article>
+      <h2>{{ post.title }}</h2>
+      <p>By {{ post.author.get_full_name }} on {{ post.created_at|date:"d M Y" }}</p>
+      <p>{{ post.excerpt|truncatewords:30 }}</p>
+      <a href="{% url 'post-detail' post.slug %}">Read more</a>
+    </article>
+  {% empty %}
+    <p>Koi post nahi hai abhi!</p>
+  {% endfor %}
+
+  {# If condition: {% if %} #}
+  {% if user.is_authenticated %}
+    <a href="/write/">New Post</a>
+  {% else %}
+    <a href="/login/">Login</a>
+  {% endif %}
+</body>
+</html>
+
+# Common filters
+{{ name|upper }}           {# uppercase #}
+{{ date|date:"Y-m-d" }}   {# format date #}
+{{ text|truncatewords:50 }}{# truncate #}
+{{ price|floatformat:2 }}  {# 2 decimal places #}
+{{ list|join:", " }}       {# join list #}
+{{ value|default:"N/A" }}  {# default value #}`,
+        language: "html",
+        tip: "Django admin panel se data manage karna bahut easy hai — makemigrations + migrate + createsuperuser karo, phir /admin/ pe jaao. Full CRUD automatically!",
+      },
+    ],
+    cheatsheet: [
+      "django-admin startproject name — project banao",
+      "python manage.py startapp name — app banao",
+      "python manage.py runserver — dev server",
+      "makemigrations + migrate — DB update karo",
+      "models.py = DB tables, views.py = logic",
+      "urls.py = URL routing, templates/ = HTML",
+      "admin.register(Model) — admin panel mein add",
+    ],
+    revision: [
+      "MVT: Model → View → Template (Django ka pattern)",
+      "ORM: Python classes = DB tables",
+      "migrations = schema changes track karo",
+      "render(request, template, context) = response",
+      "get_object_or_404 = safe single object fetch",
+      "{% %} = tags, {{ }} = variables in templates",
+    ],
+  },
+  {
+    id: "py-matplotlib",
+    title: "Matplotlib — Data Visualization",
+    titleEn: "Matplotlib — Data Visualization",
+    emoji: "📊",
+    category: "Intermediate",
+    description: "Python mein graphs aur charts banana — Line, Bar, Scatter, Pie, Histogram, Subplot",
+    descriptionEn: "Create graphs and charts in Python — Line, Bar, Scatter, Pie, Histogram, Subplot",
+    sections: [
+      {
+        heading: "Matplotlib Intro aur Basic Setup",
+        content: `**Matplotlib** = Python ki most popular data visualization library.
+
+**pyplot** = MATLAB-style interface — simple API.
+
+**Figure aur Axes:** Figure = poora chart window, Axes = ek individual plot.`,
+        code: `# Install
+pip install matplotlib
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+# BASIC LINE PLOT — simplest way
+x = [1, 2, 3, 4, 5]
+y = [2, 4, 1, 5, 3]
+
+plt.plot(x, y)
+plt.title("Mera Pehla Graph")
+plt.xlabel("X-axis")
+plt.ylabel("Y-axis")
+plt.show()
+
+# Figure + Axes style — recommended!
+fig, ax = plt.subplots(figsize=(10, 6))  # width, height in inches
+ax.plot(x, y, color='blue', linewidth=2, linestyle='--', marker='o')
+ax.set_title("Line Plot", fontsize=16)
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.grid(True, alpha=0.3)
+ax.legend(['Sales'])
+plt.tight_layout()
+plt.show()
+
+# Save to file (show ke bajaye)
+plt.savefig('chart.png', dpi=300, bbox_inches='tight')
+plt.savefig('chart.pdf')  # PDF bhi!`,
+        language: "python",
+      },
+      {
+        heading: "Line, Bar, Scatter, aur Markers",
+        content: `**Line plot** = Trends show karo (time series).
+**Bar chart** = Categories compare karo.
+**Scatter plot** = Relationship/correlation dikhao.
+**Markers** = Data points highlight karo.`,
+        code: `import matplotlib.pyplot as plt
+import numpy as np
+
+# 1. LINE PLOT — multiple lines
+x = np.linspace(0, 10, 100)  # 0 to 10, 100 points
+
+fig, ax = plt.subplots()
+ax.plot(x, np.sin(x), label='sin(x)', color='blue', lw=2)
+ax.plot(x, np.cos(x), label='cos(x)', color='red', lw=2, linestyle='--')
+ax.legend()
+ax.set_title("Sine aur Cosine")
+
+# Linestyles: '-', '--', '-.', ':'
+# Markers: 'o', 's', '^', 'D', '*', '+', 'x'
+ax.plot(x, np.tan(x), 'g-.^', markersize=3)  # green, dash-dot, triangle markers
+
+# 2. BAR CHART
+months = ['Jan', 'Feb', 'Mar', 'Apr', 'May']
+sales = [1200, 1800, 1400, 2100, 1700]
+colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6']
+
+fig, ax = plt.subplots(figsize=(8, 5))
+bars = ax.bar(months, sales, color=colors, edgecolor='black', width=0.6)
+ax.bar_label(bars, fmt='%d')  # values upar show karo
+ax.set_title("Monthly Sales")
+ax.set_ylabel("Sales (Rs.)")
+
+# Horizontal bars
+ax.barh(months, sales, color=colors)
+
+# 3. SCATTER PLOT
+np.random.seed(42)
+x = np.random.randn(100)
+y = 2*x + np.random.randn(100)*0.5
+
+fig, ax = plt.subplots()
+scatter = ax.scatter(x, y, c=y, cmap='viridis', s=50, alpha=0.7)
+plt.colorbar(scatter)  # color legend
+ax.set_title("Scatter Plot")
+
+# Regression line add karo
+m, b = np.polyfit(x, y, 1)  # linear fit
+ax.plot(x, m*x + b, 'r--', lw=2, label=f'y={m:.1f}x+{b:.1f}')
+ax.legend()`,
+        language: "python",
+      },
+      {
+        heading: "Pie, Histogram, Subplots aur Styling",
+        content: `**Pie chart** = Proportions dikhao.
+**Histogram** = Distribution dikhao.
+**Subplots** = Multiple charts ek figure mein.`,
+        code: `import matplotlib.pyplot as plt
+import numpy as np
+
+# 1. PIE CHART
+labels = ['Python', 'JavaScript', 'Java', 'C++', 'Others']
+sizes = [35, 25, 20, 12, 8]
+explode = (0.1, 0, 0, 0, 0)  # Python piece bahar nikalo
+colors = ['#3498db', '#f39c12', '#e74c3c', '#2ecc71', '#9b59b6']
+
+fig, ax = plt.subplots()
+wedges, texts, autotexts = ax.pie(
+    sizes,
+    labels=labels,
+    explode=explode,
+    colors=colors,
+    autopct='%1.1f%%',  # percentage show karo
+    startangle=90,
+    shadow=True,
+)
+ax.set_title("Programming Language Usage")
+
+# 2. HISTOGRAM
+data = np.random.normal(170, 10, 1000)  # height data
+
+fig, ax = plt.subplots()
+ax.hist(data, bins=30, color='steelblue', edgecolor='black', alpha=0.7)
+ax.axvline(data.mean(), color='red', linestyle='--', label=f'Mean: {data.mean():.1f}')
+ax.set_title("Height Distribution")
+ax.set_xlabel("Height (cm)")
+ax.set_ylabel("Frequency")
+ax.legend()
+
+# 3. SUBPLOTS — multiple charts!
+fig, axes = plt.subplots(2, 2, figsize=(12, 8))  # 2x2 grid
+
+x = np.linspace(0, 10, 50)
+
+axes[0, 0].plot(x, np.sin(x))
+axes[0, 0].set_title("Line Plot")
+
+axes[0, 1].bar(['A', 'B', 'C'], [3, 7, 5])
+axes[0, 1].set_title("Bar Chart")
+
+axes[1, 0].scatter(np.random.randn(50), np.random.randn(50), alpha=0.5)
+axes[1, 0].set_title("Scatter Plot")
+
+axes[1, 1].hist(np.random.normal(0, 1, 500), bins=20)
+axes[1, 1].set_title("Histogram")
+
+plt.suptitle("All Chart Types", fontsize=16)
+plt.tight_layout()
+plt.show()
+
+# Labels aur Grid
+ax.set_xticks([0, 2, 4, 6, 8, 10])
+ax.set_xticklabels(['Zero', '2', '4', '6', '8', 'Ten'])
+ax.grid(True, which='major', alpha=0.5)
+ax.grid(True, which='minor', alpha=0.2)
+ax.minorticks_on()`,
+        language: "python",
+        tip: "Pandas ke saath matplotlib integrate hoti hai easily: df.plot() se directly charts bana sakte hain. Seaborn library Matplotlib ke upar hai — statistical charts ke liye better.",
+      },
+    ],
+    cheatsheet: [
+      "plt.plot(x, y) — line chart",
+      "plt.bar(x, height) — bar chart",
+      "plt.scatter(x, y) — scatter plot",
+      "plt.pie(sizes, labels=...) — pie chart",
+      "plt.hist(data, bins=N) — histogram",
+      "fig, axes = plt.subplots(rows, cols) — multiple charts",
+      "plt.show() — display, plt.savefig('f.png') — save",
+    ],
+    revision: [
+      "pyplot = simple MATLAB-style API",
+      "fig, ax = plt.subplots() — recommended style",
+      "ax.plot/bar/scatter/pie/hist — chart types",
+      "ax.set_title/xlabel/ylabel/legend — labels",
+      "plt.subplots(2,2) — 2×2 grid of charts",
+      "savefig('file.png', dpi=300) — high quality save",
+    ],
+  },
 ];
 
 export const pythonInterviews = [

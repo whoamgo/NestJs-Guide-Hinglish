@@ -137,7 +137,7 @@ export const courses: CourseInfo[] = [
     description: "Database fundamentals — queries, joins, indexing, aur optimization",
     level: "Beginner",
     topics: ["SQL Basics", "JOINs", "Indexes", "Transactions", "Views", "CTEs", "Performance"],
-    totalChapters: 13,
+    totalChapters: 16,
     totalInterviews: 15,
   },
   {
@@ -151,7 +151,7 @@ export const courses: CourseInfo[] = [
     description: "Python A to Z — basics se ML tak, data science, automation aur bahut kuch",
     level: "Beginner",
     topics: ["Basics", "OOP", "File Handling", "NumPy", "Pandas", "ML", "Automation", "Web Scraping", "Regex", "Testing", "FastAPI", "Async"],
-    totalChapters: 26,
+    totalChapters: 30,
     totalInterviews: 36,
   },
   {
